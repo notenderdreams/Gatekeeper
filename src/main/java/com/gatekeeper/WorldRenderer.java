@@ -6,6 +6,8 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import static com.gatekeeper.GameConstants.*;
@@ -192,6 +194,9 @@ final class WorldRenderer {
             g.fillRect(420, 78, 38, 68);
         }
 
+        // Subtle flickering street lamp and entrance light halos
+        EnvironmentArt.drawStreetLampFlicker(g, cameraX, ticks);
+
         // Small animated reflections keep the exterior from feeling like a still image.
         int shimmer = (int) ((ticks / 18) % 3);
         g.setColor(new Color(250, 204, 21, 45));
@@ -213,9 +218,75 @@ final class WorldRenderer {
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
         }
+
+        // Draw all multi-point calibrator crosshairs
+        for (CalibratedPoint p : calibratedPoints) {
+            int screenX = p.worldX - cameraX;
+            int screenY = p.worldY;
+            if (screenX >= -20 && screenX <= W + 20) {
+                g.setColor(new Color(255, 60, 60, 230));
+                g.drawOval(screenX - 7, screenY - 7, 14, 14);
+                g.drawLine(screenX - 10, screenY, screenX + 10, screenY);
+                g.drawLine(screenX, screenY - 10, screenX, screenY + 10);
+                g.setColor(YELLOW);
+                GamePanel.pixelText(g, "#" + p.index + " (" + p.worldX + "," + p.worldY + ")",
+                    Math.max(5, Math.min(W - 90, screenX - 25)), Math.max(25, screenY - 10), 1);
+            }
+        }
+
+        if (!calibratedPoints.isEmpty()) {
+            g.setColor(new Color(0, 0, 0, 190));
+            g.fillRect(10, 22, 295, 14);
+            g.setColor(CYAN);
+            GamePanel.pixelText(g, "CALIBRATOR: " + calibratedPoints.size() + " LIGHTS | BACKSPACE UNDO | C CLEAR", 14, 32, 1);
+        }
     }
 
-    private int streetCameraX() {
+    static final class CalibratedPoint {
+        final int worldX;
+        final int worldY;
+        final int index;
+        CalibratedPoint(int worldX, int worldY, int index) {
+            this.worldX = worldX;
+            this.worldY = worldY;
+            this.index = index;
+        }
+    }
+
+    private final List<CalibratedPoint> calibratedPoints = new ArrayList<>();
+
+    void addCalibratedPoint(int worldX, int worldY) {
+        calibratedPoints.add(new CalibratedPoint(worldX, worldY, calibratedPoints.size() + 1));
+        dumpCalibratedPoints();
+    }
+
+    void undoCalibratedPoint() {
+        if (!calibratedPoints.isEmpty()) {
+            calibratedPoints.remove(calibratedPoints.size() - 1);
+            dumpCalibratedPoints();
+        }
+    }
+
+    void clearCalibratedPoints() {
+        calibratedPoints.clear();
+        System.out.println("[CALIBRATOR] Cleared all light points.");
+    }
+
+    void dumpCalibratedPoints() {
+        System.out.println("\n==================== LIGHT CALIBRATION DUMP ====================");
+        System.out.println("// Total points marked: " + calibratedPoints.size());
+        System.out.println("static final int[][] CALIBRATED_LIGHTS = {");
+        for (int i = 0; i < calibratedPoints.size(); i++) {
+            CalibratedPoint p = calibratedPoints.get(i);
+            System.out.print("    { " + p.worldX + ", " + p.worldY + " }");
+            if (i < calibratedPoints.size() - 1) System.out.print(",");
+            System.out.println(" // Light #" + p.index);
+        }
+        System.out.println("};");
+        System.out.println("================================================================\n");
+    }
+
+    int streetCameraX() {
         return clamp(playerX - W / 2, 0, STREET_WORLD_WIDTH - W);
     }
 

@@ -555,6 +555,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         } else if (scene == GameScene.END && key == KeyEvent.VK_ENTER) {
             resetToTitle();
+        } else if (scene == GameScene.STREET && (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_C || key == KeyEvent.VK_P)) {
+            if (key == KeyEvent.VK_BACK_SPACE) worldRenderer.undoCalibratedPoint();
+            else if (key == KeyEvent.VK_C) worldRenderer.clearCalibratedPoints();
+            else if (key == KeyEvent.VK_P) worldRenderer.dumpCalibratedPoints();
+            repaint();
         } else if ((scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)
             && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
@@ -672,6 +677,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             }
+            return;
+        }
+        if (scene == GameScene.STREET) {
+            int cameraX = worldRenderer.streetCameraX();
+            int worldX = cameraX + x;
+            int worldY = y;
+            worldRenderer.addCalibratedPoint(worldX, worldY);
+            repaint();
             return;
         }
         if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
