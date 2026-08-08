@@ -54,3 +54,24 @@ the corresponding generated room reference, with fixed scale and ground line acr
 cells, crisp silhouettes, no labels or dividers, and a perfectly flat magenta removal
 background. Alex wears a navy jacket and red heart accent; Mira wears a teal work shirt
 and cream electronics apron.
+
+## Audio starter library
+
+Downloaded under `src/main/resources/assets/audio/kenney/` for the upcoming Java audio
+integration. These are source packs; select and rename individual clips as the game
+audio map is implemented.
+
+- `interface-sounds`: menu, dialogue, confirmation, error, open and close cues.
+- `rpg-audio`: footsteps, doors, books, pickups and physical room sounds.
+- `ui-audio`: switches, clicks and interface feedback.
+- `music-jingles`: short CC0 musical stingers for title, crafting, success and ending.
+- `opengameart/chiptune-2/chiptune_2.wav`: a 68-second CC0 loop used as the current
+  prototype background bed while scene-specific themes are selected.
+
+All four packs are from Kenney and include their license files. The source pages list
+the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,
+`https://kenney.nl/assets/rpg-audio`, `https://kenney.nl/assets/ui-audio`, and
+`https://kenney.nl/assets/music-jingles`.
+
+The background loop is from OpenGameArt's [music loops collection](https://opengameart.org/content/music-loops-0)
+and is distributed under CC0.

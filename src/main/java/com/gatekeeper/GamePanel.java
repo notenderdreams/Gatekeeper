@@ -35,6 +35,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int BOARD_SOCKET_H = 34;
     private static final int INDOOR_PLAYER_HEIGHT = 52;
     private static final int STREET_PLAYER_HEIGHT = 36;
+    private static final String AUDIO_ROOT = "/assets/audio/game/";
+    private static final String MUSIC_LOOP = "/assets/audio/opengameart/chiptune-2/chiptune_2.wav";
     private static final int STREET_WORLD_WIDTH = 922;
     private static final int STREET_HOME_X = 93;
     private static final int STREET_SHOP_X = 870;
@@ -62,6 +64,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
+    private final SoundManager sound = new SoundManager();
     private Scene scene = Scene.TITLE;
     private Scene returnScene = Scene.BEDROOM;
     private String line;
@@ -77,6 +80,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private Direction facing = Direction.DOWN;
     private boolean playerMoving;
     private int walkDistance;
+    private int lastFootstep;
     private GateType heldGate = GateType.AND;
     private String boardMessage = "Choose a gate, then place it in a socket.";
     private int boardMessageTimer;
@@ -129,6 +133,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void updateGame() {
         ticks++;
+        sound.loop(MUSIC_LOOP);
         if (line != null) lineAge++;
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (line == null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
@@ -183,6 +188,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (playerMoving) {
                 walkDistance += Math.max(1, (int) Math.round(
                     Math.hypot(precisePlayerX - oldPreciseX, precisePlayerY - oldPreciseY)));
+                int footstep = walkDistance / 18;
+                if (footstep > lastFootstep) {
+                    lastFootstep = footstep;
+                    sound.play(AUDIO_ROOT + "footstep-" + ((footstep - 1) % 4 + 1) + ".wav");
+                }
             }
         } else {
             playerMoving = false;
@@ -1334,6 +1344,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == Scene.BEDROOM) {
             if (chapter == 0 && near(299, 132)) {
                 chapter = 1;
+                playSound("ui-open");
                 say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
@@ -1342,22 +1353,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
             } else if (near(407, 132)) {
                 scene = Scene.STREET;
+                playSound("door-open");
                 setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
                 facing = Direction.RIGHT;
             }
         } else if (scene == Scene.STREET) {
             if (Math.abs(playerX - STREET_HOME_X) < 38) {
                 scene = Scene.BEDROOM;
+                playSound("door-open");
                 setPlayerPosition(420, 160);
                 facing = Direction.LEFT;
             } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
                 scene = Scene.SHOP;
+                playSound("door-open");
                 setPlayerPosition(55, 174);
                 facing = Direction.RIGHT;
             }
         } else if (scene == Scene.SHOP) {
             if (playerX < 50) {
                 scene = Scene.STREET;
+                playSound("door-close");
                 setPlayerPosition(STREET_SHOP_X - 47, STREET_GROUND_Y);
                 facing = Direction.LEFT;
             } else if (near(240, 160)) talkToMira();
@@ -1396,18 +1411,21 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void openBoard() {
         returnScene = scene;
         scene = Scene.BOARD;
+        playSound("ui-open");
         selectRecipe(selectedRecipe);
     }
 
     private void turnNotebookPage(int direction) {
         int available = chapter >= 3 ? 5 : 3;
         notebookPage = (notebookPage + direction + available) % available;
+        playSound("book-flip");
     }
 
     private void selectRecipe(int index) {
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
+        playSound("ui-select");
         boardMessage = crafted[selectedRecipe] ? "Already delivered. You can rebuild it." : "Build the requested device.";
         boardMessageTimer = 180;
     }
@@ -1415,12 +1433,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void recordOrAutoTest() {
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "Every socket needs a gate first.";
+            playSound("ui-error");
         } else if (chapter >= 3) {
             autoTest();
             return;
         } else {
             circuit.recordCurrent();
             boardMessage = "Recorded A=" + bit(circuit.inputA()) + " B=" + bit(circuit.inputB()) + ".";
+            playSound("ui-confirm");
         }
         boardMessageTimer = 180;
     }
@@ -1430,10 +1450,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             autoTest();
         } else if (!circuit.allRowsRecorded()) {
             boardMessage = "Test and RECORD all four switch settings.";
+            playSound("ui-error");
         } else if (circuit.matchesTruthTable()) {
             completeCurrent();
         } else {
             boardMessage = "Mismatch! Replace a gate and test again.";
+            playSound("failure");
         }
         boardMessageTimer = 240;
     }
@@ -1441,6 +1463,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void autoTest() {
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "LogicLens: incomplete circuit.";
+            playSound("ui-error");
         } else {
             boolean passed = true;
             for (int row = 0; row < 4; row++) {
@@ -1452,7 +1475,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             }
             if (passed) completeCurrent();
-            else boardMessage = "LogicLens: FAILED on one or more rows.";
+            else {
+                boardMessage = "LogicLens: FAILED on one or more rows.";
+                playSound("failure");
+            }
         }
         boardMessageTimer = 240;
     }
@@ -1460,11 +1486,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void completeCurrent() {
         crafted[selectedRecipe] = true;
         boardMessage = circuit.recipe().name + " COMPLETE! Take it to Mira.";
+        playSound("success");
     }
 
     private void say(String... lines) {
         dialogue.addAll(Arrays.asList(lines));
         nextLine();
+    }
+
+    private void playSound(String file) {
+        sound.play(AUDIO_ROOT + file + ".wav");
+    }
+
+    private void toggleInputA() {
+        circuit.toggleA();
+        playSound("switch");
+    }
+
+    private void toggleInputB() {
+        circuit.toggleB();
+        playSound("switch");
     }
 
     private void nextLine() {
@@ -1475,6 +1516,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else {
             line = next;
             lineAge = 0;
+            playSound("ui-click");
         }
     }
 
@@ -1511,21 +1553,34 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
-            if (scene == Scene.NOTEBOOK) scene = returnScene;
+            if (scene == Scene.NOTEBOOK) {
+                scene = returnScene;
+                playSound("book-close");
+            }
             else {
                 returnScene = scene;
                 notebookPage = selectedRecipe;
                 scene = Scene.NOTEBOOK;
+                playSound("book-open");
             }
         } else if (scene == Scene.NOTEBOOK) {
-            if (key == KeyEvent.VK_ESCAPE) scene = returnScene;
+            if (key == KeyEvent.VK_ESCAPE) {
+                scene = returnScene;
+                playSound("book-close");
+            }
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == Scene.BOARD) {
-            if (key == KeyEvent.VK_ESCAPE) scene = returnScene;
-            else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) heldGate = GateType.values()[key - KeyEvent.VK_1];
-            else if (key == KeyEvent.VK_A) circuit.toggleA();
-            else if (key == KeyEvent.VK_B) circuit.toggleB();
+            if (key == KeyEvent.VK_ESCAPE) {
+                scene = returnScene;
+                playSound("ui-close");
+            }
+            else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
+                heldGate = GateType.values()[key - KeyEvent.VK_1];
+                playSound("ui-select");
+            }
+            else if (key == KeyEvent.VK_A) toggleInputA();
+            else if (key == KeyEvent.VK_B) toggleInputB();
             else if (key == KeyEvent.VK_R) recordOrAutoTest();
             else if (key == KeyEvent.VK_T || key == KeyEvent.VK_ENTER) verify();
         }
@@ -1562,7 +1617,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else {
                 int available = chapter >= 3 ? 5 : 3;
                 for (int i = 0; i < available; i++) {
-                    if (inside(x, y, 314 + i * 16, 214, 11, 11)) notebookPage = i;
+                    if (inside(x, y, 314 + i * 16, 214, 11, 11)) {
+                        notebookPage = i;
+                        playSound("book-flip");
+                    }
                 }
             }
             return;
@@ -1571,9 +1629,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
-        if (inside(x, y, 20, 81, 64, 20)) circuit.toggleA();
-        if (inside(x, y, 20, 116, 64, 20)) circuit.toggleB();
-        for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) heldGate = GateType.values()[i];
+        if (inside(x, y, 20, 81, 64, 20)) toggleInputA();
+        if (inside(x, y, 20, 116, 64, 20)) toggleInputB();
+        for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) {
+            heldGate = GateType.values()[i];
+            playSound("ui-select");
+        }
 
         int[][] layout = socketLayout(circuit.recipe());
         for (int i = 0; i < circuit.recipe().slotCount(); i++) {
@@ -1581,6 +1642,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 circuit.place(i, heldGate);
                 boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
                 boardMessageTimer = 120;
+                playSound("gate-place");
             }
         }
         if (inside(x, y, 310, 187, 72, 36)) recordOrAutoTest();
