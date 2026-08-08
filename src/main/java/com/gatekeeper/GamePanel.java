@@ -39,6 +39,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int TITLE_MENU_H = 16;
     private static final int TITLE_MENU_GAP = 20;
     private static final int TITLE_COPY_CENTER_X = 348;
+    private static final int DEV_OPTION_COUNT = 8;
     private static final int BOARD_SOCKET_W = 40;
     private static final int BOARD_SOCKET_H = 34;
     private static final int INDOOR_PLAYER_HEIGHT = 52;
@@ -382,7 +383,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelText(g, "F1 QUICK TEST SCENES", 181, 57, 1);
         String[] options = {
             "FRESH BEDROOM", "BOARD PROGRESSION", "FIRST 3 COMPLETE", "STREET",
-            "SHOP", "ADVANCED CHAPTER", "ENDING"
+            "SHOP", "ADVANCED CHAPTER", "AUTO TESTER HOME", "ENDING"
         };
         for (int i = 0; i < options.length; i++) {
             int y = 73 + i * 20;
@@ -1863,7 +1864,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                devSelection = (devSelection + direction + 7) % 7;
+                devSelection = (devSelection + direction + DEV_OPTION_COUNT) % DEV_OPTION_COUNT;
                 playSound("ui-select");
             } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
                 loadDevPreset(devSelection);
@@ -2201,6 +2202,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 Arrays.fill(crafted, true);
                 scene = Scene.SHOP;
                 setPlayerPosition(94, 190);
+            }
+            case 6 -> {
+                chapter = 3;
+                crafted[0] = true;
+                crafted[1] = true;
+                crafted[2] = true;
+                scene = Scene.BEDROOM;
+                setPlayerPosition(205, 126);
             }
             default -> {
                 chapter = 4;
