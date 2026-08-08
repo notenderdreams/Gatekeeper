@@ -33,6 +33,12 @@ import java.util.Set;
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int W = 480;
     private static final int H = 270;
+    private static final int TITLE_MENU_X = 52;
+    private static final int TITLE_MENU_Y = 108;
+    private static final int TITLE_MENU_W = 142;
+    private static final int TITLE_MENU_H = 16;
+    private static final int TITLE_MENU_GAP = 20;
+    private static final int TITLE_COPY_CENTER_X = 348;
     private static final int BOARD_SOCKET_W = 40;
     private static final int BOARD_SOCKET_H = 34;
     private static final int INDOOR_PLAYER_HEIGHT = 52;
@@ -244,27 +250,35 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawTitleBorder(g);
         drawTitleStars(g);
 
+        // Keep the menu and title lockup as two balanced, vertically centered columns.
+        g.setColor(new Color(111, 105, 148));
+        pixelText(g, "MAIN MENU", TITLE_MENU_X + 18, TITLE_MENU_Y - 12, 1);
+        g.setColor(new Color(55, 58, 72, 190));
+        g.fillRect(220, 86, 1, 101);
+        g.setColor(new Color(119, 110, 178));
+        g.fillRect(217, 134, 7, 1);
+        g.fillRect(220, 131, 1, 7);
+
         g.setColor(new Color(157, 149, 202));
-        pixelText(g, "A LOGIC TALE", 194, 63, 1);
+        drawCenteredPixelText(g, "A LOGIC TALE", TITLE_COPY_CENTER_X, 156, 1);
         g.setColor(new Color(0, 0, 0, 180));
-        pixelText(g, "GATEKEEPER", 135, 103, 3);
+        drawCenteredPixelText(g, "GATEKEEPER", TITLE_COPY_CENTER_X + 2, 141, 3);
         g.setColor(INK);
-        pixelText(g, "GATEKEEPER", 132, 100, 3);
+        drawCenteredPixelText(g, "GATEKEEPER", TITLE_COPY_CENTER_X, 138, 3);
         g.setColor(new Color(166, 143, 71));
-        g.fillOval(310, 47, 34, 34);
+        g.fillOval(418, 65, 34, 34);
         g.setColor(new Color(1, 3, 7));
-        g.fillOval(301, 40, 34, 34);
+        g.fillOval(409, 58, 34, 34);
         g.setColor(new Color(115, 111, 164));
-        pixelText(g, "+", 119, 72, 2);
-        pixelText(g, "+", 348, 91, 1);
+        pixelText(g, "+", 452, 146, 1);
 
-        g.setColor(new Color(105, 116, 117));
-        pixelText(g, "EVERY CIRCUIT MAKES A PROMISE", 157, 121, 1);
-
-        drawTitleButton(g, 185, 151, 110, 16, "BEGIN", 0);
-        drawTitleButton(g, 185, 171, 110, 16, "CONTROLS", 1);
-        drawTitleButton(g, 185, 191, 110, 16, "SETTINGS", 2);
-        drawTitleButton(g, 185, 211, 110, 16, "EXIT", 3);
+        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H, "BEGIN", 0);
+        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
+            TITLE_MENU_W, TITLE_MENU_H, "CONTROLS", 1);
+        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
+            TITLE_MENU_W, TITLE_MENU_H, "SETTINGS", 2);
+        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
+            TITLE_MENU_W, TITLE_MENU_H, "EXIT", 3);
     }
 
     private void drawTitleBorder(Graphics2D g) {
@@ -390,12 +404,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                                  String label, int selection) {
         boolean hovered = inside(mouseX, mouseY, x, y, width, height);
         boolean selected = titleSelection == selection;
-        g.setColor(selected || hovered ? new Color(143, 190, 128) : INK);
-        int textX = x + (width - label.length() * 6) / 2;
+        if (selected || hovered) {
+            g.setColor(selected ? new Color(31, 57, 52, 190) : new Color(27, 39, 42, 170));
+            g.fillRect(x, y, width, height);
+            g.setColor(selected ? new Color(143, 190, 128) : new Color(102, 137, 124));
+            g.fillRect(x, y, 2, height);
+        }
+        g.setColor(selected || hovered ? new Color(143, 190, 128) : new Color(191, 192, 185));
+        int textX = x + 18;
         pixelText(g, label, textX, y + 14, 1);
         if (selected || hovered) {
             g.setColor(new Color(143, 190, 128));
-            pixelText(g, ">", textX - 14, y + 14, 1);
+            pixelText(g, ">", x + 5, y + 14, 1);
         }
     }
 
@@ -1923,10 +1943,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == Scene.TITLE) {
             int previous = titleSelection;
-            if (inside(mouseX, mouseY, 185, 151, 110, 16)) titleSelection = 0;
-            else if (inside(mouseX, mouseY, 185, 171, 110, 16)) titleSelection = 1;
-            else if (inside(mouseX, mouseY, 185, 191, 110, 16)) titleSelection = 2;
-            else if (inside(mouseX, mouseY, 185, 211, 110, 16)) titleSelection = 3;
+            if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y,
+                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 0;
+            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
+                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 1;
+            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
+                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 2;
+            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
+                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 3;
             if (previous != titleSelection) playSound("ui-select");
         }
         repaint();
