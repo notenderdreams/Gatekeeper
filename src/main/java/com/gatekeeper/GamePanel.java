@@ -7,6 +7,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontFormatException;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -48,12 +49,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Color CYAN = new Color(54, 211, 224);
     private static final Color YELLOW = new Color(250, 204, 21);
     private static final Color DIM = new Color(100, 104, 112);
-    private static float uiScale = 0.85f;
+    private static final int PIXEL_FONT_BASE_SIZE = 14;
+    private static float uiScale = 1.0f;
+    private static final Font PIXEL_FONT = loadPixelFont();
+
+    private static Font loadPixelFont() {
+        try (InputStream stream = GamePanel.class.getResourceAsStream("/assets/font.ttf")) {
+            if (stream != null) return Font.createFont(Font.TRUETYPE_FONT, stream);
+        } catch (FontFormatException | IOException ignored) {
+            // Fall back to a logical monospaced font if the packaged font is unavailable.
+        }
+        return new Font(Font.MONOSPACED, Font.BOLD, 10);
+    }
 
     private enum Scene { TITLE, CONTROLS, SETTINGS, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
     private enum Direction { DOWN, LEFT, RIGHT, UP }
 
-    private final BufferedImage canvas = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
     private final BufferedImage bedroomBackground = loadImage("/assets/alex-bedroom.png");
     private final BufferedImage streetBackground = loadStreetImage("/assets/night-street-long.png");
     private final BufferedImage shopBackground = loadImage("/assets/mira-shop.png");
@@ -107,10 +118,27 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     @Override protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
-        Graphics2D g = canvas.createGraphics();
+        Graphics2D g = (Graphics2D) graphics.create();
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, getWidth(), getHeight());
+
+        double windowScale = Math.min(getWidth() / (double) W, getHeight() / (double) H);
+        double offsetX = (getWidth() - W * windowScale) / 2.0;
+        double offsetY = (getHeight() - H * windowScale) / 2.0;
+        g.translate(offsetX, offsetY);
+        g.scale(windowScale, windowScale);
+        g.setClip(0, 0, W, H);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
-        g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 10));
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,
+            RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+        g.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        g.setFont(PIXEL_FONT.deriveFont(Font.PLAIN, PIXEL_FONT_BASE_SIZE));
+        g.setColor(VOID);
+        g.fillRect(0, 0, W, H);
         g.setColor(VOID);
         g.fillRect(0, 0, W, H);
 
@@ -128,16 +156,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (line != null) drawDialogue(g);
         if (exitPrompt) drawExitPrompt(g);
         g.dispose();
-
-        Graphics2D out = (Graphics2D) graphics.create();
-        out.setColor(Color.BLACK);
-        out.fillRect(0, 0, getWidth(), getHeight());
-        out.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        double scale = Math.min(getWidth() / (double) W, getHeight() / (double) H);
-        int dw = (int) (W * scale);
-        int dh = (int) (H * scale);
-        out.drawImage(canvas, (getWidth() - dw) / 2, (getHeight() - dh) / 2, dw, dh, null);
-        out.dispose();
     }
 
     private void updateGame() {
@@ -323,11 +341,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawVolumeRow(g, 162, "FX", sound.fxVolume(), 2);
         drawVolumeRow(g, 197, "UI SIZE", uiScale, 3);
 
-        boolean hovered = inside(mouseX, mouseY, 170, 238, 140, 20);
+        boolean hovered = inside(mouseX, mouseY, 170, 219, 140, 20);
         g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        pixelText(g, "< BACK", 216, 252, 1);
+        pixelText(g, "< BACK", 216, 233, 1);
         g.setColor(new Color(68, 76, 79));
-        pixelText(g, "W/S SELECT    A/D ADJUST", 164, 266, 1);
+        pixelText(g, "W/S SELECT    A/D ADJUST", 164, 253, 1);
     }
 
     private void drawVolumeRow(Graphics2D g, int y, String label, float volume, int selection) {
@@ -1752,7 +1770,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == Scene.SETTINGS) {
-            if (inside(x, y, 170, 238, 140, 20)) {
+            if (inside(x, y, 170, 219, 140, 20)) {
                 leaveSettings();
                 playSound("ui-back");
             } else {
@@ -2027,7 +2045,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
         Font old = g.getFont();
-        g.setFont(old.deriveFont(10 * scale * uiScale));
+        int fontSize = Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale));
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,
+            RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+        g.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
+        g.setFont(PIXEL_FONT.deriveFont(Font.PLAIN, fontSize));
         g.drawString(text, x, y);
         g.setFont(old);
     }
