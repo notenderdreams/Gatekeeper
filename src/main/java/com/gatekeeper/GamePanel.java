@@ -40,6 +40,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
+    private final BufferedImage notebookCoverImage = loadRawImage(
+        "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
+    private final BufferedImage notebookLeftPageImage = loadRawImage(
+        "/assets/Book/Sprites/UI_TravelBook_BookPageLeft01a.png");
+    private final BufferedImage notebookRightPageImage = loadRawImage(
+        "/assets/Book/Sprites/UI_TravelBook_BookPageRight01a.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Set<Integer> keys = new HashSet<>();
@@ -77,7 +83,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final AutoTester autoTester = new AutoTester();
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         recipes, crafted, circuit, autoTester, logicLensImage);
-    private final NotebookRenderer notebookRenderer = new NotebookRenderer(recipes, crafted);
+    private final NotebookRenderer notebookRenderer = new NotebookRenderer(
+        recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites,
         alexFrameBounds, miraFrameBounds);

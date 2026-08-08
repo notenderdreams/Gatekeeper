@@ -2,6 +2,7 @@ package com.gatekeeper;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.List;
 
 import static com.gatekeeper.GameConstants.*;
@@ -9,53 +10,29 @@ import static com.gatekeeper.GameConstants.*;
 final class NotebookRenderer {
     private final List<CircuitRecipe> recipes;
     private final boolean[] crafted;
+    private final BufferedImage coverImage;
+    private final BufferedImage leftPageImage;
+    private final BufferedImage rightPageImage;
 
-    NotebookRenderer(List<CircuitRecipe> recipes, boolean[] crafted) {
+    NotebookRenderer(List<CircuitRecipe> recipes, boolean[] crafted,
+                     BufferedImage coverImage, BufferedImage leftPageImage,
+                     BufferedImage rightPageImage) {
         this.recipes = recipes;
         this.crafted = crafted;
+        this.coverImage = coverImage;
+        this.leftPageImage = leftPageImage;
+        this.rightPageImage = rightPageImage;
     }
 
     int drawNotebook(Graphics2D g, int chapter, int notebookPage) {
-        // Desk, leather cover, page shadows, and slightly uneven paper edges.
+        // The Travel Book assets provide the cover and both open pages.
         g.setColor(new Color(25, 15, 14));
         g.fillRect(0, 0, W, H);
         g.setColor(new Color(57, 32, 23));
         for (int y = 6; y < H; y += 14) g.drawLine(0, y, W, y + 4);
         g.setColor(new Color(3, 4, 6, 145));
         g.fillRect(31, 20, 425, 238);
-        g.setColor(new Color(76, 39, 31));
-        g.fillRect(25, 13, 430, 239);
-        g.setColor(new Color(143, 81, 47));
-        g.drawRect(25, 13, 429, 238);
-        g.setColor(new Color(233, 222, 186));
-        g.fillRect(32, 18, 204, 228);
-        g.setColor(new Color(224, 211, 175));
-        g.fillRect(244, 18, 204, 228);
-        g.setColor(new Color(194, 177, 143));
-        g.drawRect(32, 18, 203, 227);
-        g.drawRect(244, 18, 203, 227);
-
-        // Faint ruled paper with red notebook margins.
-        for (int y = 47; y < 237; y += 13) {
-            g.setColor(new Color(169, 179, 167));
-            g.drawLine(39, y, 229, y);
-            g.drawLine(251, y, 441, y);
-        }
-        g.setColor(new Color(189, 111, 99));
-        g.drawLine(55, 24, 55, 239);
-        g.drawLine(263, 24, 263, 239);
-
-        // Dark center crease and brass binding loops.
-        g.setColor(new Color(91, 72, 58));
-        g.fillRect(235, 20, 9, 224);
-        g.setColor(new Color(39, 29, 27));
-        g.drawLine(239, 20, 239, 244);
-        for (int y = 34; y < 235; y += 25) {
-            g.setColor(new Color(181, 126, 62));
-            g.drawOval(233, y, 12, 7);
-            g.setColor(new Color(91, 58, 38));
-            g.drawLine(236, y + 4, 242, y + 4);
-        }
+        drawBookAssets(g);
 
         g.setColor(new Color(52, 44, 40));
         GamePanel.pixelText(g, "ALEX'S LOGIC NOTES", 67, 35, 1);
@@ -101,6 +78,27 @@ final class NotebookRenderer {
         return notebookPage;
     }
 
+    private void drawBookAssets(Graphics2D g) {
+        if (coverImage != null) {
+            g.drawImage(coverImage, 25, 13, 430, 239, null);
+        } else {
+            g.setColor(new Color(76, 39, 31));
+            g.fillRect(25, 13, 430, 239);
+        }
+        if (leftPageImage != null) {
+            g.drawImage(leftPageImage, 32, 18, 204, 228, null);
+        } else {
+            g.setColor(new Color(233, 222, 186));
+            g.fillRect(32, 18, 204, 228);
+        }
+        if (rightPageImage != null) {
+            g.drawImage(rightPageImage, 244, 18, 204, 228, null);
+        } else {
+            g.setColor(new Color(224, 211, 175));
+            g.fillRect(244, 18, 204, 228);
+        }
+    }
+
     void drawEnding(Graphics2D g) {
         g.setColor(INK);
         GamePanel.pixelText(g, "THE SIGNAL IS CLEAR.", 131, 78, 2);
@@ -127,4 +125,3 @@ final class NotebookRenderer {
         g.fillRect(x + 2, y + 11, 4, 3);
     }
 }
-
