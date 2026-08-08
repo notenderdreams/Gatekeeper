@@ -1622,6 +1622,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
     }
 
+    private boolean dialogueLineComplete() {
+        if (line == null) return true;
+        int separator = line.indexOf('|');
+        String words = separator >= 0 ? line.substring(separator + 1) : line;
+        return lineAge / 2 + 1 >= words.length();
+    }
+
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
     private boolean advancedComplete() { return crafted[3] && crafted[4]; }
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
@@ -1659,7 +1666,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (line != null && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE)) {
-            nextLine();
+            if (dialogueLineComplete()) nextLine();
+            else lineAge = Integer.MAX_VALUE / 2;
             return;
         }
         if (scene == Scene.TITLE) {
@@ -1741,6 +1749,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int y = point[1];
         mouseX = x;
         mouseY = y;
+
+        if (line != null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
+            if (dialogueLineComplete()) nextLine();
+            else lineAge = Integer.MAX_VALUE / 2;
+            return;
+        }
 
         if (exitPrompt) {
             if (inside(x, y, 170, 118, 140, 20)) {
