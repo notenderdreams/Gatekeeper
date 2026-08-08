@@ -8,11 +8,15 @@ import java.util.List;
 import static com.gatekeeper.GameConstants.*;
 
 final class NotebookRenderer {
+    private static final int FLIP_DURATION_TICKS = 24;
     private final List<CircuitRecipe> recipes;
     private final boolean[] crafted;
     private final BufferedImage coverImage;
     private final BufferedImage leftPageImage;
     private final BufferedImage rightPageImage;
+    private int renderedPage = -1;
+    private int flipDirection;
+    private long flipStartedAt = Long.MIN_VALUE;
 
     NotebookRenderer(List<CircuitRecipe> recipes, boolean[] crafted,
                      BufferedImage coverImage, BufferedImage leftPageImage,
@@ -24,7 +28,7 @@ final class NotebookRenderer {
         this.rightPageImage = rightPageImage;
     }
 
-    int drawNotebook(Graphics2D g, int chapter, int notebookPage) {
+    int drawNotebook(Graphics2D g, int chapter, int notebookPage, long ticks) {
         // The Travel Book assets provide the cover and both open pages.
         g.setColor(new Color(25, 15, 14));
         g.fillRect(0, 0, W, H);
@@ -47,6 +51,7 @@ final class NotebookRenderer {
 
         int available = chapter >= 3 ? 5 : 3;
         notebookPage = clamp(notebookPage, 0, available - 1);
+        beginPageFlip(notebookPage, ticks);
         CircuitRecipe recipe = recipes.get(notebookPage);
         g.setColor(new Color(110, 71, 57));
         GamePanel.pixelText(g, "PROJECT " + (notebookPage + 1) + " / " + available, 270, 34, 1);
@@ -59,6 +64,8 @@ final class NotebookRenderer {
 
         NotebookComponents.drawTruthTable(g, recipe, 270, 91);
         NotebookComponents.drawWiringPlan(g, recipe, 337, 91);
+
+        drawPageFlip(g, ticks);
 
         g.setColor(new Color(79, 59, 51));
         g.drawRect(270, 211, 22, 19);
@@ -76,6 +83,47 @@ final class NotebookRenderer {
         g.setColor(new Color(83, 67, 58));
         GamePanel.pixelText(g, "ARROWS: PAGE   N / ESC: CLOSE", 270, 241, 1);
         return notebookPage;
+    }
+
+    private void beginPageFlip(int notebookPage, long ticks) {
+        if (renderedPage < 0) {
+            renderedPage = notebookPage;
+            return;
+        }
+        if (notebookPage == renderedPage) return;
+        flipDirection = Integer.compare(notebookPage, renderedPage);
+        flipStartedAt = ticks;
+        renderedPage = notebookPage;
+    }
+
+    private void drawPageFlip(Graphics2D g, long ticks) {
+        long elapsed = ticks - flipStartedAt;
+        if (elapsed < 0 || elapsed >= FLIP_DURATION_TICKS) return;
+        float progress = elapsed / (float) FLIP_DURATION_TICKS;
+        if (flipDirection > 0) {
+            if (progress < 0.5f) {
+                int width = Math.max(1, Math.round(204 * (1.0f - progress * 2.0f)));
+                drawTurningPage(g, rightPageImage, 240, true, width);
+            } else {
+                int width = Math.max(1, Math.round(204 * ((progress - 0.5f) * 2.0f)));
+                drawTurningPage(g, leftPageImage, 240, false, width);
+            }
+        } else if (progress < 0.5f) {
+            int width = Math.max(1, Math.round(204 * (1.0f - progress * 2.0f)));
+            drawTurningPage(g, leftPageImage, 240, false, width);
+        } else {
+            int width = Math.max(1, Math.round(204 * ((progress - 0.5f) * 2.0f)));
+            drawTurningPage(g, rightPageImage, 240, true, width);
+        }
+    }
+
+    private void drawTurningPage(Graphics2D g, BufferedImage page, int spineX,
+                                 boolean opensRight, int width) {
+        if (page == null) return;
+        int x = opensRight ? spineX : spineX - width;
+        g.drawImage(page, x, 18, width, 228, null);
+        g.setColor(new Color(76, 39, 31, 90));
+        g.drawLine(spineX, 20, spineX, 244);
     }
 
     private void drawBookAssets(Graphics2D g) {

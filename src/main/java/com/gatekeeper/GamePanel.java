@@ -143,7 +143,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case BOARD -> workbenchRenderer.draw(g, chapter, selectedRecipe, heldGate,
                 boardMessageTimer, boardMessage, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
-                g, chapter, notebookPage);
+                g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
         }
         if (dialogueVisible()) {
