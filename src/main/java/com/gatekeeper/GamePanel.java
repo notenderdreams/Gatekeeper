@@ -10,10 +10,13 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Rectangle;
+import java.awt.Shape;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +28,7 @@ import java.util.Queue;
 import java.util.Set;
 
 @SuppressWarnings("serial")
-public final class GamePanel extends JPanel implements KeyListener, MouseListener {
+public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int W = 480;
     private static final int H = 270;
     private static final Color INK = new Color(242, 241, 234);
@@ -36,10 +39,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Color DIM = new Color(100, 104, 112);
 
     private enum Scene { TITLE, BEDROOM, SHOP, BOARD, NOTEBOOK, END }
+    private enum Direction { DOWN, LEFT, RIGHT, UP }
 
     private final BufferedImage canvas = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
     private final BufferedImage bedroomBackground = loadImage("/assets/alex-bedroom.png");
     private final BufferedImage shopBackground = loadImage("/assets/mira-shop.png");
+    private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
+    private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
+    private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
+    private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Set<Integer> keys = new HashSet<>();
     private final Queue<String> dialogue = new ArrayDeque<>();
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
@@ -53,9 +61,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int selectedRecipe;
     private int playerX = 210;
     private int playerY = 157;
+    private Direction facing = Direction.DOWN;
+    private boolean playerMoving;
+    private int walkDistance;
     private GateType heldGate = GateType.AND;
     private String boardMessage = "Choose a gate, then place it in a socket.";
     private int boardMessageTimer;
+    private int mouseX = -1;
+    private int mouseY = -1;
     private long ticks;
 
     public GamePanel() {
@@ -63,6 +76,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         setFocusable(true);
         addKeyListener(this);
         addMouseListener(this);
+        addMouseMotionListener(this);
         Timer timer = new Timer(1000 / 60, event -> updateGame());
         timer.start();
     }
@@ -104,13 +118,33 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (line == null && (scene == Scene.BEDROOM || scene == Scene.SHOP)) {
             int speed = 2;
-            if (keys.contains(KeyEvent.VK_LEFT) || keys.contains(KeyEvent.VK_A)) playerX -= speed;
-            if (keys.contains(KeyEvent.VK_RIGHT) || keys.contains(KeyEvent.VK_D)) playerX += speed;
-            if (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W)) playerY -= speed;
-            if (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S)) playerY += speed;
+            int oldX = playerX;
+            int oldY = playerY;
+            if (keys.contains(KeyEvent.VK_LEFT) || keys.contains(KeyEvent.VK_A)) {
+                playerX -= speed;
+                facing = Direction.LEFT;
+            }
+            if (keys.contains(KeyEvent.VK_RIGHT) || keys.contains(KeyEvent.VK_D)) {
+                playerX += speed;
+                facing = Direction.RIGHT;
+            }
+            if (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W)) {
+                playerY -= speed;
+                facing = Direction.UP;
+            }
+            if (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S)) {
+                playerY += speed;
+                facing = Direction.DOWN;
+            }
             playerX = clamp(playerX, 22, 452);
             int minY = scene == Scene.SHOP ? 158 : 132;
             playerY = clamp(playerY, minY, 232);
+            playerMoving = playerX != oldX || playerY != oldY;
+            if (playerMoving) {
+                walkDistance += Math.abs(playerX - oldX) + Math.abs(playerY - oldY);
+            }
+        } else {
+            playerMoving = false;
         }
         repaint();
     }
@@ -251,7 +285,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (shopBackground != null) {
             g.drawImage(shopBackground, 0, 0, W, H, null);
             drawWorldVignette(g);
-            drawShopkeeper(g, 240, 126);
+            drawMaskedShopkeeper(g, 240, 136, 121);
             drawPlayer(g, playerX, playerY);
             drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
@@ -333,28 +367,57 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawBoard(Graphics2D g) {
-        g.setColor(new Color(9, 18, 19));
+        g.setColor(new Color(8, 11, 14));
         g.fillRect(0, 0, W, H);
-        g.setColor(new Color(20, 54, 49));
-        for (int x = 8; x < 330; x += 16) for (int y = 24; y < 205; y += 16) g.fillRect(x, y, 2, 2);
+        g.setColor(new Color(79, 49, 34));
+        g.fillRect(4, 4, 472, 262);
+        g.setColor(new Color(137, 86, 49));
+        g.drawRect(4, 4, 471, 261);
+        g.drawRect(7, 7, 465, 255);
+        g.setColor(new Color(8, 25, 25));
+        g.fillRect(10, 10, 460, 250);
+        g.setColor(new Color(25, 70, 61));
+        for (int x = 14; x < 468; x += 15) {
+            for (int y = 14; y < 259; y += 15) g.fillRect(x, y, 1, 1);
+        }
+        g.setColor(new Color(182, 121, 57));
+        for (int[] screw : new int[][]{{8, 8}, {466, 8}, {8, 256}, {466, 256}}) {
+            g.fillRect(screw[0], screw[1], 5, 5);
+            g.setColor(new Color(61, 39, 32));
+            g.drawLine(screw[0] + 1, screw[1] + 2, screw[0] + 3, screw[1] + 2);
+            g.setColor(new Color(182, 121, 57));
+        }
+
+        g.setColor(new Color(11, 18, 22));
+        g.fillRect(12, 12, 456, 39);
         g.setColor(INK);
-        g.drawRect(8, 8, 464, 253);
-        pixelText(g, "CRAFTING BOARD", 18, 22, 1);
+        pixelText(g, "LOGIC WORKBENCH", 18, 25, 1);
         g.setColor(DIM);
-        pixelText(g, "ESC: leave", 399, 22, 1);
+        pixelText(g, "ESC", 443, 25, 1);
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) {
             int x = 126 + i * 66;
-            g.setColor(i == selectedRecipe ? YELLOW : DIM);
-            if (crafted[i]) g.setColor(CYAN);
+            boolean selected = i == selectedRecipe;
+            boolean hovered = isHovered(x, 29, 59, 20);
+            g.setColor(selected ? new Color(77, 65, 28)
+                : hovered ? new Color(28, 63, 58) : new Color(17, 31, 34));
+            g.fillRect(x, 29, 59, 20);
+            g.setColor(crafted[i] ? CYAN : selected ? YELLOW : hovered ? INK : DIM);
             g.drawRect(x, 30, 59, 18);
-            pixelText(g, (crafted[i] ? "* " : "") + recipes.get(i).name, x + 5, 42, 1);
+            pixelText(g, (crafted[i] ? "+" : " ") + recipes.get(i).name, x + 4, 43, 1);
         }
 
         CircuitRecipe recipe = circuit.recipe();
+        drawPanel(g, 13, 55, 345, 116);
+        g.setColor(new Color(20, 57, 51));
+        for (int x = 22; x < 350; x += 12) {
+            for (int y = 72; y < 165; y += 12) g.fillRect(x, y, 2, 2);
+        }
         g.setColor(INK);
-        pixelText(g, recipe.name + "  //  " + recipe.subtitle, 18, 64, 1);
+        pixelText(g, recipe.name, 20, 67, 1);
+        g.setColor(DIM);
+        pixelText(g, recipe.subtitle, 62, 67, 1);
         drawSwitch(g, 20, 81, "A", circuit.inputA());
         drawSwitch(g, 20, 116, "B", circuit.inputB());
 
@@ -375,59 +438,101 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         int[] last = layout[recipe.slotCount() - 1];
         drawRoutedWire(g, last[0] + 44, last[1] + 20, 337, 112, circuit.output());
+        g.setColor(circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
+        g.fillRect(335, 102, 20, 20);
         g.setColor(circuit.output() ? CYAN : DIM);
-        g.fillRect(339, 106, 12, 12);
+        g.fillOval(340, 107, 10, 10);
         g.setColor(INK);
-        pixelText(g, "OUT", 333, 130, 1);
+        pixelText(g, "OUT", 336, 134, 1);
 
         drawTruthTable(g);
         drawGatePalette(g);
         drawBoardButtons(g);
-        g.setColor(boardMessageTimer > 0 ? YELLOW : DIM);
-        pixelText(g, boardMessage, 18, 250, 1);
+        g.setColor(new Color(10, 17, 20));
+        g.fillRect(13, 232, 454, 27);
+        g.setColor(boardMessageTimer > 0 ? YELLOW : CYAN);
+        g.fillRect(18, 239, 4, 12);
+        String status = boardMessageTimer > 0 ? boardMessage
+            : heldGate.label + " selected — " + heldGate.hint;
+        pixelText(g, status, 28, 249, 1);
     }
 
     private void drawTruthTable(Graphics2D g) {
         CircuitRecipe r = circuit.recipe();
-        int x = 368, y = 72;
+        int x = 366, y = 61;
+        drawPanel(g, 362, 55, 105, 116);
         g.setColor(INK);
-        pixelText(g, "NOTEBOOK", x, y, 1);
-        g.drawRect(x - 5, y + 7, 94, 94);
-        pixelText(g, "A B | " + r.name, x + 4, y + 21, 1);
-        g.drawLine(x, y + 27, x + 80, y + 27);
+        pixelText(g, "TRUTH TABLE", x + 2, y + 8, 1);
+        g.setColor(DIM);
+        pixelText(g, "A B | T O", x + 9, y + 23, 1);
+        g.drawLine(x + 5, y + 28, x + 92, y + 28);
+        int currentRow = (circuit.inputA() ? 2 : 0) + (circuit.inputB() ? 1 : 0);
         for (int row = 0; row < 4; row++) {
-            int yy = y + 41 + row * 13;
+            int yy = y + 42 + row * 14;
             boolean a = row >= 2;
             boolean b = row % 2 == 1;
             Boolean seen = circuit.observations()[row];
             String value = seen == null ? "?" : bit(seen);
+            if (row == currentRow) {
+                g.setColor(new Color(27, 64, 59));
+                g.fillRect(x + 4, yy - 10, 92, 13);
+            }
             g.setColor(seen == null ? DIM : (seen == r.truth[row] ? CYAN : RED));
-            pixelText(g, bit(a) + " " + bit(b) + " |   " + value, x + 8, yy, 1);
+            pixelText(g, bit(a) + " " + bit(b) + " | " + bit(r.truth[row]) + " " + value, x + 13, yy, 1);
         }
+        int recorded = 0;
+        for (Boolean observation : circuit.observations()) if (observation != null) recorded++;
+        g.setColor(recorded == 4 ? CYAN : DIM);
+        pixelText(g, "REC " + recorded + "/4", x + 52, y + 105, 1);
     }
 
     private void drawGatePalette(Graphics2D g) {
+        drawPanel(g, 13, 176, 281, 52);
         g.setColor(INK);
-        pixelText(g, "PARTS BOX", 18, 179, 1);
+        pixelText(g, "PARTS", 18, 187, 1);
         GateType[] gates = GateType.values();
         for (int i = 0; i < gates.length; i++) {
             int x = 20 + i * 93;
-            g.setColor(heldGate == gates[i] ? YELLOW : INK);
-            g.drawRect(x, 187, 80, 36);
-            drawGate(g, x + 4, 190, gates[i], false);
-            pixelText(g, (i + 1) + ":" + gates[i].label, x + 42, 208, 1);
+            boolean selected = heldGate == gates[i];
+            boolean hovered = isHovered(x, 190, 80, 33);
+            g.setColor(selected ? new Color(76, 63, 25)
+                : hovered ? new Color(28, 61, 56) : new Color(14, 27, 30));
+            g.fillRect(x, 190, 80, 33);
+            g.setColor(selected ? YELLOW : hovered ? INK : DIM);
+            g.drawRect(x, 190, 80, 33);
+            drawGate(g, x + 5, 192, gates[i], false);
+            pixelText(g, (i + 1) + " " + gates[i].label, x + 40, 211, 1);
         }
     }
 
     private void drawBoardButtons(Graphics2D g) {
         boolean tester = chapter >= 3;
+        drawPanel(g, 302, 176, 165, 52);
+        boolean recordHover = isHovered(310, 187, 72, 36);
+        g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
+        g.fillRect(310, 187, 72, 36);
         g.setColor(YELLOW);
         g.drawRect(310, 187, 72, 36);
         pixelText(g, tester ? "AUTO" : "RECORD", 321, 202, 1);
         pixelText(g, tester ? "TEST" : "ROW", 327, 214, 1);
+        boolean verifyHover = isHovered(390, 187, 70, 36);
+        g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
+        g.fillRect(390, 187, 70, 36);
         g.setColor(CYAN);
         g.drawRect(390, 187, 70, 36);
         pixelText(g, tester ? "RUN KIT" : "VERIFY", 402, 208, 1);
+    }
+
+    private void drawPanel(Graphics2D g, int x, int y, int width, int height) {
+        g.setColor(new Color(5, 13, 16, 225));
+        g.fillRect(x, y, width, height);
+        g.setColor(new Color(38, 85, 74));
+        g.drawRect(x, y, width, height);
+        g.setColor(new Color(14, 39, 38));
+        g.drawRect(x + 2, y + 2, width - 4, height - 4);
+        g.setColor(new Color(155, 99, 48));
+        g.fillRect(x + 5, y + 5, 3, 3);
+        g.fillRect(x + width - 7, y + 5, 3, 3);
     }
 
     private void drawNotebook(Graphics2D g) {
@@ -550,6 +655,36 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawPlayer(Graphics2D g, int x, int y) {
+        if (alexSprites != null && alexFrameBounds.length == 12) {
+            boolean walking = line == null && playerMoving;
+            int column = switch (facing) {
+                case DOWN -> 0;
+                case LEFT -> 1;
+                case RIGHT -> 2;
+                case UP -> 3;
+            };
+            int phase = walking ? (walkDistance / 12) % 4 : 0;
+            int row = switch (phase) {
+                case 1 -> 1;
+                case 3 -> 2;
+                default -> 0;
+            };
+            Rectangle frame = alexFrameBounds[row * 4 + column];
+            int height = 44;
+            int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
+            int feetY = y + 5;
+            g.setColor(new Color(3, 5, 8, 105));
+            int shadowWidth = row == 0 ? 20 : 17;
+            g.fillOval(x - shadowWidth / 2, feetY - 3, shadowWidth, row == 0 ? 6 : 5);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(alexSprites, x - width / 2, feetY - height,
+                x - width / 2 + width, feetY,
+                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            return;
+        }
         boolean walking = line == null && (!keys.isEmpty()) && (ticks / 8) % 2 == 0;
         g.setColor(new Color(7, 8, 12, 90));
         g.fillOval(x - 10, y + 6, 20, 6);
@@ -573,6 +708,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawShopkeeper(Graphics2D g, int x, int y) {
+        if (miraSprites != null && miraFrameBounds.length == 6) {
+            boolean talking = line != null && line.startsWith("MIRA|");
+            int column = (int) ((ticks / (talking ? 18 : 48)) % 3);
+            int row = talking ? 1 : 0;
+            Rectangle frame = miraFrameBounds[row * 3 + column];
+            int height = 70;
+            int width = Math.max(28, Math.round(height * frame.width / (float) frame.height));
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(miraSprites, x - width / 2, y - height,
+                x - width / 2 + width, y,
+                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            return;
+        }
         g.setColor(new Color(7, 9, 10, 80));
         g.fillOval(x - 18, y + 15, 36, 7);
         g.setColor(new Color(48, 32, 31));
@@ -596,13 +747,33 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.fillRect(x - 2, y + 1, 4, 4);
     }
 
+    private void drawMaskedShopkeeper(Graphics2D g, int x, int groundY, int counterFrontY) {
+        Shape previousClip = g.getClip();
+        g.clipRect(0, 0, W, counterFrontY);
+        drawShopkeeper(g, x, groundY);
+        g.setClip(previousClip);
+        // A narrow warm lip reinforces the foreground plane at the mask edge.
+        g.setColor(new Color(111, 73, 39, 190));
+        g.fillRect(94, counterFrontY - 2, 319, 3);
+        g.setColor(new Color(211, 153, 73, 150));
+        g.drawLine(96, counterFrontY - 2, 410, counterFrontY - 2);
+    }
+
     private void drawSocket(Graphics2D g, int x, int y, int number, GateType gate, boolean powered) {
-        g.setColor(gate == null ? DIM : INK);
+        boolean hovered = isHovered(x, y, 44, 40);
+        g.setColor(powered ? new Color(17, 70, 67)
+            : hovered ? new Color(42, 55, 51) : new Color(12, 23, 26));
+        g.fillRect(x, y, 44, 40);
+        g.setColor(hovered ? YELLOW : gate == null ? DIM : powered ? CYAN : INK);
         g.drawRect(x, y, 44, 40);
+        g.setColor(hovered ? YELLOW : DIM);
+        pixelText(g, "G" + (number + 1), x + 3, y + 10, 1);
         if (gate == null) {
-            pixelText(g, String.valueOf(number + 1), x + 19, y + 24, 1);
+            g.setColor(hovered ? YELLOW : DIM);
+            pixelText(g, "+", x + 19, y + 28, 1);
         } else {
-            drawGate(g, x + 2, y + 6, gate, powered);
+            g.setColor(powered ? CYAN : INK);
+            drawGate(g, x + 5, y + 9, gate, powered);
         }
     }
 
@@ -621,11 +792,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawSwitch(Graphics2D g, int x, int y, String name, boolean on) {
-        g.setColor(INK);
+        boolean hovered = isHovered(x, y, 64, 20);
+        g.setColor(hovered ? new Color(36, 61, 56) : new Color(12, 25, 28));
+        g.fillRect(x - 2, y - 1, 62, 20);
+        g.setColor(hovered ? YELLOW : INK);
         pixelText(g, name, x, y + 14, 1);
         g.drawRect(x + 14, y, 23, 18);
         g.setColor(on ? CYAN : DIM);
         g.fillRect(on ? x + 27 : x + 17, y + 4, 7, 10);
+        g.setColor(on ? CYAN : hovered ? YELLOW : DIM);
         pixelText(g, on ? "1" : "0", x + 43, y + 14, 1);
     }
 
@@ -670,9 +845,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private int[][] socketLayout(CircuitRecipe recipe) {
         return switch (recipe.name) {
-            case "XOR" -> new int[][]{{84, 67}, {84, 125}, {164, 125}, {255, 96}};
-            case "XNOR" -> new int[][]{{70, 65}, {70, 125}, {137, 125}, {211, 95}, {282, 95}};
-            case "IMPLY" -> new int[][]{{120, 70}, {235, 96}};
+            case "XOR" -> new int[][]{{84, 74}, {84, 124}, {164, 124}, {255, 96}};
+            case "XNOR" -> new int[][]{{70, 73}, {70, 124}, {137, 124}, {211, 96}, {282, 96}};
+            case "IMPLY" -> new int[][]{{120, 78}, {235, 96}};
             default -> new int[][]{{115, 92}, {230, 92}};
         };
     }
@@ -890,17 +1065,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void mousePressed(MouseEvent event) {
         requestFocusInWindow();
         if (scene != Scene.BOARD || line != null) return;
-        double scale = Math.min(getWidth() / (double) W, getHeight() / (double) H);
-        double ox = (getWidth() - W * scale) / 2.0;
-        double oy = (getHeight() - H * scale) / 2.0;
-        int x = (int) ((event.getX() - ox) / scale);
-        int y = (int) ((event.getY() - oy) / scale);
+        int[] point = logicalPoint(event);
+        int x = point[0];
+        int y = point[1];
+        mouseX = x;
+        mouseY = y;
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
         if (inside(x, y, 20, 81, 64, 20)) circuit.toggleA();
         if (inside(x, y, 20, 116, 64, 20)) circuit.toggleB();
-        for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 187, 80, 36)) heldGate = GateType.values()[i];
+        for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) heldGate = GateType.values()[i];
 
         int[][] layout = socketLayout(circuit.recipe());
         for (int i = 0; i < circuit.recipe().slotCount(); i++) {
@@ -917,7 +1092,28 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void mouseReleased(MouseEvent event) {}
     @Override public void mouseClicked(MouseEvent event) {}
     @Override public void mouseEntered(MouseEvent event) { requestFocusInWindow(); }
-    @Override public void mouseExited(MouseEvent event) {}
+    @Override public void mouseExited(MouseEvent event) { mouseX = -1; mouseY = -1; }
+    @Override public void mouseMoved(MouseEvent event) {
+        int[] point = logicalPoint(event);
+        mouseX = point[0];
+        mouseY = point[1];
+        repaint();
+    }
+    @Override public void mouseDragged(MouseEvent event) { mouseMoved(event); }
+
+    private int[] logicalPoint(MouseEvent event) {
+        double scale = Math.min(getWidth() / (double) W, getHeight() / (double) H);
+        double ox = (getWidth() - W * scale) / 2.0;
+        double oy = (getHeight() - H * scale) / 2.0;
+        return new int[]{
+            (int) ((event.getX() - ox) / scale),
+            (int) ((event.getY() - oy) / scale)
+        };
+    }
+
+    private boolean isHovered(int x, int y, int width, int height) {
+        return scene == Scene.BOARD && inside(mouseX, mouseY, x, y, width, height);
+    }
 
     private static boolean inside(int px, int py, int x, int y, int w, int h) {
         return px >= x && px <= x + w && py >= y && py <= y + h;
@@ -939,6 +1135,49 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } catch (IOException error) {
             return null;
         }
+    }
+
+    private static BufferedImage loadRawImage(String path) {
+        try (InputStream stream = GamePanel.class.getResourceAsStream(path)) {
+            if (stream == null) return null;
+            return ImageIO.read(stream);
+        } catch (IOException error) {
+            return null;
+        }
+    }
+
+    private static Rectangle[] buildFrameBounds(BufferedImage sheet, int columns, int rows) {
+        if (sheet == null) return new Rectangle[0];
+        Rectangle[] frames = new Rectangle[columns * rows];
+        int cellWidth = sheet.getWidth() / columns;
+        int cellHeight = sheet.getHeight() / rows;
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                int cellX = column * cellWidth;
+                int cellY = row * cellHeight;
+                int minX = cellX + cellWidth;
+                int minY = cellY + cellHeight;
+                int maxX = cellX;
+                int maxY = cellY;
+                for (int y = cellY; y < cellY + cellHeight; y++) {
+                    for (int x = cellX; x < cellX + cellWidth; x++) {
+                        int alpha = (sheet.getRGB(x, y) >>> 24) & 0xff;
+                        if (alpha <= 24) continue;
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+                if (maxX < minX || maxY < minY) {
+                    frames[row * columns + column] = new Rectangle(cellX, cellY, cellWidth, cellHeight);
+                } else {
+                    frames[row * columns + column] = new Rectangle(
+                        minX, minY, maxX - minX + 1, maxY - minY + 1);
+                }
+            }
+        }
+        return frames;
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }

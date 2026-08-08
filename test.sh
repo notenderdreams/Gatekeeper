@@ -6,6 +6,8 @@ TEST_BUILD_DIR="$PROJECT_DIR/out-test"
 
 test -s "$PROJECT_DIR/src/main/resources/assets/alex-bedroom.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/mira-shop.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/characters/alex-sprites.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/characters/mira-sprites.png"
 
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \

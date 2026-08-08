@@ -2,7 +2,8 @@
 
 A small, dependency-free Java 2D story/puzzle game based on `STORY.md`. It uses Java2D for a crisp low-resolution retro-RPG presentation, original illustrated three-quarter-view environments, pixel-style characters, monochrome dialogue boxes, and an interactive circuit crafting board.
 
-The original environment art and generation notes are documented in `ASSETS.md`.
+The original environment art, animated character sheets, and generation notes are
+documented in `ASSETS.md`.
 
 ## Play
 
