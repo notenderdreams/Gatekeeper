@@ -15,7 +15,8 @@ final class GameConstants {
     static final int DEV_OPTION_COUNT = 8;
     static final int BOARD_SOCKET_W = 40;
     static final int BOARD_SOCKET_H = 34;
-    static final int INDOOR_PLAYER_HEIGHT = 52;
+    static final int BEDROOM_PLAYER_HEIGHT = 68;
+    static final int INDOOR_PLAYER_HEIGHT = 54;
     static final int STREET_PLAYER_HEIGHT = 36;
     static final int STREET_WORLD_WIDTH = 922;
     static final int STREET_HOME_X = 93;

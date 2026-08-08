@@ -64,7 +64,7 @@ final class WorldRenderer {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
             EnvironmentArt.drawWorldVignette(g);
             if (chapter == 0) EnvironmentArt.drawInteractionGlow(g, 299, 132, YELLOW, ticks);
-            drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
+            drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
             if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
@@ -174,7 +174,7 @@ final class WorldRenderer {
         g.setColor(INK);
         GamePanel.pixelText(g, "OUTSIDE", 418, 57, 1);
 
-        drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
+        drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
         if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
