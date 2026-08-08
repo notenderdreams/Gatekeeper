@@ -321,7 +321,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (chapter == 0) drawInteractionGlow(g, 299, 132, YELLOW);
             drawPlayer(g, playerX, playerY);
             drawHud(g, "ALEX'S ROOM");
-            if (near(299, 132)) prompt(g, chapter == 0 ? "E  OPEN THE BOX" : "E  CHECK THE BOX");
+            if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
             return;
@@ -426,7 +426,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         drawPlayer(g, playerX, playerY);
         drawHud(g, "ALEX'S ROOM");
-        if (near(299, 128)) prompt(g, chapter == 0 ? "E  OPEN THE BOX" : "E  CHECK THE BOX");
+        if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
     }
@@ -1322,13 +1322,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void interact() {
         if (scene == Scene.BEDROOM) {
-            if (near(299, 132)) {
-                if (chapter == 0) {
-                    chapter = 1;
-                    say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
-                        "ALEX|And a notebook. The first pages have diagrams.",
-                        "ALEX|After that? Just rows of zeroes and ones.");
-                } else say("ALEX|The gates click together like little building blocks.");
+            if (chapter == 0 && near(299, 132)) {
+                chapter = 1;
+                say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
+                    "ALEX|And a notebook. The first pages have diagrams.",
+                    "ALEX|After that? Just rows of zeroes and ones.");
             } else if (near(205, 126)) {
                 if (chapter >= 2) openBoard();
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
