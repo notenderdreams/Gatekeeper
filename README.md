@@ -1,49 +1,59 @@
-# GATEKEEPER: A Logic Tale
+# Gatekeeper
 
-A small Java 2D story/puzzle game based on `STORY.md`. It uses Java2D for a crisp low-resolution retro-RPG presentation, original illustrated three-quarter-view environments, pixel-style characters, monochrome dialogue boxes, and an interactive circuit crafting board. Gradle provides the build and run lifecycle; the project has no runtime dependencies.
+Gatekeeper is a Java 2D story and puzzle game built with Java 17 and Gradle. Featuring low-resolution retro-RPG pixel art presentation, dialogue choices, original environments, and an interactive circuit crafting board where players build logic gates (NAND, NOR, XOR, XNOR, IMPLY) from core components.
 
-The original environment art, animated character sheets, and generation notes are
-documented in `ASSETS.md`.
+![Main Menu](src/main/resources/assets/main-menu.png)
 
-## Play
+## Overview & Gameplay
 
-Requires Java 17 or newer, Gradle, and optionally [just](https://github.com/casey/just) for shortcuts.
+1. **Explore**: Navigate Alex's bedroom and Lantern Street.
+2. **Interact & Craft**: Talk to characters and access the interactive crafting board.
+3. **Build Gates**: Construct real logic circuits using AND, OR, and NOT gates.
+4. **Test & Progress**: Record truth table outputs manually or with the LogicLens auto-tester to progress through the story.
 
-```sh
-just run
-```
-
-The equivalent Gradle commands are `gradle run`, `gradle build`, and
-`gradle logicTest`. If `just` is installed, run `just` to list the shortcuts.
+---
 
 ## Controls
 
-- `WASD` / arrow keys — move Alex
-- `E` / `Enter` — interact or continue dialogue
-- `N` — open or close the notebook, including while using the crafting board
-- Left/right arrows — browse unlocked project pages in the notebook
-- Mouse — operate the crafting board
-- `1`, `2`, `3` — select AND, OR, or NOT on the board
-- `A`, `B` — toggle the two board inputs
-- `R` — record the current truth-table row
-- `T` / `Enter` — verify or run the tester
-- `Esc` — leave the board or notebook
-- `F1` — open the developer quick-scene menu
+* **WASD / Arrow Keys**: Move Alex
+* **E / Enter**: Interact / Continue dialogue
+* **N**: Toggle Notebook
+* **Mouse / 1, 2, 3**: Operate crafting board and place AND, OR, NOT gates
+* **A / B**: Toggle board inputs
+* **R**: Record truth-table row
+* **T / Enter**: Verify circuit / Run tester
+* **Esc**: Exit board or notebook
+* **F1**: Developer scene menu
 
-## Game loop
+---
 
-1. Explore Alex's room and find the box of basic logic gates.
-2. Leave home, walk along the side-view Lantern Street, and enter Mira's electronics shop.
-3. Build NAND, NOR, and XOR from AND, OR, and NOT. The board uses real branching
-   circuit topology—for example, XOR builds `A AND NOT B` and `NOT A AND B` in
-   parallel before combining them with OR.
-4. Manually try all four switch combinations and record the output.
-5. Deliver the circuits to unlock the LogicLens automatic tester.
-6. Complete XNOR and IMPLY to finish the prototype story.
+## How to Run
 
-Run the dependency-free logic checks with:
+### Requirements
+* Java 17 or higher
+* Gradle (or use the included wrapper if present)
+* (Optional) [`just`](https://github.com/casey/just) command runner
 
-```sh
+### Quick Run
+
+Using `just`:
+```bash
+just run
+```
+
+Using Gradle:
+```bash
+gradle lwjgl3:run --no-daemon --console=plain
+```
+
+### Running Tests
+
+Run the test suite with:
+```bash
+./test.sh
+```
+
+or via `just`:
+```bash
 just test
-# or: gradle logicTest
 ```
