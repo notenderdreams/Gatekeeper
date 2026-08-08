@@ -69,6 +69,10 @@ final class WorldRenderer {
             if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
+
+            if (showCollisions) {
+                drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
+            }
             return;
         }
         // Layered night-time room: wallpaper, moonlit window, floor and rug.
@@ -174,6 +178,10 @@ final class WorldRenderer {
         if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
+
+        if (showCollisions) {
+            drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
+        }
     }
 
     void drawStreet(Graphics2D g) {
@@ -217,6 +225,10 @@ final class WorldRenderer {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
+        }
+
+        if (showCollisions) {
+            drawCollisionOverlay(g, GameScene.STREET, playerX, playerY, cameraX);
         }
 
         // Draw all multi-point calibrator crosshairs
@@ -286,6 +298,82 @@ final class WorldRenderer {
         System.out.println("================================================================\n");
     }
 
+    private boolean showCollisions;
+
+    void setShowCollisions(boolean showCollisions) {
+        this.showCollisions = showCollisions;
+    }
+
+    private void drawCollisionOverlay(Graphics2D g, GameScene scene, int px, int py, int cameraX) {
+        if (scene == GameScene.BEDROOM) {
+            g.setColor(new Color(40, 200, 100, 45));
+            g.fillRect(22, 132, 430, 100);
+            g.setColor(new Color(60, 240, 120, 210));
+            g.drawRect(22, 132, 430, 100);
+
+            g.setColor(new Color(240, 60, 60, 75));
+            g.fillRect(22, 132, 138, 71);
+            g.setColor(new Color(255, 90, 90, 230));
+            g.drawRect(22, 132, 138, 71);
+            GamePanel.pixelText(g, "BLOCKED (BED/DESK)", 28, 165, 1);
+
+            g.setColor(new Color(255, 230, 50, 200));
+            g.drawRect(163, 86, 84, 80);
+            GamePanel.pixelText(g, "BOARD/DESK", 172, 126, 1);
+
+            g.drawRect(257, 92, 84, 80);
+            GamePanel.pixelText(g, "BOX", 288, 132, 1);
+
+            g.drawRect(365, 92, 84, 80);
+            GamePanel.pixelText(g, "EXIT DOOR", 382, 132, 1);
+
+            g.setColor(Color.WHITE);
+            g.fillOval(px - 3, py - 3, 6, 6);
+            GamePanel.pixelText(g, "FEET: (" + px + "," + py + ")", Math.max(10, px - 35), Math.min(260, py + 12), 1);
+        }
+        else if (scene == GameScene.STREET) {
+            int screenMinX = 45 - cameraX;
+            int screenMaxX = (STREET_WORLD_WIDTH - 30) - cameraX;
+            g.setColor(new Color(40, 200, 100, 60));
+            g.fillRect(screenMinX, 192, screenMaxX - screenMinX, 8);
+            g.setColor(new Color(60, 240, 120, 220));
+            g.drawRect(screenMinX, 192, screenMaxX - screenMinX, 8);
+
+            int homeScreenX = STREET_HOME_X - cameraX;
+            if (homeScreenX >= -50 && homeScreenX <= W + 50) {
+                g.setColor(new Color(255, 230, 50, 200));
+                g.drawRect(homeScreenX - 38, 160, 76, 50);
+                GamePanel.pixelText(g, "HOME ENTRANCE", homeScreenX - 34, 185, 1);
+            }
+
+            int shopScreenX = STREET_SHOP_X - cameraX;
+            if (shopScreenX >= -50 && shopScreenX <= W + 50) {
+                g.setColor(new Color(255, 230, 50, 200));
+                g.drawRect(shopScreenX - 38, 160, 76, 50);
+                GamePanel.pixelText(g, "SHOP ENTRANCE", shopScreenX - 34, 185, 1);
+            }
+
+            int playerScreenX = px - cameraX;
+            g.setColor(Color.WHITE);
+            g.fillOval(playerScreenX - 3, STREET_GROUND_Y - 3, 6, 6);
+            GamePanel.pixelText(g, "FEET: (" + px + "," + STREET_GROUND_Y + ")", Math.max(10, playerScreenX - 35), STREET_GROUND_Y + 12, 1);
+        }
+        else if (scene == GameScene.SHOP) {
+            g.setColor(new Color(40, 200, 100, 45));
+            g.fillRect(22, 158, 430, 74);
+            g.setColor(new Color(60, 240, 120, 210));
+            g.drawRect(22, 158, 430, 74);
+
+            g.setColor(new Color(255, 230, 50, 200));
+            g.drawRect(13, 134, 84, 80);
+            GamePanel.pixelText(g, "EXIT DOOR", 28, 174, 1);
+
+            g.setColor(Color.WHITE);
+            g.fillOval(px - 3, py - 3, 6, 6);
+            GamePanel.pixelText(g, "FEET: (" + px + "," + py + ")", Math.max(10, px - 35), Math.min(260, py + 12), 1);
+        }
+    }
+
     int streetCameraX() {
         return clamp(playerX - W / 2, 0, STREET_WORLD_WIDTH - W);
     }
@@ -299,6 +387,10 @@ final class WorldRenderer {
             drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
             else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
+
+            if (showCollisions) {
+                drawCollisionOverlay(g, GameScene.SHOP, playerX, playerY, 0);
+            }
             return;
         }
         // A warm, crowded neighborhood electronics shop.

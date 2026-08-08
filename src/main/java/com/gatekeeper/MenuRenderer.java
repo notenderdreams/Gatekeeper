@@ -104,7 +104,7 @@ final class MenuRenderer {
     }
 
     static void drawDeveloper(Graphics2D g, int mouseX, int mouseY, int section, int selection,
-                               boolean focusRight, boolean calibratorEnabled) {
+                               boolean focusRight, boolean calibratorEnabled, boolean showCollisions) {
         g.setColor(new Color(2, 5, 8));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
@@ -194,37 +194,44 @@ final class MenuRenderer {
                 }
             }
         } else if (section == 1) { // DEBUG TOOLS
-            int y = 58;
-            boolean isSelected = focusRight && (selection == 0);
-            boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 22);
-            String label = "LIGHT CALIBRATOR: " + (calibratorEnabled ? "ON" : "OFF");
+            String[] tools = {
+                "LIGHT CALIBRATOR: " + (calibratorEnabled ? "ON" : "OFF"),
+                "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF")
+            };
+            boolean[] activeState = {calibratorEnabled, showCollisions};
 
-            if (isSelected) {
-                g.setColor(new Color(25, 48, 42, 190));
-                g.fillRect(160, y, 285, 22);
-                g.setColor(new Color(55, 110, 92, 200));
-                g.drawRect(160, y, 285, 22);
-                g.setColor(new Color(143, 190, 128));
-                g.fillRect(160, y, 3, 22);
-                GamePanel.pixelText(g, ">", 170, y + 15, 1);
-                g.setColor(calibratorEnabled ? new Color(143, 190, 128) : new Color(240, 120, 120));
-                GamePanel.pixelText(g, label, 183, y + 15, 1);
-            } else if (hovered) {
-                g.setColor(new Color(18, 32, 28, 160));
-                g.fillRect(160, y, 285, 22);
-                g.setColor(new Color(45, 75, 68, 180));
-                g.drawRect(160, y, 285, 22);
-                g.setColor(new Color(191, 192, 185));
-                GamePanel.pixelText(g, ">", 170, y + 15, 1);
-                g.setColor(calibratorEnabled ? new Color(143, 190, 128) : new Color(200, 160, 160));
-                GamePanel.pixelText(g, label, 183, y + 15, 1);
-            } else {
-                g.setColor(new Color(8, 14, 18, 120));
-                g.fillRect(160, y, 285, 22);
-                g.setColor(new Color(20, 28, 32));
-                g.drawRect(160, y, 285, 22);
-                g.setColor(calibratorEnabled ? new Color(143, 190, 128) : new Color(160, 168, 168));
-                GamePanel.pixelText(g, label, 183, y + 15, 1);
+            for (int i = 0; i < tools.length; i++) {
+                int y = 58 + i * 26;
+                boolean isSelected = focusRight && (selection == i);
+                boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 22);
+
+                if (isSelected) {
+                    g.setColor(new Color(25, 48, 42, 190));
+                    g.fillRect(160, y, 285, 22);
+                    g.setColor(new Color(55, 110, 92, 200));
+                    g.drawRect(160, y, 285, 22);
+                    g.setColor(new Color(143, 190, 128));
+                    g.fillRect(160, y, 3, 22);
+                    GamePanel.pixelText(g, ">", 170, y + 15, 1);
+                    g.setColor(activeState[i] ? new Color(143, 190, 128) : new Color(240, 120, 120));
+                    GamePanel.pixelText(g, tools[i], 183, y + 15, 1);
+                } else if (hovered) {
+                    g.setColor(new Color(18, 32, 28, 160));
+                    g.fillRect(160, y, 285, 22);
+                    g.setColor(new Color(45, 75, 68, 180));
+                    g.drawRect(160, y, 285, 22);
+                    g.setColor(new Color(191, 192, 185));
+                    GamePanel.pixelText(g, ">", 170, y + 15, 1);
+                    g.setColor(activeState[i] ? new Color(143, 190, 128) : new Color(200, 160, 160));
+                    GamePanel.pixelText(g, tools[i], 183, y + 15, 1);
+                } else {
+                    g.setColor(new Color(8, 14, 18, 120));
+                    g.fillRect(160, y, 285, 22);
+                    g.setColor(new Color(20, 28, 32));
+                    g.drawRect(160, y, 285, 22);
+                    g.setColor(activeState[i] ? new Color(143, 190, 128) : new Color(160, 168, 168));
+                    GamePanel.pixelText(g, tools[i], 183, y + 15, 1);
+                }
             }
         }
     }
