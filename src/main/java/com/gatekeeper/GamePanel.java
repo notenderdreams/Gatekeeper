@@ -641,6 +641,30 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
+            boolean isControlDown = (event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                || (event.getModifiersEx() & KeyEvent.META_DOWN_MASK) != 0;
+            if (isControlDown && key == KeyEvent.VK_Z) {
+                if (event.isShiftDown()) {
+                    if (circuit.redo()) {
+                        boardMessage = "Redid gate action.";
+                        playSound("ui-select");
+                    }
+                } else {
+                    if (circuit.undo()) {
+                        boardMessage = "Undid last gate action.";
+                        playSound("ui-back");
+                    }
+                }
+                boardMessageTimer = 120;
+                return;
+            } else if (isControlDown && key == KeyEvent.VK_Y) {
+                if (circuit.redo()) {
+                    boardMessage = "Redid gate action.";
+                    playSound("ui-select");
+                }
+                boardMessageTimer = 120;
+                return;
+            }
             if (key == KeyEvent.VK_ESCAPE) {
                 scene = returnScene;
                 playSound("ui-close");

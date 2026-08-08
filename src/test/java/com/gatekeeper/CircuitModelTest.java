@@ -21,6 +21,13 @@ public final class CircuitModelTest {
 
         CircuitModel incomplete = new CircuitModel(recipes.get(0));
         incomplete.place(0, GateType.AND);
+        require(incomplete.placed()[0] == GateType.AND, "gate should be placed");
+        require(incomplete.canUndo(), "undo stack should have entry");
+        incomplete.undo();
+        require(incomplete.placed()[0] == null, "undo should revert placement");
+        require(incomplete.canRedo(), "redo stack should have entry");
+        incomplete.redo();
+        require(incomplete.placed()[0] == GateType.AND, "redo should restore placement");
         incomplete.recordCurrent();
         require(!incomplete.allRowsRecorded(), "incomplete circuits must not record");
 

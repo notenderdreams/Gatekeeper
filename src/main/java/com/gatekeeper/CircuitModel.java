@@ -9,6 +9,9 @@ public final class CircuitModel {
     private boolean inputA;
     private boolean inputB;
 
+    private final java.util.ArrayDeque<GateType[]> undoStack = new java.util.ArrayDeque<>();
+    private final java.util.ArrayDeque<GateType[]> redoStack = new java.util.ArrayDeque<>();
+
     public CircuitModel(CircuitRecipe recipe) {
         selectRecipe(recipe);
     }
@@ -16,9 +19,30 @@ public final class CircuitModel {
     public void selectRecipe(CircuitRecipe next) {
         recipe = next;
         placed = new GateType[next.slotCount()];
+        undoStack.clear();
+        redoStack.clear();
         Arrays.fill(observations, null);
         inputA = false;
         inputB = false;
+    }
+
+    public boolean canUndo() { return !undoStack.isEmpty(); }
+    public boolean canRedo() { return !redoStack.isEmpty(); }
+
+    public boolean undo() {
+        if (undoStack.isEmpty()) return false;
+        redoStack.push(placed.clone());
+        placed = undoStack.pop();
+        Arrays.fill(observations, null);
+        return true;
+    }
+
+    public boolean redo() {
+        if (redoStack.isEmpty()) return false;
+        undoStack.push(placed.clone());
+        placed = redoStack.pop();
+        Arrays.fill(observations, null);
+        return true;
     }
 
     public CircuitRecipe recipe() { return recipe; }
@@ -36,7 +60,9 @@ public final class CircuitModel {
     public void clearObservations() { Arrays.fill(observations, null); }
 
     public void place(int slot, GateType gate) {
-        if (slot >= 0 && slot < placed.length) {
+        if (slot >= 0 && slot < placed.length && placed[slot] != gate) {
+            undoStack.push(placed.clone());
+            redoStack.clear();
             placed[slot] = gate;
             Arrays.fill(observations, null);
         }
