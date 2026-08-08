@@ -15,5 +15,6 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GateType.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitRecipe.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitModel.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest

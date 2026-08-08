@@ -1,0 +1,130 @@
+package com.gatekeeper;
+
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.util.List;
+
+import static com.gatekeeper.GameConstants.*;
+
+final class NotebookRenderer {
+    private final List<CircuitRecipe> recipes;
+    private final boolean[] crafted;
+
+    NotebookRenderer(List<CircuitRecipe> recipes, boolean[] crafted) {
+        this.recipes = recipes;
+        this.crafted = crafted;
+    }
+
+    int drawNotebook(Graphics2D g, int chapter, int notebookPage) {
+        // Desk, leather cover, page shadows, and slightly uneven paper edges.
+        g.setColor(new Color(25, 15, 14));
+        g.fillRect(0, 0, W, H);
+        g.setColor(new Color(57, 32, 23));
+        for (int y = 6; y < H; y += 14) g.drawLine(0, y, W, y + 4);
+        g.setColor(new Color(3, 4, 6, 145));
+        g.fillRect(31, 20, 425, 238);
+        g.setColor(new Color(76, 39, 31));
+        g.fillRect(25, 13, 430, 239);
+        g.setColor(new Color(143, 81, 47));
+        g.drawRect(25, 13, 429, 238);
+        g.setColor(new Color(233, 222, 186));
+        g.fillRect(32, 18, 204, 228);
+        g.setColor(new Color(224, 211, 175));
+        g.fillRect(244, 18, 204, 228);
+        g.setColor(new Color(194, 177, 143));
+        g.drawRect(32, 18, 203, 227);
+        g.drawRect(244, 18, 203, 227);
+
+        // Faint ruled paper with red notebook margins.
+        for (int y = 47; y < 237; y += 13) {
+            g.setColor(new Color(169, 179, 167));
+            g.drawLine(39, y, 229, y);
+            g.drawLine(251, y, 441, y);
+        }
+        g.setColor(new Color(189, 111, 99));
+        g.drawLine(55, 24, 55, 239);
+        g.drawLine(263, 24, 263, 239);
+
+        // Dark center crease and brass binding loops.
+        g.setColor(new Color(91, 72, 58));
+        g.fillRect(235, 20, 9, 224);
+        g.setColor(new Color(39, 29, 27));
+        g.drawLine(239, 20, 239, 244);
+        for (int y = 34; y < 235; y += 25) {
+            g.setColor(new Color(181, 126, 62));
+            g.drawOval(233, y, 12, 7);
+            g.setColor(new Color(91, 58, 38));
+            g.drawLine(236, y + 4, 242, y + 4);
+        }
+
+        g.setColor(new Color(52, 44, 40));
+        GamePanel.pixelText(g, "ALEX'S LOGIC NOTES", 67, 35, 1);
+        g.setColor(new Color(110, 71, 57));
+        GamePanel.pixelText(g, "THE THREE BUILDING BLOCKS", 67, 47, 1);
+        NotebookComponents.drawGateCard(g, GateType.AND, 61, 55,
+            "BOTH must be 1", "00:0  01:0  10:0  11:1");
+        NotebookComponents.drawGateCard(g, GateType.OR, 61, 111,
+            "EITHER can be 1", "00:0  01:1  10:1  11:1");
+        NotebookComponents.drawGateCard(g, GateType.NOT, 61, 167,
+            "FLIPS the signal", "0 -> 1       1 -> 0");
+
+        int available = chapter >= 3 ? 5 : 3;
+        notebookPage = clamp(notebookPage, 0, available - 1);
+        CircuitRecipe recipe = recipes.get(notebookPage);
+        g.setColor(new Color(110, 71, 57));
+        GamePanel.pixelText(g, "PROJECT " + (notebookPage + 1) + " / " + available, 270, 34, 1);
+        g.setColor(new Color(43, 39, 37));
+        GamePanel.pixelText(g, recipe.name, 270, 51, 1);
+        g.setColor(crafted[notebookPage] ? new Color(30, 116, 104) : new Color(159, 91, 48));
+        GamePanel.pixelText(g, crafted[notebookPage] ? "[ COMPLETE ]" : "[ TO BUILD ]", 360, 51, 1);
+        g.setColor(new Color(91, 72, 60));
+        GamePanel.drawWrapped(g, recipe.subtitle, 270, 65, 27);
+
+        NotebookComponents.drawTruthTable(g, recipe, 270, 91);
+        NotebookComponents.drawWiringPlan(g, recipe, 337, 91);
+
+        g.setColor(new Color(79, 59, 51));
+        g.drawRect(270, 211, 22, 19);
+        g.drawRect(416, 211, 22, 19);
+        GamePanel.pixelText(g, "<", 278, 225, 1);
+        GamePanel.pixelText(g, ">", 424, 225, 1);
+        for (int i = 0; i < available; i++) {
+            int x = 316 + i * 16;
+            g.setColor(i == notebookPage ? new Color(153, 80, 50) : new Color(124, 106, 85));
+            if (crafted[i]) g.fillRect(x - 2, 216, 11, 11);
+            else g.drawRect(x - 2, 216, 11, 11);
+            g.setColor(i == notebookPage ? new Color(245, 232, 197) : new Color(66, 56, 50));
+            GamePanel.pixelText(g, Integer.toString(i + 1), x, 225, 1);
+        }
+        g.setColor(new Color(83, 67, 58));
+        GamePanel.pixelText(g, "ARROWS: PAGE   N / ESC: CLOSE", 270, 241, 1);
+        return notebookPage;
+    }
+
+    void drawEnding(Graphics2D g) {
+        g.setColor(INK);
+        GamePanel.pixelText(g, "THE SIGNAL IS CLEAR.", 131, 78, 2);
+        g.setColor(CYAN);
+        GamePanel.pixelText(g, "Mira pins Alex's circuits above the counter.", 102, 119, 1);
+        GamePanel.pixelText(g, "Tomorrow, the notebook has harder pages.", 111, 136, 1);
+        g.setColor(YELLOW);
+        GamePanel.pixelText(g, "But tonight, every little light is on.", 119, 169, 1);
+        g.setColor(RED);
+        drawHeart(g, 235, 194);
+        g.setColor(DIM);
+        GamePanel.pixelText(g, "ENTER: begin again", 178, 238, 1);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static void drawHeart(Graphics2D g, int x, int y) {
+        g.fillRect(x, y, 3, 3);
+        g.fillRect(x + 5, y, 3, 3);
+        g.fillRect(x - 2, y + 3, 12, 5);
+        g.fillRect(x, y + 8, 8, 3);
+        g.fillRect(x + 2, y + 11, 4, 3);
+    }
+}
+

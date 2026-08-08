@@ -2,26 +2,19 @@ package com.gatekeeper;
 
 import javax.swing.JPanel;
 import javax.swing.Timer;
-import javax.imageio.ImageIO;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.FontFormatException;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Rectangle;
-import java.awt.Shape;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -29,54 +22,21 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+import static com.gatekeeper.GameAssets.buildFrameBounds;
+import static com.gatekeeper.GameAssets.loadBackground;
+import static com.gatekeeper.GameAssets.loadPixelFont;
+import static com.gatekeeper.GameAssets.loadRawImage;
+import static com.gatekeeper.GameAssets.loadStreetBackground;
+import static com.gatekeeper.GameConstants.*;
+
 @SuppressWarnings("serial")
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
-    private static final int W = 480;
-    private static final int H = 270;
-    private static final int TITLE_MENU_X = 52;
-    private static final int TITLE_MENU_Y = 108;
-    private static final int TITLE_MENU_W = 142;
-    private static final int TITLE_MENU_H = 16;
-    private static final int TITLE_MENU_GAP = 20;
-    private static final int TITLE_COPY_CENTER_X = 348;
-    private static final int DEV_OPTION_COUNT = 8;
-    private static final int BOARD_SOCKET_W = 40;
-    private static final int BOARD_SOCKET_H = 34;
-    private static final int INDOOR_PLAYER_HEIGHT = 52;
-    private static final int STREET_PLAYER_HEIGHT = 36;
-    private static final String AUDIO_ROOT = "/assets/audio/game/";
-    private static final String LOGICLENS_ITEM_CARD = "@ITEM_LOGICLENS";
-    private static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
-    private static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
-    private static final int STREET_WORLD_WIDTH = 922;
-    private static final int STREET_HOME_X = 93;
-    private static final int STREET_SHOP_X = 870;
-    private static final int STREET_GROUND_Y = 196;
-    private static final Color INK = new Color(242, 241, 234);
-    private static final Color VOID = new Color(10, 10, 14);
-    private static final Color RED = new Color(244, 63, 74);
-    private static final Color CYAN = new Color(54, 211, 224);
-    private static final Color YELLOW = new Color(250, 204, 21);
-    private static final Color DIM = new Color(100, 104, 112);
-    private static final int PIXEL_FONT_BASE_SIZE = 14;
     private static float uiScale = 1.0f;
-    private static final Font PIXEL_FONT = loadPixelFont();
+    static final Font PIXEL_FONT = loadPixelFont();
 
-    private static Font loadPixelFont() {
-        try (InputStream stream = GamePanel.class.getResourceAsStream("/assets/font.ttf")) {
-            if (stream != null) return Font.createFont(Font.TRUETYPE_FONT, stream);
-        } catch (FontFormatException | IOException ignored) {
-            // Fall back to a logical monospaced font if the packaged font is unavailable.
-        }
-        return new Font(Font.MONOSPACED, Font.BOLD, 10);
-    }
-
-    private enum Scene { TITLE, CONTROLS, SETTINGS, DEV, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
-    private enum Direction { DOWN, LEFT, RIGHT, UP }
-
-    private final BufferedImage bedroomBackground = loadImage("/assets/alex-bedroom.png");
-    private final BufferedImage streetBackground = loadStreetImage("/assets/night-street-long.png");
-    private final BufferedImage shopBackground = loadImage("/assets/mira-shop.png");
+    private final BufferedImage bedroomBackground = loadBackground("/assets/alex-bedroom.png");
+    private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long.png");
+    private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
@@ -88,37 +48,39 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
     private final SoundManager sound = new SoundManager();
-    private Scene scene = Scene.TITLE;
-    private Scene returnScene = Scene.BEDROOM;
+    private GameScene scene = GameScene.TITLE;
+    private GameScene returnScene = GameScene.BEDROOM;
     private String line;
     private int lineAge;
     private int chapter;
     private int titleSelection;
     private int settingsSelection;
     private int devSelection;
-    private Scene devReturnScene = Scene.TITLE;
+    private GameScene devReturnScene = GameScene.TITLE;
     private boolean exitPrompt;
     private int exitPromptSelection;
     private boolean settingsOpenedFromPause;
-    private Scene pausedScene = Scene.BEDROOM;
+    private GameScene pausedScene = GameScene.BEDROOM;
     private int selectedRecipe;
     private int notebookPage;
     private int playerX = 210;
     private int playerY = 157;
     private double precisePlayerX = 210;
     private double precisePlayerY = 157;
-    private Direction facing = Direction.DOWN;
+    private Facing facing = Facing.DOWN;
     private boolean playerMoving;
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
     private String boardMessage = "Left-click to place. Right-click a socket to remove.";
     private int boardMessageTimer;
-    private boolean autoTesterAttached;
-    private boolean autoTestRunning;
-    private int autoTestRow = -1;
-    private int autoTestTick;
-    private int autoTestFailures;
+    private final AutoTester autoTester = new AutoTester();
+    private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
+        recipes, crafted, circuit, autoTester, logicLensImage);
+    private final NotebookRenderer notebookRenderer = new NotebookRenderer(recipes, crafted);
+    private final WorldRenderer worldRenderer = new WorldRenderer(
+        bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites,
+        alexFrameBounds, miraFrameBounds);
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;
@@ -159,20 +121,28 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(VOID);
         g.fillRect(0, 0, W, H);
 
+        worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving,
+            facing, walkDistance, keys, uiScale);
         switch (scene) {
-            case TITLE -> drawTitle(g);
-            case CONTROLS -> drawControls(g);
-            case SETTINGS -> drawSettings(g);
-            case DEV -> drawDevMenu(g);
-            case BEDROOM -> drawBedroom(g);
-            case STREET -> drawStreet(g);
-            case SHOP -> drawShop(g);
-            case BOARD -> drawBoard(g);
-            case NOTEBOOK -> drawNotebook(g);
-            case END -> drawEnding(g);
+            case TITLE -> MenuRenderer.drawTitle(g, bedroomBackground, ticks,
+                mouseX, mouseY, titleSelection);
+            case CONTROLS -> MenuRenderer.drawControls(g, bedroomBackground, mouseX, mouseY);
+            case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
+                settingsSelection, sound, uiScale);
+            case DEV -> MenuRenderer.drawDeveloper(g, devSelection);
+            case BEDROOM -> worldRenderer.drawBedroom(g);
+            case STREET -> worldRenderer.drawStreet(g);
+            case SHOP -> worldRenderer.drawShop(g);
+            case BOARD -> workbenchRenderer.draw(g, chapter, selectedRecipe, heldGate,
+                boardMessageTimer, boardMessage, mouseX, mouseY);
+            case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
+                g, chapter, notebookPage);
+            case END -> notebookRenderer.drawEnding(g);
         }
-        if (dialogueVisible()) drawDialogue(g);
-        if (exitPrompt) drawExitPrompt(g);
+        if (dialogueVisible()) {
+            DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage);
+        }
+        if (exitPrompt) MenuRenderer.drawPause(g, mouseX, mouseY, exitPromptSelection);
         g.dispose();
     }
 
@@ -181,14 +151,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         sound.loop(MUSIC_LOOP);
         sound.updateMusic();
         sound.updateCrossfade();
-        if (scene == Scene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
+        if (scene == GameScene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
         else sound.stopAmbient();
         if (dialogueVisible()) lineAge++;
-        if (scene == Scene.BOARD && autoTestRunning) updateAutoTest();
+        if (scene == GameScene.BOARD && autoTester.isRunning()) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null
-            && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
-            boolean sideView = scene == Scene.STREET;
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+            boolean sideView = scene == GameScene.STREET;
             double speed = sideView ? 1.6 : 2.0;
             int oldX = playerX;
             int oldY = playerY;
@@ -198,19 +168,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int axisY = 0;
             if (keys.contains(KeyEvent.VK_LEFT) || keys.contains(KeyEvent.VK_A)) {
                 axisX--;
-                facing = Direction.LEFT;
+                facing = Facing.LEFT;
             }
             if (keys.contains(KeyEvent.VK_RIGHT) || keys.contains(KeyEvent.VK_D)) {
                 axisX++;
-                facing = Direction.RIGHT;
+                facing = Facing.RIGHT;
             }
             if (!sideView && (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W))) {
                 axisY--;
-                facing = Direction.UP;
+                facing = Facing.UP;
             }
             if (!sideView && (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S))) {
                 axisY++;
-                facing = Direction.DOWN;
+                facing = Facing.DOWN;
             }
 
             double vectorLength = Math.hypot(axisX, axisY);
@@ -221,11 +191,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             int minX = sideView ? 45 : 22;
             int maxX = sideView ? STREET_WORLD_WIDTH - 30 : 452;
-            int minY = scene == Scene.SHOP ? 158 : 132;
+            int minY = scene == GameScene.SHOP ? 158 : 132;
             precisePlayerX = clamp(precisePlayerX, minX, maxX);
             if (sideView) precisePlayerY = STREET_GROUND_Y;
             else precisePlayerY = clamp(precisePlayerY, minY, 232);
-            if (scene == Scene.BEDROOM) {
+            if (scene == GameScene.BEDROOM) {
                 double targetX = precisePlayerX;
                 double targetY = precisePlayerY;
                 precisePlayerX = oldPreciseX;
@@ -251,1356 +221,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
 
-    private void drawTitle(Graphics2D g) {
-        if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
-        g.setColor(new Color(1, 3, 7, 202));
-        g.fillRect(0, 0, W, H);
-
-        drawTitleBorder(g);
-        drawTitleStars(g);
-
-        // Keep the menu and title lockup as two balanced, vertically centered columns.
-        g.setColor(new Color(111, 105, 148));
-        pixelText(g, "MAIN MENU", TITLE_MENU_X + 18, TITLE_MENU_Y - 12, 1);
-        g.setColor(new Color(55, 58, 72, 190));
-        g.fillRect(220, 86, 1, 101);
-        g.setColor(new Color(119, 110, 178));
-        g.fillRect(217, 134, 7, 1);
-        g.fillRect(220, 131, 1, 7);
-
-        g.setColor(new Color(157, 149, 202));
-        drawCenteredPixelText(g, "A LOGIC TALE", TITLE_COPY_CENTER_X, 156, 1);
-        g.setColor(new Color(0, 0, 0, 180));
-        drawCenteredPixelText(g, "GATEKEEPER", TITLE_COPY_CENTER_X + 2, 141, 3);
-        g.setColor(INK);
-        drawCenteredPixelText(g, "GATEKEEPER", TITLE_COPY_CENTER_X, 138, 3);
-        g.setColor(new Color(166, 143, 71));
-        g.fillOval(418, 65, 34, 34);
-        g.setColor(new Color(1, 3, 7));
-        g.fillOval(409, 58, 34, 34);
-        g.setColor(new Color(115, 111, 164));
-        pixelText(g, "+", 452, 146, 1);
-
-        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H, "BEGIN", 0);
-        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
-            TITLE_MENU_W, TITLE_MENU_H, "CONTROLS", 1);
-        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
-            TITLE_MENU_W, TITLE_MENU_H, "SETTINGS", 2);
-        drawTitleButton(g, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
-            TITLE_MENU_W, TITLE_MENU_H, "EXIT", 3);
-    }
-
-    private void drawTitleBorder(Graphics2D g) {
-        g.setColor(new Color(150, 154, 151));
-        g.drawRect(7, 7, W - 15, H - 15);
-        g.setColor(new Color(65, 70, 70));
-        g.drawRect(10, 10, W - 21, H - 21);
-        g.setColor(new Color(188, 190, 183));
-        for (int[] corner : new int[][]{{7, 7}, {W - 8, 7}, {7, H - 8}, {W - 8, H - 8}}) {
-            int x = corner[0];
-            int y = corner[1];
-            g.fillRect(x - 2, y - 2, 5, 5);
-        }
-    }
-
-    private void drawTitleStars(Graphics2D g) {
-        int shimmer = (ticks / 45) % 2 == 0 ? 190 : 115;
-        g.setColor(new Color(119, 110, 178, shimmer));
-        g.fillRect(181, 43, 1, 11);
-        g.fillRect(176, 48, 11, 1);
-        g.fillRect(238, 39, 2, 2);
-        g.fillRect(354, 57, 2, 2);
-        g.fillRect(116, 89, 2, 2);
-    }
-
-    private void drawControls(Graphics2D g) {
-        if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
-        g.setColor(new Color(3, 7, 11, 211));
-        g.fillRect(0, 0, W, H);
-        g.setColor(new Color(10, 17, 21));
-        g.fillRect(54, 24, 372, 222);
-        g.setColor(new Color(67, 129, 111));
-        g.drawRect(54, 24, 372, 222);
-        g.setColor(new Color(152, 95, 47));
-        g.drawRect(58, 28, 364, 214);
-
-        g.setColor(INK);
-        pixelText(g, "HOW TO PLAY", 148, 54, 2);
-        g.setColor(YELLOW);
-        g.fillRect(83, 65, 314, 2);
-
-        drawControlSection(g, 77, 79, "EXPLORE",
-            "WASD / ARROWS", "Move Alex",
-            "E / ENTER", "Interact and talk",
-            "N", "Open the notebook");
-        drawControlSection(g, 250, 79, "WORKBENCH",
-            "MOUSE", "Place gates and test",
-            "1 / 2 / 3", "Select AND / OR / NOT",
-            "A / B", "Toggle circuit inputs");
-
-        g.setColor(new Color(18, 39, 39));
-        g.fillRect(77, 185, 320, 25);
-        g.setColor(CYAN);
-        pixelText(g, "ESC", 88, 201, 1);
-        g.setColor(INK);
-        pixelText(g, "Open the return menu.", 121, 201, 1);
-
-        boolean hovered = inside(mouseX, mouseY, 164, 217, 152, 22);
-        g.setColor(hovered ? new Color(71, 63, 26) : new Color(27, 35, 35));
-        g.fillRect(164, 217, 152, 22);
-        g.setColor(hovered ? YELLOW : INK);
-        g.drawRect(164, 217, 152, 22);
-        pixelText(g, "< BACK TO TITLE", 192, 232, 1);
-    }
-
-    private void drawSettings(Graphics2D g) {
-        g.setColor(new Color(1, 3, 7));
-        g.fillRect(0, 0, W, H);
-        drawTitleBorder(g);
-        drawTitleStars(g);
-        g.setColor(INK);
-        pixelTextScaled(g, "SETTINGS", 198, 56, 2, 0.85f);
-        g.setColor(new Color(105, 116, 117));
-        pixelTextScaled(g, "AUDIO", 227, 76, 1, 0.85f);
-
-        drawVolumeRow(g, 92, "MASTER", sound.masterVolume(), 0);
-        drawVolumeRow(g, 121, "MUSIC", sound.musicVolume(), 1);
-        drawVolumeRow(g, 150, "FX", sound.fxVolume(), 2);
-        drawVolumeRow(g, 179, "UI SIZE", uiScale, 3);
-
-        boolean hovered = inside(mouseX, mouseY, 170, 207, 140, 20);
-        g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        pixelTextScaled(g, "< BACK", 219, 221, 1, 0.85f);
-    }
-
-    private void drawDevMenu(Graphics2D g) {
-        g.setColor(new Color(2, 5, 8));
-        g.fillRect(0, 0, W, H);
-        drawTitleBorder(g);
-        g.setColor(new Color(240, 102, 110));
-        pixelText(g, "DEVELOPER MENU", 176, 42, 1);
-        g.setColor(new Color(112, 123, 125));
-        pixelText(g, "F1 QUICK TEST SCENES", 181, 57, 1);
-        String[] options = {
-            "FRESH BEDROOM", "BOARD PROGRESSION", "FIRST 3 COMPLETE", "STREET",
-            "SHOP", "ADVANCED CHAPTER", "AUTO TESTER HOME", "ENDING"
-        };
-        for (int i = 0; i < options.length; i++) {
-            int y = 73 + i * 20;
-            boolean selected = devSelection == i;
-            g.setColor(selected ? new Color(143, 190, 128) : DIM);
-            if (selected) pixelText(g, ">", 145, y + 13, 1);
-            pixelText(g, options[i], 159, y + 13, 1);
-        }
-        g.setColor(new Color(74, 82, 83));
-        pixelText(g, "W/S SELECT   ENTER LOAD   ESC BACK", 150, 250, 1);
-    }
-
-    private void drawVolumeRow(Graphics2D g, int y, String label, float volume, int selection) {
-        boolean selected = settingsSelection == selection;
-        g.setColor(selected ? new Color(143, 190, 128) : INK);
-        pixelTextScaled(g, selected ? "> " + label : "  " + label, 132, y + 12, 1, 0.85f);
-        int filled = Math.round(volume * 10.0f);
-        for (int i = 0; i < 10; i++) {
-            g.setColor(i < filled ? new Color(143, 190, 128) : new Color(45, 53, 55));
-            g.fillRect(223 + i * 11, y + 3, 8, 10);
-        }
-        g.setColor(DIM);
-        pixelTextScaled(g, Math.round(volume * 100.0f) + "%", 347, y + 12, 1, 0.85f);
-    }
-
-    private void drawTitleButton(Graphics2D g, int x, int y, int width, int height,
-                                 String label, int selection) {
-        boolean hovered = inside(mouseX, mouseY, x, y, width, height);
-        boolean selected = titleSelection == selection;
-        if (selected || hovered) {
-            g.setColor(selected ? new Color(31, 57, 52, 190) : new Color(27, 39, 42, 170));
-            g.fillRect(x, y, width, height);
-            g.setColor(selected ? new Color(143, 190, 128) : new Color(102, 137, 124));
-            g.fillRect(x, y, 2, height);
-        }
-        g.setColor(selected || hovered ? new Color(143, 190, 128) : new Color(191, 192, 185));
-        int textX = x + 18;
-        pixelText(g, label, textX, y + 14, 1);
-        if (selected || hovered) {
-            g.setColor(new Color(143, 190, 128));
-            pixelText(g, ">", x + 5, y + 14, 1);
-        }
-    }
-
-    private void drawExitPrompt(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 174));
-        g.fillRect(0, 0, W, H);
-        g.setColor(new Color(5, 8, 12, 245));
-        g.fillRect(139, 84, 202, 105);
-        g.setColor(new Color(151, 155, 151));
-        g.drawRect(139, 84, 202, 105);
-        g.setColor(new Color(65, 70, 70));
-        g.drawRect(143, 88, 194, 97);
-
-        g.setColor(INK);
-        drawCenteredPixelText(g, "PAUSED", 240, 108, 1);
-        drawExitPromptChoice(g, 170, 118, 140, 20, "SETTINGS", 0);
-        drawExitPromptChoice(g, 170, 143, 140, 20, "RETURN TO MENU", 1);
-        g.setColor(new Color(77, 84, 85));
-        drawCenteredPixelText(g, "ESC  CLOSE", 240, 179, 1);
-    }
-
-    private void drawExitPromptChoice(Graphics2D g, int x, int y, int width, int height,
-                                      String label, int selection) {
-        boolean hovered = inside(mouseX, mouseY, x, y, width, height);
-        boolean selected = exitPromptSelection == selection;
-        g.setColor(selected || hovered ? new Color(143, 190, 128) : DIM);
-        int textX = x + (width - pixelTextWidth(g, label, 1)) / 2;
-        pixelText(g, label, textX, y + 14, 1);
-        if (selected || hovered) pixelText(g, ">", textX - pixelTextWidth(g, ">", 1) - 7, y + 14, 1);
-    }
-
-    private void drawControlSection(Graphics2D g, int x, int y, String heading,
-                                    String key1, String action1,
-                                    String key2, String action2,
-                                    String key3, String action3) {
-        g.setColor(CYAN);
-        pixelText(g, heading, x, y, 1);
-        String[] keys = {key1, key2, key3};
-        String[] actions = {action1, action2, action3};
-        for (int i = 0; i < 3; i++) {
-            int rowY = y + 22 + i * 27;
-            g.setColor(new Color(53, 62, 63));
-            g.fillRect(x, rowY - 11, 145, 24);
-            g.setColor(YELLOW);
-            pixelText(g, keys[i], x + 7, rowY, 1);
-            g.setColor(INK);
-            pixelText(g, actions[i], x + 7, rowY + 11, 1);
-        }
-    }
-
-    private void drawBedroom(Graphics2D g) {
-        if (bedroomBackground != null) {
-            g.drawImage(bedroomBackground, 0, 0, W, H, null);
-            drawWorldVignette(g);
-            if (chapter == 0) drawInteractionGlow(g, 299, 132, YELLOW);
-            drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-            drawHud(g, "ALEX'S ROOM");
-            if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
-            else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
-            else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
-            return;
-        }
-        // Layered night-time room: wallpaper, moonlit window, floor and rug.
-        g.setColor(new Color(20, 21, 34));
-        g.fillRect(0, 20, W, 169);
-        g.setColor(new Color(31, 31, 48));
-        for (int y = 29; y < 181; y += 16) g.drawLine(0, y, W, y);
-        g.setColor(new Color(45, 43, 61));
-        for (int x = 12; x < W; x += 28) {
-            g.fillRect(x, 37 + (x % 3) * 16, 2, 2);
-            g.fillRect(x + 8, 83 + (x % 2) * 24, 1, 1);
-        }
-        g.setColor(new Color(74, 58, 58));
-        g.fillRect(0, 181, W, 89);
-        g.setColor(new Color(102, 73, 62));
-        for (int y = 190; y < H; y += 13) g.drawLine(0, y, W, y);
-        for (int x = -30; x < W + 30; x += 38) g.drawLine(240, 181, x, H);
-        g.setColor(new Color(35, 32, 46));
-        g.fillOval(143, 194, 197, 55);
-        g.setColor(new Color(70, 61, 91));
-        g.drawOval(147, 198, 189, 47);
-        g.drawOval(169, 205, 145, 33);
-
-        drawBedroomWindow(g);
-
-        // Bed with a quilt and pillow.
-        g.setColor(new Color(8, 9, 14));
-        g.fillRect(17, 115, 111, 59);
-        g.setColor(new Color(107, 69, 78));
-        g.fillRect(21, 112, 103, 52);
-        g.setColor(new Color(151, 94, 102));
-        for (int x = 24; x < 120; x += 16) for (int y = 128; y < 159; y += 13) g.fillRect(x, y, 7, 5);
-        g.setColor(new Color(226, 207, 183));
-        g.fillRect(24, 115, 35, 13);
-        g.setColor(INK);
-        g.drawRect(19, 108, 107, 57);
-        g.fillRect(19, 165, 5, 12);
-        g.fillRect(121, 165, 5, 12);
-
-        // Work desk, lamp, pegboard and a stool.
-        g.setColor(new Color(8, 9, 14));
-        g.fillRect(49, 84, 89, 49);
-        g.setColor(new Color(116, 79, 57));
-        g.fillRect(52, 80, 84, 13);
-        g.fillRect(58, 93, 6, 39);
-        g.fillRect(126, 93, 6, 39);
-        g.setColor(INK);
-        g.drawRect(52, 80, 84, 13);
-        g.setColor(chapter >= 2 ? new Color(34, 96, 85) : new Color(54, 58, 65));
-        g.fillRect(75, 56, 39, 21);
-        g.setColor(chapter >= 2 ? CYAN : DIM);
-        g.drawRect(75, 56, 39, 21);
-        g.drawLine(81, 62, 108, 62);
-        g.drawLine(81, 68, 103, 68);
-        pixelText(g, "BOARD", 77, 53, 1);
-        g.setColor(YELLOW);
-        g.fillRect(120, 65, 8, 4);
-        g.drawLine(124, 65, 124, 78);
-        g.drawLine(115, 78, 133, 78);
-        g.setColor(new Color(80, 57, 48));
-        g.fillRect(73, 132, 37, 8);
-        g.fillRect(88, 140, 7, 26);
-
-        // The box receives a subtle warm glow before it is opened.
-        if (chapter == 0) {
-            g.setColor(new Color(250, 204, 21, 32));
-            g.fillRect(263, 99, 72, 58);
-            g.setColor(new Color(250, 204, 21, 45));
-            g.fillRect(269, 105, 60, 46);
-        }
-        g.setColor(new Color(126, 82, 46));
-        g.fillRect(275, 112, 49, 32);
-        g.setColor(new Color(169, 111, 57));
-        g.fillRect(278, 115, 43, 7);
-        g.setColor(INK);
-        g.drawRect(275, 112, 49, 32);
-        g.drawLine(275, 122, 324, 122);
-        g.drawLine(299, 112, 299, 144);
-        g.setColor(YELLOW);
-        g.fillRect(296, 119, 7, 6);
-
-        // Notes on the wall and the shop door.
-        g.setColor(new Color(208, 198, 169));
-        g.fillRect(344, 53, 44, 52);
-        g.setColor(new Color(55, 48, 48));
-        g.drawRect(344, 53, 44, 52);
-        pixelText(g, "0 0 | ?", 349, 68, 1);
-        pixelText(g, "0 1 | ?", 349, 80, 1);
-        pixelText(g, "1 0 | ?", 349, 92, 1);
-        g.setColor(new Color(48, 37, 43));
-        g.fillRect(422, 64, 42, 119);
-        g.setColor(new Color(91, 61, 62));
-        g.fillRect(427, 70, 31, 109);
-        g.setColor(INK);
-        g.drawRect(422, 64, 42, 119);
-        g.setColor(YELLOW);
-        g.fillRect(450, 123, 4, 4);
-        g.setColor(INK);
-        pixelText(g, "OUTSIDE", 418, 57, 1);
-
-        drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-        drawHud(g, "ALEX'S ROOM");
-        if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
-        else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
-        else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
-    }
-
-    private void drawStreet(Graphics2D g) {
-        int cameraX = streetCameraX();
-        if (streetBackground != null) {
-            g.drawImage(streetBackground, 0, 0, W, H,
-                cameraX, 0, cameraX + W, H, null);
-        } else {
-            g.setColor(new Color(8, 19, 38));
-            g.fillRect(0, 0, W, H);
-            g.setColor(new Color(35, 40, 48));
-            g.fillRect(0, 146, W, 64);
-            g.setColor(new Color(13, 17, 25));
-            g.fillRect(0, 210, W, 60);
-            g.setColor(YELLOW);
-            g.fillRect(62, 78, 42, 68);
-            g.setColor(CYAN);
-            g.fillRect(420, 78, 38, 68);
-        }
-
-        // Small animated reflections keep the exterior from feeling like a still image.
-        int shimmer = (int) ((ticks / 18) % 3);
-        g.setColor(new Color(250, 204, 21, 45));
-        g.fillRect(86 - cameraX - shimmer, 218, 27 + shimmer * 2, 1);
-        g.fillRect(518 - cameraX, 219 + shimmer, 38, 1);
-        g.setColor(new Color(54, 211, 224, 48));
-        g.fillRect(868 - cameraX - shimmer, 215, 38 + shimmer * 2, 1);
-        if ((ticks / 40) % 2 == 0) {
-            g.setColor(new Color(197, 222, 230, 130));
-            g.fillRect(189 - cameraX, 24, 1, 1);
-            g.fillRect(685 - cameraX, 36, 1, 1);
-        }
-
-        drawWorldVignette(g);
-        drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, STREET_PLAYER_HEIGHT);
-        drawHud(g, "LANTERN STREET");
-        if (Math.abs(playerX - STREET_HOME_X) < 38) {
-            prompt(g, "E  ENTER HOME");
-        } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
-            prompt(g, "E  ENTER MIRA'S SHOP");
-        }
-    }
-
-    private int streetCameraX() {
-        return clamp(playerX - W / 2, 0, STREET_WORLD_WIDTH - W);
-    }
-
-    private void drawShop(Graphics2D g) {
-        if (shopBackground != null) {
-            g.drawImage(shopBackground, 0, 0, W, H, null);
-            drawWorldVignette(g);
-            drawMaskedShopkeeper(g, 240, 136, 102);
-            drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-            drawHud(g, "MIRA'S ELECTRONICS");
-            if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
-            else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
-            return;
-        }
-        // A warm, crowded neighborhood electronics shop.
-        g.setColor(new Color(16, 28, 29));
-        g.fillRect(0, 20, W, 161);
-        g.setColor(new Color(24, 44, 43));
-        for (int x = 0; x < W; x += 24) g.drawLine(x, 20, x, 181);
-        for (int y = 32; y < 181; y += 18) g.drawLine(0, y, W, y);
-
-        // Hanging lamps and their warm pools of light.
-        for (int x : new int[]{116, 364}) {
-            g.setColor(new Color(55, 58, 51));
-            g.drawLine(x, 20, x, 42);
-            g.setColor(new Color(237, 181, 72));
-            g.fillRect(x - 13, 42, 27, 5);
-            g.fillRect(x - 8, 47, 17, 3);
-            g.setColor(new Color(250, 204, 21, 26));
-            g.fillRect(x - 28, 50, 57, 75);
-        }
-
-        // Neon store mark.
-        g.setColor(new Color(7, 13, 15));
-        g.fillRect(178, 31, 124, 32);
-        g.setColor(CYAN);
-        g.drawRect(178, 31, 124, 32);
-        pixelText(g, "MIRA // LOGIC", 197, 51, 1);
-        g.setColor(YELLOW);
-        g.fillRect(186, 40, 4, 4);
-        g.fillRect(290, 40, 4, 4);
-
-        drawShopShelf(g, 17, 72, 157);
-        drawShopShelf(g, 306, 72, 157);
-
-        // Checkerboard floor recedes beneath the player.
-        for (int y = 181; y < H; y += 15) {
-            for (int x = 0; x < W; x += 24) {
-                boolean alt = ((x / 24) + (y / 15)) % 2 == 0;
-                g.setColor(alt ? new Color(46, 59, 55) : new Color(31, 43, 41));
-                g.fillRect(x, y, 24, 15);
-            }
-        }
-
-        // Counter with component display and a live oscilloscope.
-        g.setColor(new Color(9, 14, 15));
-        g.fillRect(77, 142, 326, 51);
-        g.setColor(new Color(103, 69, 48));
-        g.fillRect(82, 136, 316, 49);
-        g.setColor(new Color(151, 99, 58));
-        g.fillRect(78, 134, 324, 9);
-        g.setColor(INK);
-        g.drawRect(78, 134, 324, 52);
-        g.drawLine(82, 143, 398, 143);
-        for (int x = 102; x < 378; x += 55) {
-            g.setColor(new Color(43, 38, 35));
-            g.fillRect(x, 151, 34, 21);
-            g.setColor((x / 55) % 2 == 0 ? YELLOW : CYAN);
-            g.fillRect(x + 7, 158, 4, 4);
-            g.fillRect(x + 21, 164, 4, 4);
-        }
-        g.setColor(new Color(24, 34, 34));
-        g.fillRect(322, 106, 48, 28);
-        g.setColor(CYAN);
-        g.drawRect(322, 106, 48, 28);
-        g.drawLine(328, 122, 334, 122);
-        g.drawLine(334, 122, 339, 114);
-        g.drawLine(339, 114, 346, 128);
-        g.drawLine(346, 128, 354, 117);
-        g.drawLine(354, 117, 365, 117);
-
-        drawShopkeeper(g, 240, 120);
-        drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-        drawHud(g, "MIRA'S ELECTRONICS");
-        if (near(240, 155)) prompt(g, "E  TALK TO MIRA");
-        if (playerX < 45) prompt(g, "E  GO OUTSIDE");
-    }
-
-    private void drawBoard(Graphics2D g) {
-        // The workbench sits on Alex's scarred wooden desk.
-        g.setColor(new Color(22, 13, 12));
-        g.fillRect(0, 0, W, H);
-        g.setColor(new Color(53, 30, 22));
-        for (int y = 5; y < H; y += 13) g.drawLine(0, y, W, y + 3);
-        g.setColor(new Color(3, 5, 7, 150));
-        g.fillRect(8, 9, 469, 259);
-        g.setColor(new Color(91, 55, 34));
-        g.fillRect(3, 3, 472, 262);
-        g.setColor(new Color(190, 126, 60));
-        g.drawRect(3, 3, 471, 261);
-        g.setColor(new Color(48, 29, 24));
-        g.drawRect(7, 7, 463, 253);
-        g.setColor(new Color(7, 27, 28));
-        g.fillRect(10, 10, 458, 248);
-        g.setColor(new Color(18, 59, 54));
-        for (int x = 14; x < 468; x += 15) {
-            for (int y = 14; y < 259; y += 15) g.fillRect(x, y, 1, 1);
-        }
-        // Etched copper traces around the board's edge.
-        g.setColor(new Color(116, 72, 37));
-        g.drawLine(13, 53, 13, 228);
-        g.drawLine(13, 228, 294, 228);
-        g.drawLine(467, 53, 467, 228);
-        g.setColor(new Color(201, 139, 65));
-        for (int[] screw : new int[][]{{8, 8}, {466, 8}, {8, 256}, {466, 256}}) {
-            g.fillRect(screw[0], screw[1], 5, 5);
-            g.setColor(new Color(61, 39, 32));
-            g.drawLine(screw[0] + 1, screw[1] + 2, screw[0] + 3, screw[1] + 2);
-            g.setColor(new Color(201, 139, 65));
-        }
-
-        g.setColor(new Color(5, 12, 15));
-        g.fillRect(12, 12, 456, 39);
-        g.setColor(new Color(21, 48, 46));
-        g.drawLine(13, 50, 467, 50);
-        g.setColor(INK);
-        pixelText(g, "LOGIC WORKBENCH", 18, 25, 1);
-        g.setColor(CYAN);
-        pixelText(g, "N GUIDE", 18, 42, 1);
-        g.setColor(DIM);
-        pixelText(g, "ESC EXIT", 418, 25, 1);
-
-        int available = chapter >= 3 ? 5 : 3;
-        for (int i = 0; i < available; i++) {
-            int x = 126 + i * 66;
-            boolean selected = i == selectedRecipe;
-            boolean hovered = isHovered(x, 29, 59, 20);
-            g.setColor(selected ? new Color(83, 67, 25)
-                : hovered ? new Color(28, 63, 58) : new Color(17, 31, 34));
-            g.fillRect(x, 29, 59, 20);
-            g.setColor(crafted[i] ? CYAN : selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 30, 59, 18);
-            pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 4, 43, 1);
-        }
-
-        CircuitRecipe recipe = circuit.recipe();
-        drawPanel(g, 13, 55, 345, 116);
-        g.setColor(new Color(20, 57, 51));
-        for (int x = 22; x < 350; x += 12) {
-            for (int y = 72; y < 165; y += 12) g.fillRect(x, y, 2, 2);
-        }
-        g.setColor(INK);
-        pixelText(g, recipe.name, 20, 67, 1);
-        g.setColor(DIM);
-        pixelText(g, recipe.subtitle, 62, 67, 1);
-        g.setColor(crafted[selectedRecipe] ? CYAN : YELLOW);
-        pixelText(g, crafted[selectedRecipe] ? "BUILT" : "ACTIVE", 305, 67, 1);
-        drawSwitch(g, 28, 81, "A", circuit.inputA(), autoTesterAttached);
-        drawSwitch(g, 28, 116, "B", circuit.inputB(), autoTesterAttached);
-
-        int[][] layout = socketLayout(recipe);
-        boolean[] nodeValues = circuit.nodeValues();
-        drawCircuitWires(g, recipe, layout, nodeValues);
-        for (int i = 0; i < recipe.slotCount(); i++) {
-            drawSocket(g, layout[i][0], layout[i][1], i, circuit.placed()[i], nodeValues[i]);
-        }
-        int[] last = layout[recipe.slotCount() - 1];
-        drawRoutedWire(g, last[0] + BOARD_SOCKET_W, last[1] + BOARD_SOCKET_H / 2,
-            337, 112, circuit.output());
-        g.setColor(autoTesterAttached ? new Color(39, 76, 51)
-            : circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
-        g.fillOval(334, 101, 22, 22);
-        g.setColor(autoTesterAttached ? new Color(143, 190, 128)
-            : circuit.output() ? CYAN : DIM);
-        g.drawOval(334, 101, 21, 21);
-        g.fillOval(340, 107, 10, 10);
-        g.setColor(autoTesterAttached ? new Color(143, 190, 128) : INK);
-        pixelText(g, "OUT", 336, 134, 1);
-
-        drawTruthTable(g);
-        drawGatePalette(g);
-        drawBoardButtons(g);
-        g.setColor(new Color(5, 12, 15));
-        g.fillRect(13, 232, 454, 27);
-        g.setColor(new Color(37, 77, 69));
-        g.drawLine(14, 232, 466, 232);
-        g.setColor(autoTestRunning ? new Color(143, 190, 128)
-            : boardMessageTimer > 0 ? YELLOW : CYAN);
-        g.fillRect(18, 239, 4, 12);
-        String status = autoTestRunning ? "LOGICLENS TESTING ROW " + (autoTestRow + 1) + "/4"
-            : boardMessageTimer > 0 ? boardMessage
-            : heldGate.label + " selected — " + heldGate.hint;
-        pixelText(g, status, 28, 249, 1);
-    }
-
-    private void drawTruthTable(Graphics2D g) {
-        CircuitRecipe r = circuit.recipe();
-        int x = 366, y = 61;
-        drawPanel(g, 362, 55, 105, 116);
-        g.setColor(INK);
-        pixelText(g, "TARGET / LIVE", x + 2, y + 8, 1);
-        g.setColor(DIM);
-        pixelText(g, "A B | WANT GOT", x + 5, y + 23, 1);
-        g.drawLine(x + 5, y + 28, x + 92, y + 28);
-        int currentRow = (circuit.inputA() ? 2 : 0) + (circuit.inputB() ? 1 : 0);
-        for (int row = 0; row < 4; row++) {
-            int yy = y + 42 + row * 14;
-            boolean a = row >= 2;
-            boolean b = row % 2 == 1;
-            Boolean seen = circuit.observations()[row];
-            String value = seen == null ? "?" : bit(seen);
-            if (row == currentRow) {
-                g.setColor(new Color(27, 64, 59));
-                g.fillRect(x + 4, yy - 10, 92, 13);
-            }
-            g.setColor(seen == null ? DIM : (seen == r.truth[row] ? CYAN : RED));
-            pixelText(g, bit(a) + " " + bit(b) + " |  " + bit(r.truth[row]) + "    " + value, x + 9, yy, 1);
-        }
-        int recorded = 0;
-        for (Boolean observation : circuit.observations()) if (observation != null) recorded++;
-        g.setColor(recorded == 4 ? CYAN : DIM);
-        pixelText(g, "REC " + recorded + "/4", x + 52, y + 105, 1);
-    }
-
-    private void drawGatePalette(Graphics2D g) {
-        drawPanel(g, 13, 176, 281, 52);
-        g.setColor(INK);
-        pixelText(g, "PARTS BIN", 18, 187, 1);
-        GateType[] gates = GateType.values();
-        for (int i = 0; i < gates.length; i++) {
-            int x = 20 + i * 93;
-            boolean selected = heldGate == gates[i];
-            boolean hovered = isHovered(x, 190, 80, 33);
-            g.setColor(selected ? new Color(76, 63, 25)
-                : hovered ? new Color(28, 61, 56) : new Color(14, 27, 30));
-            g.fillRect(x, 190, 80, 33);
-            g.setColor(selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 190, 80, 33);
-            if (selected) g.fillRect(x + 2, 192, 2, 29);
-            drawGate(g, x + 5, 192, gates[i], false);
-            pixelText(g, (i + 1) + " " + gates[i].label, x + 40, 211, 1);
-        }
-    }
-
-    private void drawBoardButtons(Graphics2D g) {
-        boolean tester = chapter >= 3 && autoTesterAttached;
-        drawPanel(g, 302, 176, 165, 52);
-        if (chapter >= 3) {
-            boolean hookHover = isHovered(310, 179, 150, 14);
-            g.setColor(hookHover ? new Color(28, 73, 62) : new Color(16, 43, 41));
-            g.fillRect(310, 179, 150, 14);
-            g.setColor(autoTesterAttached ? new Color(143, 190, 128) : new Color(105, 116, 117));
-            g.drawRect(310, 179, 150, 14);
-            if (autoTesterAttached) {
-                if (logicLensImage != null) {
-                    g.drawImage(logicLensImage, 323, 178, 28, 25, null);
-                }
-            }
-            pixelText(g, autoTesterAttached ? "WIRED  H UNHOOK" : "H  ATTACH LOGICLENS",
-                autoTesterAttached ? 356 : 318, 189, 1);
-
-            boolean recordHover = isHovered(310, 197, 72, 27);
-            g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
-            g.fillRect(310, 197, 72, 27);
-            g.setColor(YELLOW);
-            g.drawRect(310, 197, 72, 27);
-            pixelText(g, tester ? "R  AUTO" : "R RECORD", 318, 209, 1);
-            pixelText(g, tester ? "TEST" : "ROW", 325, 220, 1);
-
-            boolean verifyHover = isHovered(390, 197, 70, 27);
-            g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
-            g.fillRect(390, 197, 70, 27);
-            g.setColor(CYAN);
-            g.drawRect(390, 197, 70, 27);
-            pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 211, 1);
-        } else {
-            boolean recordHover = isHovered(310, 187, 72, 36);
-            g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
-            g.fillRect(310, 187, 72, 36);
-            g.setColor(YELLOW);
-            g.drawRect(310, 187, 72, 36);
-            pixelText(g, "R RECORD", 318, 202, 1);
-            pixelText(g, "THIS ROW", 320, 214, 1);
-            boolean verifyHover = isHovered(390, 187, 70, 36);
-            g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
-            g.fillRect(390, 187, 70, 36);
-            g.setColor(CYAN);
-            g.drawRect(390, 187, 70, 36);
-            pixelText(g, "T VERIFY", 396, 208, 1);
-        }
-    }
-
-    private void drawPanel(Graphics2D g, int x, int y, int width, int height) {
-        g.setColor(new Color(1, 5, 7, 125));
-        g.fillRect(x + 3, y + 3, width, height);
-        g.setColor(new Color(5, 13, 16, 235));
-        g.fillRect(x, y, width, height);
-        g.setColor(new Color(52, 103, 88));
-        g.drawRect(x, y, width, height);
-        g.setColor(new Color(14, 39, 38));
-        g.drawRect(x + 2, y + 2, width - 4, height - 4);
-        g.setColor(new Color(184, 119, 52));
-        g.fillRect(x + 5, y + 5, 3, 3);
-        g.fillRect(x + width - 7, y + 5, 3, 3);
-    }
-
-    private void drawNotebook(Graphics2D g) {
-        // Desk, leather cover, page shadows, and slightly uneven paper edges.
-        g.setColor(new Color(25, 15, 14));
-        g.fillRect(0, 0, W, H);
-        g.setColor(new Color(57, 32, 23));
-        for (int y = 6; y < H; y += 14) g.drawLine(0, y, W, y + 4);
-        g.setColor(new Color(3, 4, 6, 145));
-        g.fillRect(31, 20, 425, 238);
-        g.setColor(new Color(76, 39, 31));
-        g.fillRect(25, 13, 430, 239);
-        g.setColor(new Color(143, 81, 47));
-        g.drawRect(25, 13, 429, 238);
-        g.setColor(new Color(233, 222, 186));
-        g.fillRect(32, 18, 204, 228);
-        g.setColor(new Color(224, 211, 175));
-        g.fillRect(244, 18, 204, 228);
-        g.setColor(new Color(194, 177, 143));
-        g.drawRect(32, 18, 203, 227);
-        g.drawRect(244, 18, 203, 227);
-
-        // Faint ruled paper with red notebook margins.
-        for (int y = 47; y < 237; y += 13) {
-            g.setColor(new Color(169, 179, 167));
-            g.drawLine(39, y, 229, y);
-            g.drawLine(251, y, 441, y);
-        }
-        g.setColor(new Color(189, 111, 99));
-        g.drawLine(55, 24, 55, 239);
-        g.drawLine(263, 24, 263, 239);
-
-        // Dark center crease and brass binding loops.
-        g.setColor(new Color(91, 72, 58));
-        g.fillRect(235, 20, 9, 224);
-        g.setColor(new Color(39, 29, 27));
-        g.drawLine(239, 20, 239, 244);
-        for (int y = 34; y < 235; y += 25) {
-            g.setColor(new Color(181, 126, 62));
-            g.drawOval(233, y, 12, 7);
-            g.setColor(new Color(91, 58, 38));
-            g.drawLine(236, y + 4, 242, y + 4);
-        }
-
-        g.setColor(new Color(52, 44, 40));
-        pixelText(g, "ALEX'S LOGIC NOTES", 67, 35, 1);
-        g.setColor(new Color(110, 71, 57));
-        pixelText(g, "THE THREE BUILDING BLOCKS", 67, 47, 1);
-        drawNotebookGateCard(g, GateType.AND, 61, 55,
-            "BOTH must be 1", "00:0  01:0  10:0  11:1");
-        drawNotebookGateCard(g, GateType.OR, 61, 111,
-            "EITHER can be 1", "00:0  01:1  10:1  11:1");
-        drawNotebookGateCard(g, GateType.NOT, 61, 167,
-            "FLIPS the signal", "0 -> 1       1 -> 0");
-
-        int available = chapter >= 3 ? 5 : 3;
-        notebookPage = clamp(notebookPage, 0, available - 1);
-        CircuitRecipe recipe = recipes.get(notebookPage);
-        g.setColor(new Color(110, 71, 57));
-        pixelText(g, "PROJECT " + (notebookPage + 1) + " / " + available, 270, 34, 1);
-        g.setColor(new Color(43, 39, 37));
-        pixelText(g, recipe.name, 270, 51, 1);
-        g.setColor(crafted[notebookPage] ? new Color(30, 116, 104) : new Color(159, 91, 48));
-        pixelText(g, crafted[notebookPage] ? "[ COMPLETE ]" : "[ TO BUILD ]", 360, 51, 1);
-        g.setColor(new Color(91, 72, 60));
-        drawWrapped(g, recipe.subtitle, 270, 65, 27);
-
-        drawNotebookTruthTable(g, recipe, 270, 91);
-        drawNotebookPlan(g, recipe, 337, 91);
-
-        g.setColor(new Color(79, 59, 51));
-        g.drawRect(270, 211, 22, 19);
-        g.drawRect(416, 211, 22, 19);
-        pixelText(g, "<", 278, 225, 1);
-        pixelText(g, ">", 424, 225, 1);
-        for (int i = 0; i < available; i++) {
-            int x = 316 + i * 16;
-            g.setColor(i == notebookPage ? new Color(153, 80, 50) : new Color(124, 106, 85));
-            if (crafted[i]) g.fillRect(x - 2, 216, 11, 11);
-            else g.drawRect(x - 2, 216, 11, 11);
-            g.setColor(i == notebookPage ? new Color(245, 232, 197) : new Color(66, 56, 50));
-            pixelText(g, Integer.toString(i + 1), x, 225, 1);
-        }
-        g.setColor(new Color(83, 67, 58));
-        pixelText(g, "ARROWS: PAGE   N / ESC: CLOSE", 270, 241, 1);
-    }
-
-    private void drawEnding(Graphics2D g) {
-        g.setColor(INK);
-        pixelText(g, "THE SIGNAL IS CLEAR.", 131, 78, 2);
-        g.setColor(CYAN);
-        pixelText(g, "Mira pins Alex's circuits above the counter.", 102, 119, 1);
-        pixelText(g, "Tomorrow, the notebook has harder pages.", 111, 136, 1);
-        g.setColor(YELLOW);
-        pixelText(g, "But tonight, every little light is on.", 119, 169, 1);
-        g.setColor(RED);
-        drawHeart(g, 235, 194);
-        g.setColor(DIM);
-        pixelText(g, "ENTER: begin again", 178, 238, 1);
-    }
-
-    private void drawHud(Graphics2D g, String location) {
-        g.setColor(VOID);
-        g.fillRect(0, 0, W, 20);
-        g.setColor(INK);
-        pixelText(g, location, 8, 14, 1);
-        if (chapter >= 1) pixelText(g, "N: NOTEBOOK", 393, 14, 1);
-    }
-
-    private void drawWorldVignette(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 42));
-        g.fillRect(0, 20, 9, H - 20);
-        g.fillRect(W - 9, 20, 9, H - 20);
-        g.fillRect(0, H - 10, W, 10);
-    }
-
-    private void drawInteractionGlow(Graphics2D g, int x, int y, Color color) {
-        int pulse = 3 + (int) ((ticks / 12) % 3);
-        g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 48));
-        g.fillOval(x - 25 - pulse, y - 12 - pulse, 50 + pulse * 2, 25 + pulse * 2);
-        g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 150));
-        g.drawOval(x - 20 - pulse, y - 9 - pulse, 40 + pulse * 2, 19 + pulse * 2);
-    }
-
-    private void drawBedroomWindow(Graphics2D g) {
-        g.setColor(new Color(8, 10, 18));
-        g.fillRect(160, 39, 111, 74);
-        g.setColor(new Color(44, 65, 92));
-        g.fillRect(166, 45, 99, 62);
-        g.setColor(new Color(16, 23, 39));
-        g.fillRect(170, 49, 91, 54);
-        g.setColor(new Color(220, 223, 190));
-        g.fillRect(235, 55, 12, 12);
-        g.setColor(new Color(16, 23, 39));
-        g.fillRect(230, 52, 12, 12);
-        g.setColor(INK);
-        g.fillRect(181, 58, 2, 2);
-        g.fillRect(211, 72, 2, 2);
-        g.fillRect(253, 82, 1, 1);
-        g.setColor(new Color(29, 39, 55));
-        for (int x = 171; x < 260; x += 13) {
-            int height = 8 + (x % 17);
-            g.fillRect(x, 103 - height, 11, height);
-            g.setColor(YELLOW);
-            if (x % 2 == 1) g.fillRect(x + 3, 98 - height / 2, 2, 2);
-            g.setColor(new Color(29, 39, 55));
-        }
-        g.setColor(new Color(91, 72, 101));
-        g.fillRect(151, 37, 12, 78);
-        g.fillRect(268, 37, 12, 78);
-        g.setColor(new Color(130, 91, 120));
-        g.drawLine(157, 42, 157, 108);
-        g.drawLine(274, 42, 274, 108);
-        g.setColor(INK);
-        g.drawRect(160, 39, 111, 74);
-        g.drawLine(215, 42, 215, 110);
-        g.drawLine(163, 77, 268, 77);
-    }
-
-    private void drawShopShelf(Graphics2D g, int x, int top, int width) {
-        g.setColor(new Color(8, 13, 14));
-        g.fillRect(x, top, width, 60);
-        g.setColor(new Color(94, 68, 48));
-        g.fillRect(x - 3, top - 3, width + 6, 5);
-        g.fillRect(x - 3, top + 27, width + 6, 5);
-        g.fillRect(x - 3, top + 58, width + 6, 5);
-        for (int bx = x + 7; bx < x + width - 20; bx += 31) {
-            int colorIndex = (bx / 31) % 3;
-            g.setColor(colorIndex == 0 ? new Color(105, 73, 59)
-                : colorIndex == 1 ? new Color(54, 87, 81) : new Color(78, 72, 100));
-            g.fillRect(bx, top + 7, 24, 17);
-            g.fillRect(bx, top + 38, 24, 16);
-            g.setColor(colorIndex == 1 ? CYAN : YELLOW);
-            g.fillRect(bx + 5, top + 12, 3, 3);
-            g.fillRect(bx + 15, top + 44, 3, 3);
-        }
-        g.setColor(INK);
-        g.drawRect(x, top, width, 60);
-    }
-
-    private void drawPlayer(Graphics2D g, int x, int y) {
-        drawPlayer(g, x, y, 44);
-    }
-
-    private void drawPlayer(Graphics2D g, int x, int y, int spriteHeight) {
-        if (alexSprites != null && alexFrameBounds.length == 12) {
-            boolean walking = line == null && playerMoving;
-            int column = switch (facing) {
-                case DOWN -> 0;
-                case LEFT -> 1;
-                case RIGHT -> 2;
-                case UP -> 3;
-            };
-            int phase = walking ? (walkDistance / 12) % 4 : 0;
-            int row = switch (phase) {
-                case 1 -> 1;
-                case 3 -> 2;
-                default -> 0;
-            };
-            Rectangle frame = alexFrameBounds[row * 4 + column];
-            int height = spriteHeight;
-            int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
-            int feetY = y + 5;
-            g.setColor(new Color(3, 5, 8, 105));
-            int shadowWidth = row == 0 ? 20 : 17;
-            g.fillOval(x - shadowWidth / 2, feetY - 3, shadowWidth, row == 0 ? 6 : 5);
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(alexSprites, x - width / 2, feetY - height,
-                x - width / 2 + width, feetY,
-                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            return;
-        }
-        boolean walking = line == null && (!keys.isEmpty()) && (ticks / 8) % 2 == 0;
-        g.setColor(new Color(7, 8, 12, 90));
-        g.fillOval(x - 10, y + 6, 20, 6);
-        g.setColor(new Color(218, 164, 124));
-        g.fillRect(x - 6, y - 19, 12, 10);
-        g.setColor(new Color(64, 43, 37));
-        g.fillRect(x - 7, y - 22, 14, 5);
-        g.fillRect(x - 7, y - 19, 3, 5);
-        g.setColor(new Color(39, 52, 83));
-        g.fillRect(x - 8, y - 9, 16, 13);
-        g.setColor(new Color(67, 106, 164));
-        g.fillRect(x - 5, y - 8, 10, 11);
-        g.setColor(new Color(218, 164, 124));
-        g.fillRect(x - 10, y - 7, 3, 8);
-        g.fillRect(x + 8, y - 7, 3, 8);
-        g.setColor(INK);
-        g.fillRect(x - (walking ? 7 : 5), y + 3, 4, 8);
-        g.fillRect(x + (walking ? 3 : 2), y + 3, 4, 8);
-        g.setColor(RED);
-        drawHeart(g, x - 2, y - 6);
-    }
-
-    private void drawShopkeeper(Graphics2D g, int x, int y) {
-        if (miraSprites != null && miraFrameBounds.length == 6) {
-            boolean talking = line != null && line.startsWith("MIRA|");
-            int column = (int) ((ticks / (talking ? 18 : 48)) % 3);
-            int row = talking ? 1 : 0;
-            Rectangle frame = miraFrameBounds[row * 3 + column];
-            int height = 70;
-            int width = Math.max(28, Math.round(height * frame.width / (float) frame.height));
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g.drawImage(miraSprites, x - width / 2, y - height,
-                x - width / 2 + width, y,
-                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            return;
-        }
-        g.setColor(new Color(7, 9, 10, 80));
-        g.fillOval(x - 18, y + 15, 36, 7);
-        g.setColor(new Color(48, 32, 31));
-        g.fillRect(x - 14, y - 32, 28, 19);
-        g.setColor(new Color(110, 79, 57));
-        g.fillRect(x - 11, y - 28, 22, 17);
-        g.setColor(new Color(45, 30, 29));
-        g.fillRect(x - 14, y - 31, 28, 6);
-        g.fillRect(x - 14, y - 27, 4, 13);
-        g.setColor(INK);
-        g.fillRect(x - 8, y - 22, 3, 3);
-        g.fillRect(x + 5, y - 22, 3, 3);
-        g.drawLine(x - 3, y - 16, x + 4, y - 16);
-        g.setColor(new Color(56, 105, 93));
-        g.fillRect(x - 14, y - 11, 28, 31);
-        g.setColor(new Color(204, 180, 135));
-        g.fillRect(x - 8, y - 7, 16, 27);
-        g.setColor(new Color(56, 105, 93));
-        g.fillRect(x - 5, y - 4, 10, 24);
-        g.setColor(YELLOW);
-        g.fillRect(x - 2, y + 1, 4, 4);
-    }
-
-    private void drawMaskedShopkeeper(Graphics2D g, int x, int groundY, int counterFrontY) {
-        Shape previousClip = g.getClip();
-        g.clipRect(0, 0, W, counterFrontY);
-        drawShopkeeper(g, x, groundY);
-        g.setClip(previousClip);
-        // A narrow warm lip reinforces the foreground plane at the mask edge.
-        g.setColor(new Color(111, 73, 39, 190));
-        g.fillRect(94, counterFrontY - 2, 319, 3);
-        g.setColor(new Color(211, 153, 73, 150));
-        g.drawLine(96, counterFrontY - 2, 410, counterFrontY - 2);
-    }
-
-    private void drawSocket(Graphics2D g, int x, int y, int number, GateType gate, boolean powered) {
-        boolean hovered = isHovered(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
-        g.setColor(new Color(1, 4, 5, 155));
-        g.fillRect(x + 3, y + 3, BOARD_SOCKET_W, BOARD_SOCKET_H);
-        g.setColor(powered ? new Color(17, 70, 67)
-            : hovered ? new Color(42, 55, 51) : new Color(12, 23, 26));
-        g.fillRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
-        g.setColor(hovered ? YELLOW : gate == null ? DIM : powered ? CYAN : INK);
-        g.drawRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
-        g.setColor(hovered ? YELLOW : DIM);
-        pixelText(g, "G" + (number + 1), x + 2, y + 9, 1);
-        g.fillRect(x - 2, y + 8, 3, 4);
-        g.fillRect(x - 2, y + 22, 3, 4);
-        g.fillRect(x + BOARD_SOCKET_W, y + 15, 3, 4);
-        if (gate == null) {
-            g.setColor(hovered ? YELLOW : DIM);
-            pixelText(g, "+", x + 17, y + 25, 1);
-        } else {
-            g.setColor(powered ? CYAN : INK);
-            drawGate(g, x + 3, y + 6, gate, powered);
-        }
-    }
-
-    private void drawGate(Graphics2D g, int x, int y, GateType gate, boolean powered) {
-        g.setColor(powered ? CYAN : g.getColor());
-        if (gate == GateType.NOT) {
-            int[] xs = {x + 5, x + 5, x + 29};
-            int[] ys = {y + 4, y + 24, y + 14};
-            g.drawPolygon(xs, ys, 3);
-            g.drawOval(x + 29, y + 11, 5, 5);
-        } else {
-            g.drawRect(x + 3, y + 4, 29, 21);
-            if (gate == GateType.OR) g.drawLine(x + 3, y + 4, x + 10, y + 14);
-            pixelText(g, gate == GateType.AND ? "&" : ">", x + 14, y + 19, 1);
-        }
-    }
-
-    private void drawSwitch(Graphics2D g, int x, int y, String name, boolean on, boolean hooked) {
-        boolean hovered = isHovered(x, y, 64, 20);
-        g.setColor(hovered ? new Color(36, 61, 56) : new Color(12, 25, 28));
-        g.fillRect(x - 2, y - 1, 62, 20);
-        g.setColor(hooked ? new Color(143, 190, 128) : hovered ? YELLOW : INK);
-        pixelText(g, name, x, y + 14, 1);
-        g.drawRect(x + 14, y, 23, 18);
-        g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : DIM);
-        g.fillRect(on ? x + 27 : x + 17, y + 4, 7, 10);
-        g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : hovered ? YELLOW : DIM);
-        pixelText(g, on ? "1" : "0", x + 43, y + 14, 1);
-    }
-
-    private void drawWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
-        g.setColor(new Color(1, 5, 6, 190));
-        g.setStroke(new BasicStroke(4));
-        g.drawLine(x1, y1, x2, y2);
-        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
-        g.setStroke(new BasicStroke(on ? 3 : 2));
-        g.drawLine(x1, y1, x2, y2);
-        g.setStroke(new BasicStroke(1));
-    }
-
-    private void drawSourceWire(Graphics2D g, int source, int targetX, int targetY,
-                                int[][] layout, boolean[] nodeValues) {
-        int sourceX;
-        int sourceY;
-        boolean powered;
-        if (source == CircuitRecipe.INPUT_A) {
-            sourceX = 57;
-            sourceY = 94;
-            powered = circuit.inputA();
-        } else if (source == CircuitRecipe.INPUT_B) {
-            sourceX = 57;
-            sourceY = 129;
-            powered = circuit.inputB();
-        } else {
-            sourceX = layout[source][0] + BOARD_SOCKET_W;
-            sourceY = layout[source][1] + BOARD_SOCKET_H / 2;
-            powered = nodeValues[source];
-        }
-        drawRoutedWire(g, sourceX, sourceY, targetX, targetY, powered);
-    }
-
-    private void drawCircuitWires(Graphics2D g, CircuitRecipe recipe,
-                                  int[][] layout, boolean[] nodeValues) {
-        if ("XOR".equals(recipe.name)) {
-            drawXorWires(g, layout, nodeValues);
-            return;
-        }
-        for (int i = 0; i < recipe.slotCount(); i++) {
-            int x = layout[i][0];
-            int y = layout[i][1];
-            drawSourceWire(g, recipe.leftSources[i], x, y + 10, layout, nodeValues);
-            if (recipe.solution[i] != GateType.NOT) {
-                drawSourceWire(g, recipe.rightSources[i], x, y + 24, layout, nodeValues);
-            }
-        }
-    }
-
-    private void drawXorWires(Graphics2D g, int[][] layout, boolean[] values) {
-        int aX = 57, aY = 94;
-        int bX = 57, bY = 129;
-
-        // G3 = NOT A and G1 = NOT B: short, direct branch starters.
-        drawWirePath(g, circuit.inputA(), aX, aY, 79, aY, 79, layout[2][1] + 10,
-            layout[2][0], layout[2][1] + 10);
-        drawWirePath(g, circuit.inputB(), bX, bY, 79, bY, 79, layout[0][1] + 10,
-            layout[0][0], layout[0][1] + 10);
-
-        // The un-inverted inputs take clearly separated outer lanes to the
-        // opposite AND gates instead of disappearing behind other modules.
-        drawWirePath(g, circuit.inputA(), aX, aY, 69, aY, 69, 168, 164, 168,
-            164, layout[1][1] + 10, layout[1][0], layout[1][1] + 10);
-        drawWirePath(g, circuit.inputB(), bX, bY, 64, bY, 64, 71, 164, 71,
-            164, layout[3][1] + 24, layout[3][0], layout[3][1] + 24);
-
-        // Each NOT feeds only its neighboring AND.
-        drawWirePath(g, values[2], layout[2][0] + BOARD_SOCKET_W,
-            layout[2][1] + BOARD_SOCKET_H / 2, 158, layout[2][1] + BOARD_SOCKET_H / 2,
-            158, layout[3][1] + 10, layout[3][0], layout[3][1] + 10);
-        drawWirePath(g, values[0], layout[0][0] + BOARD_SOCKET_W,
-            layout[0][1] + BOARD_SOCKET_H / 2, 158, layout[0][1] + BOARD_SOCKET_H / 2,
-            158, layout[1][1] + 24, layout[1][0], layout[1][1] + 24);
-
-        // The two product terms remain separate until the final OR.
-        drawWirePath(g, values[3], layout[3][0] + BOARD_SOCKET_W,
-            layout[3][1] + BOARD_SOCKET_H / 2, 246, layout[3][1] + BOARD_SOCKET_H / 2,
-            246, layout[4][1] + 10, layout[4][0], layout[4][1] + 10);
-        drawWirePath(g, values[1], layout[1][0] + BOARD_SOCKET_W,
-            layout[1][1] + BOARD_SOCKET_H / 2, 252, layout[1][1] + BOARD_SOCKET_H / 2,
-            252, layout[4][1] + 24, layout[4][0], layout[4][1] + 24);
-
-        // Break the two visual crossings so they cannot be mistaken for
-        // junctions, then annotate both product terms directly on the board.
-        drawHorizontalCrossover(g, 64, aY, circuit.inputA());
-        drawHorizontalCrossover(g, 69, bY, circuit.inputB());
-        g.setColor(new Color(5, 13, 16, 235));
-        g.fillRect(222, 75, 47, 12);
-        g.fillRect(222, 150, 47, 12);
-        g.setColor(new Color(127, 205, 194));
-        pixelText(g, "!A & B", 225, 85, 1);
-        pixelText(g, "A & !B", 225, 160, 1);
-    }
-
-    private void drawHorizontalCrossover(Graphics2D g, int x, int y, boolean on) {
-        g.setColor(new Color(5, 13, 16));
-        g.fillRect(x - 4, y - 4, 9, 9);
-        drawWire(g, x - 5, y, x + 5, y, on);
-    }
-
-    private void drawWirePath(Graphics2D g, boolean on, int... points) {
-        g.setColor(new Color(1, 5, 6, 195));
-        g.setStroke(new BasicStroke(4));
-        drawPathSegments(g, points);
-        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
-        g.setStroke(new BasicStroke(on ? 3 : 2));
-        drawPathSegments(g, points);
-        g.setStroke(new BasicStroke(1));
-        for (int i = 2; i < points.length - 2; i += 2) {
-            g.fillRect(points[i] - 2, points[i + 1] - 2, 4, 4);
-        }
-        int end = points.length - 2;
-        g.fillRect(points[end] - 2, points[end + 1] - 2, 4, 4);
-    }
-
-    private static void drawPathSegments(Graphics2D g, int[] points) {
-        for (int i = 0; i < points.length - 2; i += 2) {
-            g.drawLine(points[i], points[i + 1], points[i + 2], points[i + 3]);
-        }
-    }
-
-    private void drawRoutedWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
-        int bendX = x1 + Math.max(7, (x2 - x1) / 2);
-        g.setColor(new Color(1, 5, 6, 195));
-        g.setStroke(new BasicStroke(4));
-        g.drawLine(x1, y1, bendX, y1);
-        g.drawLine(bendX, y1, bendX, y2);
-        g.drawLine(bendX, y2, x2, y2);
-        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
-        g.setStroke(new BasicStroke(on ? 3 : 2));
-        g.drawLine(x1, y1, bendX, y1);
-        g.drawLine(bendX, y1, bendX, y2);
-        g.drawLine(bendX, y2, x2, y2);
-        g.setStroke(new BasicStroke(1));
-        g.fillRect(bendX - 2, y1 - 2, 4, 4);
-        g.fillRect(x2 - 2, y2 - 2, 4, 4);
-        if (on) {
-            g.setColor(new Color(196, 255, 247));
-            g.fillRect(bendX, y1, 1, 1);
-        }
-    }
-
-    private int[][] socketLayout(CircuitRecipe recipe) {
-        return switch (recipe.name) {
-            case "XOR" -> new int[][]{{100, 127}, {180, 127}, {100, 76}, {180, 76}, {272, 102}};
-            case "XNOR" -> new int[][]{{92, 76}, {92, 127}, {158, 127}, {224, 102}, {286, 102}};
-            case "IMPLY" -> new int[][]{{125, 84}, {235, 102}};
-            default -> new int[][]{{125, 102}, {235, 102}};
-        };
-    }
-
-    private void drawNotebookGateCard(Graphics2D g, GateType gate, int x, int y,
-                                      String note, String truth) {
-        g.setColor(new Color(213, 201, 165, 185));
-        g.fillRect(x, y, 166, 48);
-        g.setColor(new Color(128, 104, 82));
-        g.drawRect(x, y, 166, 48);
-        g.setColor(new Color(52, 48, 44));
-        drawGate(g, x + 5, y + 4, gate, false);
-        pixelText(g, gate.label, x + 46, y + 17, 1);
-        g.setColor(new Color(100, 67, 54));
-        pixelText(g, note, x + 46, y + 31, 1);
-        g.setColor(new Color(54, 51, 47));
-        pixelText(g, truth, x + 7, y + 43, 1);
-    }
-
-    private void drawNotebookTruthTable(Graphics2D g, CircuitRecipe recipe, int x, int y) {
-        g.setColor(new Color(212, 198, 160, 205));
-        g.fillRect(x, y, 57, 108);
-        g.setColor(new Color(125, 100, 77));
-        g.drawRect(x, y, 57, 108);
-        g.setColor(new Color(76, 55, 47));
-        pixelText(g, "TARGET", x + 8, y + 13, 1);
-        g.drawLine(x + 5, y + 18, x + 52, y + 18);
-        pixelText(g, "A B | O", x + 7, y + 31, 1);
-        for (int row = 0; row < 4; row++) {
-            boolean a = row >= 2;
-            boolean b = row % 2 == 1;
-            g.setColor(recipe.truth[row] ? new Color(29, 110, 99) : new Color(76, 55, 47));
-            pixelText(g, bit(a) + " " + bit(b) + " | " + bit(recipe.truth[row]),
-                x + 7, y + 46 + row * 14, 1);
-        }
-        g.setColor(new Color(117, 82, 61));
-        pixelText(g, "MATCH ALL", x + 3, y + 103, 1);
-    }
-
-    private void drawNotebookPlan(Graphics2D g, CircuitRecipe recipe, int x, int y) {
-        g.setColor(new Color(212, 198, 160, 205));
-        g.fillRect(x, y, 101, 108);
-        g.setColor(new Color(125, 100, 77));
-        g.drawRect(x, y, 101, 108);
-        g.setColor(new Color(76, 55, 47));
-        pixelText(g, "WIRING PLAN", x + 7, y + 13, 1);
-        g.drawLine(x + 5, y + 18, x + 96, y + 18);
-        for (int i = 0; i < recipe.slotCount(); i++) {
-            GateType gate = recipe.solution[i];
-            String sources = sourceName(recipe.leftSources[i]);
-            if (gate != GateType.NOT) sources += "+" + sourceName(recipe.rightSources[i]);
-            g.setColor(i % 2 == 0 ? new Color(66, 58, 51) : new Color(94, 68, 55));
-            pixelText(g, "G" + (i + 1) + " " + gate.label + " <- " + sources,
-                x + 6, y + 34 + i * 14, 1);
-        }
-        g.setColor(new Color(29, 110, 99));
-        pixelText(g, "LAST GATE -> OUT", x + 5, y + 103, 1);
-    }
-
-    private static String sourceName(int source) {
-        if (source == CircuitRecipe.INPUT_A) return "A";
-        if (source == CircuitRecipe.INPUT_B) return "B";
-        return "G" + (source + 1);
-    }
-
-    private void drawDialogue(Graphics2D g) {
-        if (LOGICLENS_ITEM_CARD.equals(line)) {
-            drawLogicLensReceived(g);
-            return;
-        }
-        int boxWidth = Math.round(448 * uiScale);
-        int boxHeight = Math.round(61 * uiScale);
-        int x = (W - boxWidth) / 2;
-        int y = H - boxHeight - 9;
-        g.setColor(VOID);
-        g.fillRect(x, y, boxWidth, boxHeight);
-        g.setColor(INK);
-        g.setStroke(new BasicStroke(1));
-        g.drawLine(x + 1, y + 1, x + boxWidth - 2, y + 1);
-        String[] parts = line.split("\\|", 2);
-        String speaker = parts.length == 2 ? parts[0] : "";
-        String words = parts.length == 2 ? parts[1] : parts[0];
-        g.setColor(speaker.equals("MIRA") ? CYAN : (speaker.equals("ALEX") ? YELLOW : INK));
-        if (!speaker.isEmpty()) pixelText(g, speaker, x + Math.round(12 * uiScale),
-            y + Math.round(17 * uiScale), 1);
-        g.setColor(INK);
-        int visible = Math.min(words.length(), lineAge / 2 + 1);
-        drawWrapped(g, "* " + words.substring(0, visible), x + Math.round(12 * uiScale),
-            y + Math.round(34 * uiScale), 66);
-        if (visible == words.length() && (ticks / 25) % 2 == 0) {
-            pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
-                y + Math.round(51 * uiScale), 1);
-        }
-    }
-
-    private void drawLogicLensReceived(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 196));
-        g.fillRect(0, 0, W, H);
-
-        int x = 74;
-        int y = 34;
-        int width = 332;
-        int height = 202;
-        g.setColor(new Color(5, 9, 13, 252));
-        g.fillRect(x, y, width, height);
-        g.setColor(new Color(35, 72, 68));
-        g.fillRect(x + 5, y + 5, width - 10, height - 10);
-        g.setColor(new Color(7, 12, 16));
-        g.fillRect(x + 7, y + 7, width - 14, height - 14);
-        g.setColor(new Color(94, 145, 124));
-        g.drawRect(x, y, width, height);
-        g.setColor(new Color(152, 95, 47));
-        g.drawRect(x + 4, y + 4, width - 8, height - 8);
-        g.fillRect(x - 2, y + 10, 4, 12);
-        g.fillRect(x + width - 1, y + height - 22, 4, 12);
-
-        g.setColor(new Color(204, 180, 135));
-        drawCenteredPixelText(g, "MIRA GAVE YOU", W / 2, y + 25, 1);
-        g.setColor(new Color(48, 67, 68));
-        g.fillRect(x + 18, y + 34, width - 36, 1);
-        g.setColor(new Color(143, 190, 128));
-        g.fillRect(W / 2 - 18, y + 33, 36, 2);
-
-        // The generated item asset sits in a quiet display area like Mira's shop shelves.
-        g.setColor(new Color(13, 20, 21));
-        g.fillRect(x + 18, y + 48, 116, 105);
-        g.setColor(new Color(84, 68, 50));
-        g.drawRect(x + 18, y + 48, 116, 105);
-        g.setColor(new Color(37, 32, 27));
-        g.fillRect(x + 24, y + 146, 104, 2);
-        if (logicLensImage != null) {
-            g.drawImage(logicLensImage, x + 20, y + 51, 112, 100, null);
-        }
-
-        int copyX = x + 154;
-        g.setColor(new Color(0, 0, 0, 190));
-        pixelText(g, "LOGICLENS", copyX + 2, y + 72, 2);
-        g.setColor(INK);
-        pixelText(g, "LOGICLENS", copyX, y + 70, 2);
-        g.setColor(new Color(143, 190, 128));
-        pixelText(g, "AUTOMATIC TESTING TOOL", copyX, y + 91, 1);
-        g.setColor(new Color(54, 62, 65));
-        g.fillRect(copyX, y + 100, 150, 1);
-
-        g.setColor(new Color(183, 185, 180));
-        pixelText(g, "TESTS ALL INPUT ROWS", copyX, y + 119, 1);
-        pixelText(g, "IN A SINGLE RUN.", copyX, y + 135, 1);
-
-        g.setColor(new Color(45, 39, 29));
-        g.fillRect(copyX, y + 145, 153, 23);
-        g.setColor(new Color(152, 95, 47));
-        g.drawRect(copyX, y + 145, 153, 23);
-        g.setColor(new Color(204, 180, 135));
-        pixelText(g, "ADDED TO WORKBENCH", copyX + 12, y + 161, 1);
-
-        g.setColor(new Color(48, 67, 68));
-        g.fillRect(x + 18, y + 177, width - 36, 1);
-        g.setColor((ticks / 28) % 2 == 0 ? INK : new Color(120, 125, 123));
-        drawCenteredPixelText(g, "ENTER  CONTINUE", W / 2, y + 193, 1);
-    }
-
     private void prompt(Graphics2D g, String text) {
-        Font promptFont = PIXEL_FONT.deriveFont(Font.PLAIN,
-            Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * uiScale)));
-        FontMetrics metrics = g.getFontMetrics(promptFont);
-        String[] parts = text.split(" ", 2);
-        String key = parts[0];
-        String action = parts.length > 1 ? " " + parts[1] : "";
-        int gap = Math.max(1, Math.round(3 * uiScale));
-        int totalWidth = metrics.stringWidth(key) + gap + metrics.stringWidth(action);
-        int x = (W - totalWidth) / 2;
-        g.setColor(YELLOW);
-        pixelText(g, key, x, 242, 1);
-        g.setColor(INK);
-        pixelText(g, action, x + metrics.stringWidth(key) + gap, 242, 1);
+        DialogueRenderer.drawPrompt(g, text, uiScale);
     }
 
     private void interact() {
-        if (scene == Scene.BEDROOM) {
+        if (scene == GameScene.BEDROOM) {
             if (chapter == 0 && near(299, 132)) {
                 chapter = 1;
                 playSound("ui-open");
@@ -1611,29 +237,29 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 if (chapter >= 2) openBoard();
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
             } else if (near(407, 132)) {
-                scene = Scene.STREET;
+                scene = GameScene.STREET;
                 playSound("door-open");
                 setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
-                facing = Direction.RIGHT;
+                facing = Facing.RIGHT;
             }
-        } else if (scene == Scene.STREET) {
+        } else if (scene == GameScene.STREET) {
             if (Math.abs(playerX - STREET_HOME_X) < 38) {
-                scene = Scene.BEDROOM;
+                scene = GameScene.BEDROOM;
                 playSound("door-open");
                 setPlayerPosition(420, 160);
-                facing = Direction.LEFT;
+                facing = Facing.LEFT;
             } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
-                scene = Scene.SHOP;
+                scene = GameScene.SHOP;
                 playSound("door-open");
                 setPlayerPosition(55, 174);
-                facing = Direction.RIGHT;
+                facing = Facing.RIGHT;
             }
-        } else if (scene == Scene.SHOP) {
+        } else if (scene == GameScene.SHOP) {
             if (playerX < 50) {
-                scene = Scene.STREET;
+                scene = GameScene.STREET;
                 playSound("door-close");
                 setPlayerPosition(STREET_SHOP_X - 47, STREET_GROUND_Y);
-                facing = Direction.LEFT;
+                facing = Facing.LEFT;
             } else if (near(240, 160)) talkToMira();
         }
     }
@@ -1670,7 +296,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void openBoard() {
         returnScene = scene;
-        scene = Scene.BOARD;
+        scene = GameScene.BOARD;
         playSound("ui-open");
         selectRecipe(selectedRecipe);
     }
@@ -1694,7 +320,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "Every socket needs a gate first.";
             playSound("ui-error");
-        } else if (chapter >= 3 && autoTesterAttached) {
+        } else if (chapter >= 3 && autoTester.isAttached()) {
             autoTest();
             return;
         } else {
@@ -1706,7 +332,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void verify() {
-        if (chapter >= 3 && autoTesterAttached) {
+        if (chapter >= 3 && autoTester.isAttached()) {
             autoTest();
         } else if (!circuit.allRowsRecorded()) {
             boardMessage = "Test and RECORD all four switch settings.";
@@ -1727,33 +353,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             boardMessageTimer = 180;
             return;
         }
-        if (autoTestRunning) return;
-        autoTestRunning = true;
-        autoTestRow = 0;
-        autoTestTick = 0;
-        autoTestFailures = 0;
-        circuit.clearObservations();
-        circuit.setInputs(false, false);
+        if (!autoTester.start(circuit)) return;
         boardMessage = "LogicLens: starting four-row sweep.";
         boardMessageTimer = 180;
         playSound("ui-open");
     }
 
     private void updateAutoTest() {
-        autoTestTick++;
-        if (autoTestTick < 36) return;
-
-        boolean a = autoTestRow >= 2;
-        boolean b = autoTestRow % 2 == 1;
-        boolean actual = circuit.output();
-        circuit.recordCurrent();
-        if (actual != circuit.recipe().truth[autoTestRow]) autoTestFailures++;
-
-        if (autoTestRow == 3) {
-            autoTestRunning = false;
-            autoTestRow = -1;
+        AutoTester.Tick tick = autoTester.update(circuit);
+        if (tick.finished()) {
             boardMessageTimer = 240;
-            if (autoTestFailures == 0) {
+            if (tick.passed()) {
                 completeCurrent();
             } else {
                 boardMessage = "LogicLens: FAILED on one or more rows.";
@@ -1761,28 +371,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-
-        autoTestRow++;
-        autoTestTick = 0;
-        circuit.setInputs(autoTestRow >= 2, autoTestRow % 2 == 1);
-        boardMessage = "LogicLens: testing row " + (autoTestRow + 1) + " of 4.";
-        boardMessageTimer = 180;
-        playSound("ui-click");
+        if (tick.advanced()) {
+            boardMessage = "LogicLens: testing row " + (autoTester.currentRow() + 1) + " of 4.";
+            boardMessageTimer = 180;
+            playSound("ui-click");
+        }
     }
 
     private void toggleAutoTester() {
         if (chapter < 3) return;
-        if (autoTestRunning) {
+        if (autoTester.isRunning()) {
             boardMessage = "Finish the LogicLens sweep first.";
             boardMessageTimer = 120;
             return;
         }
-        autoTesterAttached = !autoTesterAttached;
-        boardMessage = autoTesterAttached
+        autoTester.toggleAttachment();
+        boardMessage = autoTester.isAttached()
             ? "LogicLens leads clipped to A, B, and OUT."
             : "LogicLens detached. Manual recording restored.";
         boardMessageTimer = 180;
-        playSound(autoTesterAttached ? "ui-confirm" : "ui-close");
+        playSound(autoTester.isAttached() ? "ui-confirm" : "ui-close");
     }
 
     private void completeCurrent() {
@@ -1814,7 +422,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         String next = dialogue.poll();
         if ("@END".equals(next)) {
             line = null;
-            scene = Scene.END;
+            scene = GameScene.END;
         } else {
             line = next;
             lineAge = 0;
@@ -1832,7 +440,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private boolean dialogueVisible() {
         return line != null && !exitPrompt
-            && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP);
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP);
     }
 
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
@@ -1849,15 +457,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
         keys.add(key);
-        if (key == KeyEvent.VK_F1 && scene != Scene.DEV) {
+        if (key == KeyEvent.VK_F1 && scene != GameScene.DEV) {
             devReturnScene = scene;
-            scene = Scene.DEV;
+            scene = GameScene.DEV;
             devSelection = 0;
             keys.clear();
             playSound("ui-open");
             return;
         }
-        if (scene == Scene.DEV) {
+        if (scene == GameScene.DEV) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
                 playSound("ui-back");
@@ -1885,8 +493,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (key == KeyEvent.VK_ESCAPE
-            && (scene == Scene.BEDROOM || scene == Scene.STREET
-                || scene == Scene.SHOP || scene == Scene.END)) {
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET
+                || scene == GameScene.SHOP || scene == GameScene.END)) {
             exitPrompt = true;
             exitPromptSelection = 0;
             keys.clear();
@@ -1898,7 +506,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else lineAge = Integer.MAX_VALUE / 2;
             return;
         }
-        if (scene == Scene.TITLE) {
+        if (scene == GameScene.TITLE) {
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
@@ -1907,14 +515,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) activateTitleSelection();
             return;
-        } else if (scene == Scene.CONTROLS) {
+        } else if (scene == GameScene.CONTROLS) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_BACK_SPACE
                 || key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
-                scene = Scene.TITLE;
+                scene = GameScene.TITLE;
                 playSound("ui-back");
             }
             return;
-        } else if (scene == Scene.SETTINGS) {
+        } else if (scene == GameScene.SETTINGS) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_BACK_SPACE) {
                 leaveSettings();
                 playSound("ui-back");
@@ -1928,36 +536,36 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 adjustSelectedVolume((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
             }
             return;
-        } else if (scene == Scene.END && key == KeyEvent.VK_ENTER) {
+        } else if (scene == GameScene.END && key == KeyEvent.VK_ENTER) {
             resetToTitle();
-        } else if ((scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)
+        } else if ((scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)
             && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
-            if (scene == Scene.NOTEBOOK) {
+            if (scene == GameScene.NOTEBOOK) {
                 scene = returnScene;
                 playSound("book-close");
             }
             else {
                 returnScene = scene;
                 notebookPage = selectedRecipe;
-                scene = Scene.NOTEBOOK;
+                scene = GameScene.NOTEBOOK;
                 playSound("book-open");
             }
-        } else if (scene == Scene.NOTEBOOK) {
+        } else if (scene == GameScene.NOTEBOOK) {
             if (key == KeyEvent.VK_ESCAPE) {
                 scene = returnScene;
                 playSound("book-close");
             }
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
-        } else if (scene == Scene.BOARD) {
+        } else if (scene == GameScene.BOARD) {
             if (key == KeyEvent.VK_ESCAPE) {
                 scene = returnScene;
                 playSound("ui-close");
             }
             else if (key == KeyEvent.VK_H) toggleAutoTester();
-            else if (autoTestRunning) return;
+            else if (autoTester.isRunning()) return;
             else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
                 heldGate = GateType.values()[key - KeyEvent.VK_1];
                 playSound("ui-select");
@@ -1997,7 +605,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        if (scene == Scene.TITLE) {
+        if (scene == GameScene.TITLE) {
             if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 0;
                 activateTitleSelection();
@@ -2016,14 +624,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene == Scene.CONTROLS) {
+        if (scene == GameScene.CONTROLS) {
             if (inside(x, y, 164, 217, 152, 22)) {
-                scene = Scene.TITLE;
+                scene = GameScene.TITLE;
                 playSound("ui-back");
             }
             return;
         }
-        if (scene == Scene.SETTINGS) {
+        if (scene == GameScene.SETTINGS) {
             if (inside(x, y, 170, 207, 140, 20)) {
                 leaveSettings();
                 playSound("ui-back");
@@ -2040,7 +648,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene == Scene.NOTEBOOK) {
+        if (scene == GameScene.NOTEBOOK) {
             if (inside(x, y, 270, 211, 22, 19)) turnNotebookPage(-1);
             else if (inside(x, y, 416, 211, 22, 19)) turnNotebookPage(1);
             else {
@@ -2054,7 +662,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene != Scene.BOARD || line != null || autoTestRunning) return;
+        if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
         boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
 
         int available = chapter >= 3 ? 5 : 3;
@@ -2070,7 +678,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
         }
 
-        int[][] layout = socketLayout(circuit.recipe());
+        int[][] layout = WorkbenchRenderer.socketLayout(circuit.recipe());
         for (int i = 0; i < circuit.recipe().slotCount(); i++) {
             if (inside(x, y, layout[i][0], layout[i][1], BOARD_SOCKET_W, BOARD_SOCKET_H)) {
                 if (rightClick) {
@@ -2111,7 +719,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
-        if (scene == Scene.TITLE) {
+        if (scene == GameScene.TITLE) {
             int previous = titleSelection;
             if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y,
                 TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 0;
@@ -2138,21 +746,21 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private boolean isHovered(int x, int y, int width, int height) {
-        return scene == Scene.BOARD && inside(mouseX, mouseY, x, y, width, height);
+        return scene == GameScene.BOARD && inside(mouseX, mouseY, x, y, width, height);
     }
 
     private void activateTitleSelection() {
         playSound("ui-confirm");
         if (titleSelection == 0) {
-            scene = Scene.BEDROOM;
+            scene = GameScene.BEDROOM;
             setPlayerPosition(210, 157);
-            facing = Direction.DOWN;
+            facing = Facing.DOWN;
             say("ALEX|It started with a box I wasn't supposed to find.");
         } else if (titleSelection == 1) {
-            scene = Scene.CONTROLS;
+            scene = GameScene.CONTROLS;
         } else {
             settingsOpenedFromPause = false;
-            scene = Scene.SETTINGS;
+            scene = GameScene.SETTINGS;
         }
         if (titleSelection == 3) System.exit(0);
     }
@@ -2161,9 +769,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         exitPrompt = false;
-        autoTesterAttached = false;
-        autoTestRunning = false;
-        autoTestRow = -1;
+        autoTester.reset();
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
@@ -2171,12 +777,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         switch (preset) {
             case 0 -> {
                 chapter = 0;
-                scene = Scene.BEDROOM;
+                scene = GameScene.BEDROOM;
                 setPlayerPosition(210, 157);
             }
             case 1 -> {
                 chapter = 1;
-                scene = Scene.BEDROOM;
+                scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
             case 2 -> {
@@ -2184,23 +790,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
-                scene = Scene.SHOP;
+                scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 3 -> {
                 chapter = 1;
-                scene = Scene.STREET;
+                scene = GameScene.STREET;
                 setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
             }
             case 4 -> {
                 chapter = 1;
-                scene = Scene.SHOP;
+                scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 5 -> {
                 chapter = 3;
                 Arrays.fill(crafted, true);
-                scene = Scene.SHOP;
+                scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 6 -> {
@@ -2208,16 +814,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
-                scene = Scene.BEDROOM;
+                scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
             default -> {
                 chapter = 4;
                 Arrays.fill(crafted, true);
-                scene = Scene.END;
+                scene = GameScene.END;
             }
         }
-        facing = Direction.DOWN;
+        facing = Facing.DOWN;
         playSound("ui-confirm");
     }
 
@@ -2229,7 +835,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             pausedScene = scene;
             settingsOpenedFromPause = true;
             exitPrompt = false;
-            scene = Scene.SETTINGS;
+            scene = GameScene.SETTINGS;
         }
     }
 
@@ -2240,7 +846,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             exitPrompt = true;
             exitPromptSelection = 0;
         } else {
-            scene = Scene.TITLE;
+            scene = GameScene.TITLE;
         }
     }
 
@@ -2272,104 +878,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         chapter = 0;
-        autoTesterAttached = false;
-        autoTestRunning = false;
-        autoTestRow = -1;
+        autoTester.reset();
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
         setPlayerPosition(210, 157);
-        facing = Direction.DOWN;
+        facing = Facing.DOWN;
         walkDistance = 0;
         titleSelection = 0;
-        scene = Scene.TITLE;
+        scene = GameScene.TITLE;
     }
 
-    private static boolean inside(int px, int py, int x, int y, int w, int h) {
+    static boolean inside(int px, int py, int x, int y, int w, int h) {
         return px >= x && px <= x + w && py >= y && py <= y + h;
-    }
-
-    private static BufferedImage loadImage(String path) {
-        try (InputStream stream = GamePanel.class.getResourceAsStream(path)) {
-            if (stream == null) return null;
-            BufferedImage source = ImageIO.read(stream);
-            BufferedImage scaled = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = scaled.createGraphics();
-            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            graphics.setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_QUALITY);
-            graphics.drawImage(source, 0, 0, W, H, null);
-            graphics.dispose();
-            return scaled;
-        } catch (IOException error) {
-            return null;
-        }
-    }
-
-    private static BufferedImage loadStreetImage(String path) {
-        try (InputStream stream = GamePanel.class.getResourceAsStream(path)) {
-            if (stream == null) return null;
-            BufferedImage source = ImageIO.read(stream);
-            int cropTop = Math.min(90, source.getHeight() - 1);
-            int cropHeight = Math.min(600, source.getHeight() - cropTop);
-            BufferedImage scaled = new BufferedImage(STREET_WORLD_WIDTH, H,
-                BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = scaled.createGraphics();
-            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            graphics.setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_QUALITY);
-            graphics.drawImage(source, 0, 0, STREET_WORLD_WIDTH, H,
-                0, cropTop, source.getWidth(), cropTop + cropHeight, null);
-            graphics.dispose();
-            return scaled;
-        } catch (IOException error) {
-            return null;
-        }
-    }
-
-    private static BufferedImage loadRawImage(String path) {
-        try (InputStream stream = GamePanel.class.getResourceAsStream(path)) {
-            if (stream == null) return null;
-            return ImageIO.read(stream);
-        } catch (IOException error) {
-            return null;
-        }
-    }
-
-    private static Rectangle[] buildFrameBounds(BufferedImage sheet, int columns, int rows) {
-        if (sheet == null) return new Rectangle[0];
-        Rectangle[] frames = new Rectangle[columns * rows];
-        int cellWidth = sheet.getWidth() / columns;
-        int cellHeight = sheet.getHeight() / rows;
-        for (int row = 0; row < rows; row++) {
-            for (int column = 0; column < columns; column++) {
-                int cellX = column * cellWidth;
-                int cellY = row * cellHeight;
-                int minX = cellX + cellWidth;
-                int minY = cellY + cellHeight;
-                int maxX = cellX;
-                int maxY = cellY;
-                for (int y = cellY; y < cellY + cellHeight; y++) {
-                    for (int x = cellX; x < cellX + cellWidth; x++) {
-                        int alpha = (sheet.getRGB(x, y) >>> 24) & 0xff;
-                        if (alpha <= 24) continue;
-                        minX = Math.min(minX, x);
-                        minY = Math.min(minY, y);
-                        maxX = Math.max(maxX, x);
-                        maxY = Math.max(maxY, y);
-                    }
-                }
-                if (maxX < minX || maxY < minY) {
-                    frames[row * columns + column] = new Rectangle(cellX, cellY, cellWidth, cellHeight);
-                } else {
-                    frames[row * columns + column] = new Rectangle(
-                        minX, minY, maxX - minX + 1, maxY - minY + 1);
-                }
-            }
-        }
-        return frames;
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
@@ -2385,22 +906,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
     private static String bit(boolean value) { return value ? "1" : "0"; }
 
-    private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
+    static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
         pixelTextScaled(g, text, x, y, scale, 1.0f);
     }
 
-    private static void drawCenteredPixelText(Graphics2D g, String text, int centerX, int y,
+    static void drawCenteredPixelText(Graphics2D g, String text, int centerX, int y,
                                               int scale) {
         pixelText(g, text, centerX - pixelTextWidth(g, text, scale) / 2, y, scale);
     }
 
-    private static int pixelTextWidth(Graphics2D g, String text, int scale) {
+    static int pixelTextWidth(Graphics2D g, String text, int scale) {
         Font font = PIXEL_FONT.deriveFont(Font.PLAIN,
             Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale)));
         return g.getFontMetrics(font).stringWidth(text);
     }
 
-    private static void pixelTextScaled(Graphics2D g, String text, int x, int y, int scale,
+    static void pixelTextScaled(Graphics2D g, String text, int x, int y, int scale,
                                         float sizeFactor) {
         Font old = g.getFont();
         int fontSize = Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale * sizeFactor));
@@ -2414,7 +935,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setFont(old);
     }
 
-    private static void drawWrapped(Graphics2D g, String text, int x, int y, int columns) {
+    static void drawWrapped(Graphics2D g, String text, int x, int y, int columns) {
         String[] words = text.split(" ");
         StringBuilder row = new StringBuilder();
         int lineY = y;
@@ -2430,10 +951,4 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelText(g, row.toString(), x, lineY, 1);
     }
 
-    private static void drawHeart(Graphics2D g, int x, int y) {
-        g.fillRect(x, y, 5, 4);
-        g.fillRect(x - 2, y + 1, 9, 3);
-        g.fillRect(x, y + 4, 5, 2);
-        g.fillRect(x + 1, y + 6, 3, 2);
-    }
 }
