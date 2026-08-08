@@ -65,6 +65,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int chapter;
     private int titleSelection;
     private int selectedRecipe;
+    private int notebookPage;
     private int playerX = 210;
     private int playerY = 157;
     private double precisePlayerX = 210;
@@ -559,45 +560,60 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawBoard(Graphics2D g) {
-        g.setColor(new Color(8, 11, 14));
+        // The workbench sits on Alex's scarred wooden desk.
+        g.setColor(new Color(22, 13, 12));
         g.fillRect(0, 0, W, H);
-        g.setColor(new Color(79, 49, 34));
-        g.fillRect(4, 4, 472, 262);
-        g.setColor(new Color(137, 86, 49));
-        g.drawRect(4, 4, 471, 261);
-        g.drawRect(7, 7, 465, 255);
-        g.setColor(new Color(8, 25, 25));
-        g.fillRect(10, 10, 460, 250);
-        g.setColor(new Color(25, 70, 61));
+        g.setColor(new Color(53, 30, 22));
+        for (int y = 5; y < H; y += 13) g.drawLine(0, y, W, y + 3);
+        g.setColor(new Color(3, 5, 7, 150));
+        g.fillRect(8, 9, 469, 259);
+        g.setColor(new Color(91, 55, 34));
+        g.fillRect(3, 3, 472, 262);
+        g.setColor(new Color(190, 126, 60));
+        g.drawRect(3, 3, 471, 261);
+        g.setColor(new Color(48, 29, 24));
+        g.drawRect(7, 7, 463, 253);
+        g.setColor(new Color(7, 27, 28));
+        g.fillRect(10, 10, 458, 248);
+        g.setColor(new Color(18, 59, 54));
         for (int x = 14; x < 468; x += 15) {
             for (int y = 14; y < 259; y += 15) g.fillRect(x, y, 1, 1);
         }
-        g.setColor(new Color(182, 121, 57));
+        // Etched copper traces around the board's edge.
+        g.setColor(new Color(116, 72, 37));
+        g.drawLine(13, 53, 13, 228);
+        g.drawLine(13, 228, 294, 228);
+        g.drawLine(467, 53, 467, 228);
+        g.setColor(new Color(201, 139, 65));
         for (int[] screw : new int[][]{{8, 8}, {466, 8}, {8, 256}, {466, 256}}) {
             g.fillRect(screw[0], screw[1], 5, 5);
             g.setColor(new Color(61, 39, 32));
             g.drawLine(screw[0] + 1, screw[1] + 2, screw[0] + 3, screw[1] + 2);
-            g.setColor(new Color(182, 121, 57));
+            g.setColor(new Color(201, 139, 65));
         }
 
-        g.setColor(new Color(11, 18, 22));
+        g.setColor(new Color(5, 12, 15));
         g.fillRect(12, 12, 456, 39);
+        g.setColor(new Color(21, 48, 46));
+        g.drawLine(13, 50, 467, 50);
         g.setColor(INK);
         pixelText(g, "LOGIC WORKBENCH", 18, 25, 1);
+        g.setColor(CYAN);
+        pixelText(g, "N GUIDE", 18, 42, 1);
         g.setColor(DIM);
-        pixelText(g, "ESC", 443, 25, 1);
+        pixelText(g, "ESC EXIT", 418, 25, 1);
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) {
             int x = 126 + i * 66;
             boolean selected = i == selectedRecipe;
             boolean hovered = isHovered(x, 29, 59, 20);
-            g.setColor(selected ? new Color(77, 65, 28)
+            g.setColor(selected ? new Color(83, 67, 25)
                 : hovered ? new Color(28, 63, 58) : new Color(17, 31, 34));
             g.fillRect(x, 29, 59, 20);
             g.setColor(crafted[i] ? CYAN : selected ? YELLOW : hovered ? INK : DIM);
             g.drawRect(x, 30, 59, 18);
-            pixelText(g, (crafted[i] ? "+" : " ") + recipes.get(i).name, x + 4, 43, 1);
+            pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 4, 43, 1);
         }
 
         CircuitRecipe recipe = circuit.recipe();
@@ -610,6 +626,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelText(g, recipe.name, 20, 67, 1);
         g.setColor(DIM);
         pixelText(g, recipe.subtitle, 62, 67, 1);
+        g.setColor(crafted[selectedRecipe] ? CYAN : YELLOW);
+        pixelText(g, crafted[selectedRecipe] ? "BUILT" : "ACTIVE", 305, 67, 1);
         drawSwitch(g, 20, 81, "A", circuit.inputA());
         drawSwitch(g, 20, 116, "B", circuit.inputB());
 
@@ -631,8 +649,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int[] last = layout[recipe.slotCount() - 1];
         drawRoutedWire(g, last[0] + 44, last[1] + 20, 337, 112, circuit.output());
         g.setColor(circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
-        g.fillRect(335, 102, 20, 20);
+        g.fillOval(334, 101, 22, 22);
         g.setColor(circuit.output() ? CYAN : DIM);
+        g.drawOval(334, 101, 21, 21);
         g.fillOval(340, 107, 10, 10);
         g.setColor(INK);
         pixelText(g, "OUT", 336, 134, 1);
@@ -640,8 +659,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawTruthTable(g);
         drawGatePalette(g);
         drawBoardButtons(g);
-        g.setColor(new Color(10, 17, 20));
+        g.setColor(new Color(5, 12, 15));
         g.fillRect(13, 232, 454, 27);
+        g.setColor(new Color(37, 77, 69));
+        g.drawLine(14, 232, 466, 232);
         g.setColor(boardMessageTimer > 0 ? YELLOW : CYAN);
         g.fillRect(18, 239, 4, 12);
         String status = boardMessageTimer > 0 ? boardMessage
@@ -654,9 +675,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int x = 366, y = 61;
         drawPanel(g, 362, 55, 105, 116);
         g.setColor(INK);
-        pixelText(g, "TRUTH TABLE", x + 2, y + 8, 1);
+        pixelText(g, "TARGET / LIVE", x + 2, y + 8, 1);
         g.setColor(DIM);
-        pixelText(g, "A B | T O", x + 9, y + 23, 1);
+        pixelText(g, "A B | WANT GOT", x + 5, y + 23, 1);
         g.drawLine(x + 5, y + 28, x + 92, y + 28);
         int currentRow = (circuit.inputA() ? 2 : 0) + (circuit.inputB() ? 1 : 0);
         for (int row = 0; row < 4; row++) {
@@ -670,7 +691,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 g.fillRect(x + 4, yy - 10, 92, 13);
             }
             g.setColor(seen == null ? DIM : (seen == r.truth[row] ? CYAN : RED));
-            pixelText(g, bit(a) + " " + bit(b) + " | " + bit(r.truth[row]) + " " + value, x + 13, yy, 1);
+            pixelText(g, bit(a) + " " + bit(b) + " |  " + bit(r.truth[row]) + "    " + value, x + 9, yy, 1);
         }
         int recorded = 0;
         for (Boolean observation : circuit.observations()) if (observation != null) recorded++;
@@ -681,7 +702,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void drawGatePalette(Graphics2D g) {
         drawPanel(g, 13, 176, 281, 52);
         g.setColor(INK);
-        pixelText(g, "PARTS", 18, 187, 1);
+        pixelText(g, "PARTS BIN", 18, 187, 1);
         GateType[] gates = GateType.values();
         for (int i = 0; i < gates.length; i++) {
             int x = 20 + i * 93;
@@ -692,6 +713,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             g.fillRect(x, 190, 80, 33);
             g.setColor(selected ? YELLOW : hovered ? INK : DIM);
             g.drawRect(x, 190, 80, 33);
+            if (selected) g.fillRect(x + 2, 192, 2, 29);
             drawGate(g, x + 5, 192, gates[i], false);
             pixelText(g, (i + 1) + " " + gates[i].label, x + 40, 211, 1);
         }
@@ -705,52 +727,113 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.fillRect(310, 187, 72, 36);
         g.setColor(YELLOW);
         g.drawRect(310, 187, 72, 36);
-        pixelText(g, tester ? "AUTO" : "RECORD", 321, 202, 1);
-        pixelText(g, tester ? "TEST" : "ROW", 327, 214, 1);
+        pixelText(g, tester ? "R  AUTO" : "R RECORD", 318, 202, 1);
+        pixelText(g, tester ? "TEST" : "THIS ROW", 320, 214, 1);
         boolean verifyHover = isHovered(390, 187, 70, 36);
         g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
         g.fillRect(390, 187, 70, 36);
         g.setColor(CYAN);
         g.drawRect(390, 187, 70, 36);
-        pixelText(g, tester ? "RUN KIT" : "VERIFY", 402, 208, 1);
+        pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 208, 1);
     }
 
     private void drawPanel(Graphics2D g, int x, int y, int width, int height) {
-        g.setColor(new Color(5, 13, 16, 225));
+        g.setColor(new Color(1, 5, 7, 125));
+        g.fillRect(x + 3, y + 3, width, height);
+        g.setColor(new Color(5, 13, 16, 235));
         g.fillRect(x, y, width, height);
-        g.setColor(new Color(38, 85, 74));
+        g.setColor(new Color(52, 103, 88));
         g.drawRect(x, y, width, height);
         g.setColor(new Color(14, 39, 38));
         g.drawRect(x + 2, y + 2, width - 4, height - 4);
-        g.setColor(new Color(155, 99, 48));
+        g.setColor(new Color(184, 119, 52));
         g.fillRect(x + 5, y + 5, 3, 3);
         g.fillRect(x + width - 7, y + 5, 3, 3);
     }
 
     private void drawNotebook(Graphics2D g) {
-        g.setColor(new Color(226, 218, 190));
-        g.fillRect(46, 19, 388, 232);
-        g.setColor(new Color(64, 55, 49));
-        g.drawRect(46, 19, 388, 232);
-        g.drawLine(240, 24, 240, 245);
-        for (int y = 45; y < 240; y += 14) {
-            g.setColor(new Color(188, 179, 154));
-            g.drawLine(55, y, 230, y);
-            g.drawLine(250, y, 424, y);
+        // Desk, leather cover, page shadows, and slightly uneven paper edges.
+        g.setColor(new Color(25, 15, 14));
+        g.fillRect(0, 0, W, H);
+        g.setColor(new Color(57, 32, 23));
+        for (int y = 6; y < H; y += 14) g.drawLine(0, y, W, y + 4);
+        g.setColor(new Color(3, 4, 6, 145));
+        g.fillRect(31, 20, 425, 238);
+        g.setColor(new Color(76, 39, 31));
+        g.fillRect(25, 13, 430, 239);
+        g.setColor(new Color(143, 81, 47));
+        g.drawRect(25, 13, 429, 238);
+        g.setColor(new Color(233, 222, 186));
+        g.fillRect(32, 18, 204, 228);
+        g.setColor(new Color(224, 211, 175));
+        g.fillRect(244, 18, 204, 228);
+        g.setColor(new Color(194, 177, 143));
+        g.drawRect(32, 18, 203, 227);
+        g.drawRect(244, 18, 203, 227);
+
+        // Faint ruled paper with red notebook margins.
+        for (int y = 47; y < 237; y += 13) {
+            g.setColor(new Color(169, 179, 167));
+            g.drawLine(39, y, 229, y);
+            g.drawLine(251, y, 441, y);
         }
-        g.setColor(new Color(45, 40, 38));
-        pixelText(g, "ALEX'S NOTEBOOK", 62, 37, 1);
-        pixelText(g, "THE THREE BASIC GATES", 259, 37, 1);
-        drawNotebookGate(g, GateType.AND, 64, 58, "1 only when BOTH are 1");
-        drawNotebookGate(g, GateType.OR, 64, 112, "1 when EITHER is 1");
-        drawNotebookGate(g, GateType.NOT, 64, 166, "Turns 1 to 0, 0 to 1");
-        int y = 61;
-        for (int i = 0; i < (chapter >= 3 ? 5 : 3); i++) {
-            CircuitRecipe recipe = recipes.get(i);
-            pixelText(g, (crafted[i] ? "[DONE] " : "[    ] ") + recipe.name, 259, y, 1);
-            y += 28;
+        g.setColor(new Color(189, 111, 99));
+        g.drawLine(55, 24, 55, 239);
+        g.drawLine(263, 24, 263, 239);
+
+        // Dark center crease and brass binding loops.
+        g.setColor(new Color(91, 72, 58));
+        g.fillRect(235, 20, 9, 224);
+        g.setColor(new Color(39, 29, 27));
+        g.drawLine(239, 20, 239, 244);
+        for (int y = 34; y < 235; y += 25) {
+            g.setColor(new Color(181, 126, 62));
+            g.drawOval(233, y, 12, 7);
+            g.setColor(new Color(91, 58, 38));
+            g.drawLine(236, y + 4, 242, y + 4);
         }
-        pixelText(g, "N or ESC: close", 290, 233, 1);
+
+        g.setColor(new Color(52, 44, 40));
+        pixelText(g, "ALEX'S LOGIC NOTES", 67, 35, 1);
+        g.setColor(new Color(110, 71, 57));
+        pixelText(g, "THE THREE BUILDING BLOCKS", 67, 47, 1);
+        drawNotebookGateCard(g, GateType.AND, 61, 55,
+            "BOTH must be 1", "00:0  01:0  10:0  11:1");
+        drawNotebookGateCard(g, GateType.OR, 61, 111,
+            "EITHER can be 1", "00:0  01:1  10:1  11:1");
+        drawNotebookGateCard(g, GateType.NOT, 61, 167,
+            "FLIPS the signal", "0 -> 1       1 -> 0");
+
+        int available = chapter >= 3 ? 5 : 3;
+        notebookPage = clamp(notebookPage, 0, available - 1);
+        CircuitRecipe recipe = recipes.get(notebookPage);
+        g.setColor(new Color(110, 71, 57));
+        pixelText(g, "PROJECT " + (notebookPage + 1) + " / " + available, 270, 34, 1);
+        g.setColor(new Color(43, 39, 37));
+        pixelText(g, recipe.name, 270, 51, 1);
+        g.setColor(crafted[notebookPage] ? new Color(30, 116, 104) : new Color(159, 91, 48));
+        pixelText(g, crafted[notebookPage] ? "[ COMPLETE ]" : "[ TO BUILD ]", 360, 51, 1);
+        g.setColor(new Color(91, 72, 60));
+        drawWrapped(g, recipe.subtitle, 270, 65, 27);
+
+        drawNotebookTruthTable(g, recipe, 270, 91);
+        drawNotebookPlan(g, recipe, 337, 91);
+
+        g.setColor(new Color(79, 59, 51));
+        g.drawRect(270, 211, 22, 19);
+        g.drawRect(416, 211, 22, 19);
+        pixelText(g, "<", 278, 225, 1);
+        pixelText(g, ">", 424, 225, 1);
+        for (int i = 0; i < available; i++) {
+            int x = 316 + i * 16;
+            g.setColor(i == notebookPage ? new Color(153, 80, 50) : new Color(124, 106, 85));
+            if (crafted[i]) g.fillRect(x - 2, 216, 11, 11);
+            else g.drawRect(x - 2, 216, 11, 11);
+            g.setColor(i == notebookPage ? new Color(245, 232, 197) : new Color(66, 56, 50));
+            pixelText(g, Integer.toString(i + 1), x, 225, 1);
+        }
+        g.setColor(new Color(83, 67, 58));
+        pixelText(g, "ARROWS: PAGE   N / ESC: CLOSE", 270, 241, 1);
     }
 
     private void drawEnding(Graphics2D g) {
@@ -957,6 +1040,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void drawSocket(Graphics2D g, int x, int y, int number, GateType gate, boolean powered) {
         boolean hovered = isHovered(x, y, 44, 40);
+        g.setColor(new Color(1, 4, 5, 155));
+        g.fillRect(x + 3, y + 3, 44, 40);
         g.setColor(powered ? new Color(17, 70, 67)
             : hovered ? new Color(42, 55, 51) : new Color(12, 23, 26));
         g.fillRect(x, y, 44, 40);
@@ -964,6 +1049,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.drawRect(x, y, 44, 40);
         g.setColor(hovered ? YELLOW : DIM);
         pixelText(g, "G" + (number + 1), x + 3, y + 10, 1);
+        g.fillRect(x - 2, y + 11, 3, 4);
+        g.fillRect(x - 2, y + 27, 3, 4);
+        g.fillRect(x + 44, y + 18, 3, 4);
         if (gate == null) {
             g.setColor(hovered ? YELLOW : DIM);
             pixelText(g, "+", x + 19, y + 28, 1);
@@ -1001,6 +1089,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
+        g.setColor(new Color(1, 5, 6, 190));
+        g.setStroke(new BasicStroke(3));
+        g.drawLine(x1, y1, x2, y2);
         g.setColor(on ? CYAN : DIM);
         g.setStroke(new BasicStroke(on ? 2 : 1));
         g.drawLine(x1, y1, x2, y2);
@@ -1030,6 +1121,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void drawRoutedWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
         int bendX = x1 + Math.max(7, (x2 - x1) / 2);
+        g.setColor(new Color(1, 5, 6, 195));
+        g.setStroke(new BasicStroke(3));
+        g.drawLine(x1, y1, bendX, y1);
+        g.drawLine(bendX, y1, bendX, y2);
+        g.drawLine(bendX, y2, x2, y2);
         g.setColor(on ? CYAN : DIM);
         g.setStroke(new BasicStroke(on ? 2 : 1));
         g.drawLine(x1, y1, bendX, y1);
@@ -1037,6 +1133,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.drawLine(bendX, y2, x2, y2);
         g.setStroke(new BasicStroke(1));
         g.fillRect(bendX - 1, y1 - 1, 3, 3);
+        if (on) {
+            g.setColor(new Color(196, 255, 247));
+            g.fillRect(bendX, y1, 1, 1);
+        }
     }
 
     private int[][] socketLayout(CircuitRecipe recipe) {
@@ -1048,10 +1148,65 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         };
     }
 
-    private void drawNotebookGate(Graphics2D g, GateType gate, int x, int y, String note) {
-        drawGate(g, x, y, gate, false);
-        pixelText(g, gate.label, x + 44, y + 15, 1);
-        pixelText(g, note, x + 4, y + 37, 1);
+    private void drawNotebookGateCard(Graphics2D g, GateType gate, int x, int y,
+                                      String note, String truth) {
+        g.setColor(new Color(213, 201, 165, 185));
+        g.fillRect(x, y, 166, 48);
+        g.setColor(new Color(128, 104, 82));
+        g.drawRect(x, y, 166, 48);
+        g.setColor(new Color(52, 48, 44));
+        drawGate(g, x + 5, y + 4, gate, false);
+        pixelText(g, gate.label, x + 46, y + 17, 1);
+        g.setColor(new Color(100, 67, 54));
+        pixelText(g, note, x + 46, y + 31, 1);
+        g.setColor(new Color(54, 51, 47));
+        pixelText(g, truth, x + 7, y + 43, 1);
+    }
+
+    private void drawNotebookTruthTable(Graphics2D g, CircuitRecipe recipe, int x, int y) {
+        g.setColor(new Color(212, 198, 160, 205));
+        g.fillRect(x, y, 57, 108);
+        g.setColor(new Color(125, 100, 77));
+        g.drawRect(x, y, 57, 108);
+        g.setColor(new Color(76, 55, 47));
+        pixelText(g, "TARGET", x + 8, y + 13, 1);
+        g.drawLine(x + 5, y + 18, x + 52, y + 18);
+        pixelText(g, "A B | O", x + 7, y + 31, 1);
+        for (int row = 0; row < 4; row++) {
+            boolean a = row >= 2;
+            boolean b = row % 2 == 1;
+            g.setColor(recipe.truth[row] ? new Color(29, 110, 99) : new Color(76, 55, 47));
+            pixelText(g, bit(a) + " " + bit(b) + " | " + bit(recipe.truth[row]),
+                x + 7, y + 46 + row * 14, 1);
+        }
+        g.setColor(new Color(117, 82, 61));
+        pixelText(g, "MATCH ALL", x + 3, y + 103, 1);
+    }
+
+    private void drawNotebookPlan(Graphics2D g, CircuitRecipe recipe, int x, int y) {
+        g.setColor(new Color(212, 198, 160, 205));
+        g.fillRect(x, y, 101, 108);
+        g.setColor(new Color(125, 100, 77));
+        g.drawRect(x, y, 101, 108);
+        g.setColor(new Color(76, 55, 47));
+        pixelText(g, "WIRING PLAN", x + 7, y + 13, 1);
+        g.drawLine(x + 5, y + 18, x + 96, y + 18);
+        for (int i = 0; i < recipe.slotCount(); i++) {
+            GateType gate = recipe.solution[i];
+            String sources = sourceName(recipe.leftSources[i]);
+            if (gate != GateType.NOT) sources += "+" + sourceName(recipe.rightSources[i]);
+            g.setColor(i % 2 == 0 ? new Color(66, 58, 51) : new Color(94, 68, 55));
+            pixelText(g, "G" + (i + 1) + " " + gate.label + " <- " + sources,
+                x + 6, y + 34 + i * 14, 1);
+        }
+        g.setColor(new Color(29, 110, 99));
+        pixelText(g, "LAST GATE -> OUT", x + 5, y + 103, 1);
+    }
+
+    private static String sourceName(int source) {
+        if (source == CircuitRecipe.INPUT_A) return "A";
+        if (source == CircuitRecipe.INPUT_B) return "B";
+        return "G" + (source + 1);
     }
 
     private void drawDialogue(Graphics2D g) {
@@ -1153,6 +1308,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         selectRecipe(selectedRecipe);
     }
 
+    private void turnNotebookPage(int direction) {
+        int available = chapter >= 3 ? 5 : 3;
+        notebookPage = (notebookPage + direction + available) % available;
+    }
+
     private void selectRecipe(int index) {
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
@@ -1252,14 +1412,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if ((scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)
             && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
-        } else if (chapter >= 1 && key == KeyEvent.VK_N && scene != Scene.BOARD) {
+        } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == Scene.NOTEBOOK) scene = returnScene;
             else {
                 returnScene = scene;
+                notebookPage = selectedRecipe;
                 scene = Scene.NOTEBOOK;
             }
-        } else if (scene == Scene.NOTEBOOK && key == KeyEvent.VK_ESCAPE) {
-            scene = returnScene;
+        } else if (scene == Scene.NOTEBOOK) {
+            if (key == KeyEvent.VK_ESCAPE) scene = returnScene;
+            else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
+            else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == Scene.BOARD) {
             if (key == KeyEvent.VK_ESCAPE) scene = returnScene;
             else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) heldGate = GateType.values()[key - KeyEvent.VK_1];
@@ -1293,6 +1456,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == Scene.CONTROLS) {
             if (inside(x, y, 164, 217, 152, 22)) scene = Scene.TITLE;
+            return;
+        }
+        if (scene == Scene.NOTEBOOK) {
+            if (inside(x, y, 270, 211, 22, 19)) turnNotebookPage(-1);
+            else if (inside(x, y, 416, 211, 22, 19)) turnNotebookPage(1);
+            else {
+                int available = chapter >= 3 ? 5 : 3;
+                for (int i = 0; i < available; i++) {
+                    if (inside(x, y, 314 + i * 16, 214, 11, 11)) notebookPage = i;
+                }
+            }
             return;
         }
         if (scene != Scene.BOARD || line != null) return;
@@ -1362,6 +1536,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         line = null;
         chapter = 0;
         selectedRecipe = 0;
+        notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
         setPlayerPosition(210, 157);
         facing = Direction.DOWN;

@@ -19,7 +19,8 @@ If the scripts are not executable yet, run `chmod +x run.sh test.sh` once, or us
 
 - `WASD` / arrow keys — move Alex
 - `E` / `Enter` — interact or continue dialogue
-- `N` — open or close the notebook after finding it
+- `N` — open or close the notebook, including while using the crafting board
+- Left/right arrows — browse unlocked project pages in the notebook
 - Mouse — operate the crafting board
 - `1`, `2`, `3` — select AND, OR, or NOT on the board
 - `A`, `B` — toggle the two board inputs
