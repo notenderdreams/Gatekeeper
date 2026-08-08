@@ -19,9 +19,9 @@ final class DialogueRenderer {
             drawLogicLensReceived(g, ticks, logicLensImage);
             return;
         }
-        int boxWidth = Math.round(448 * uiScale);
+        int boxWidth = W;
         int boxHeight = Math.round(61 * uiScale);
-        int x = (W - boxWidth) / 2;
+        int x = 0;
         int y = H - boxHeight - 9;
         g.setColor(VOID);
         g.fillRect(x, y, boxWidth, boxHeight);
@@ -37,7 +37,7 @@ final class DialogueRenderer {
         g.setColor(INK);
         int visible = Math.min(words.length(), lineAge / 2 + 1);
         GamePanel.drawWrapped(g, "* " + words.substring(0, visible),
-            x + Math.round(12 * uiScale), y + Math.round(34 * uiScale), 66);
+            x + Math.round(12 * uiScale), y + Math.round(34 * uiScale), 72);
         if (visible == words.length() && (ticks / 25) % 2 == 0) {
             GamePanel.pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
                 y + Math.round(51 * uiScale), 1);
