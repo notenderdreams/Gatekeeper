@@ -11,6 +11,7 @@ import java.util.Map;
 public final class SoundManager {
     private static final long MUSIC_CROSSFADE_MICROS = 1_500_000L;
     private final Map<String, Clip> clips = new HashMap<>();
+    private final Map<String, Float> clipVolumeMultipliers = new HashMap<>();
     private Clip music;
     private Clip fadingMusic;
     private String musicPath;
@@ -23,15 +24,21 @@ public final class SoundManager {
     private float fxVolume = 0.85f;
 
     public void play(String resourcePath) {
+        play(resourcePath, 1.0f);
+    }
+
+    public void play(String resourcePath, float volumeMultiplier) {
         Clip clip = clips.get(resourcePath);
         if (clip == null) {
             clip = load(resourcePath);
             if (clip == null) return;
             clips.put(resourcePath, clip);
         }
+        float safeMultiplier = clampVolume(volumeMultiplier);
+        clipVolumeMultipliers.put(resourcePath, safeMultiplier);
         if (clip.isRunning()) clip.stop();
         clip.setFramePosition(0);
-        setGain(clip, masterVolume * fxVolume);
+        setGain(clip, masterVolume * fxVolume * safeMultiplier);
         clip.start();
     }
 
@@ -40,6 +47,7 @@ public final class SoundManager {
         stopAmbient();
         for (Clip clip : clips.values()) clip.close();
         clips.clear();
+        clipVolumeMultipliers.clear();
     }
 
     public void loop(String resourcePath) {
@@ -115,13 +123,19 @@ public final class SoundManager {
 
     public void setFxVolume(float volume) {
         fxVolume = clampVolume(volume);
-        for (Clip clip : clips.values()) setGain(clip, masterVolume * fxVolume);
+        for (Map.Entry<String, Clip> entry : clips.entrySet()) {
+            setGain(entry.getValue(), masterVolume * fxVolume
+                * clipVolumeMultipliers.getOrDefault(entry.getKey(), 1.0f));
+        }
     }
 
     private void refreshVolumes() {
         if (music != null && fadingMusic == null) setGain(music, masterVolume * musicVolume);
         if (ambient != null) setGain(ambient, masterVolume * musicVolume);
-        for (Clip clip : clips.values()) setGain(clip, masterVolume * fxVolume);
+        for (Map.Entry<String, Clip> entry : clips.entrySet()) {
+            setGain(entry.getValue(), masterVolume * fxVolume
+                * clipVolumeMultipliers.getOrDefault(entry.getKey(), 1.0f));
+        }
     }
 
     private static float clampVolume(float volume) {

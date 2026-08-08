@@ -221,10 +221,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (playerMoving) {
                 walkDistance += Math.max(1, (int) Math.round(
                     Math.hypot(precisePlayerX - oldPreciseX, precisePlayerY - oldPreciseY)));
-                int footstep = walkDistance / 18;
+                int footstep = walkDistance / 30;
                 if (footstep > lastFootstep) {
                     lastFootstep = footstep;
-                    sound.play(AUDIO_ROOT + "footstep-" + ((footstep - 1) % 4 + 1) + ".wav");
+                    sound.play(AUDIO_ROOT + String.format("footstep-%02d.wav", (footstep - 1) % 4 + 1), 0.25f);
                 }
             }
         } else {
