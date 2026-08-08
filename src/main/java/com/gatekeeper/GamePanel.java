@@ -406,7 +406,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (shopBackground != null) {
             g.drawImage(shopBackground, 0, 0, W, H, null);
             drawWorldVignette(g);
-            drawMaskedShopkeeper(g, 240, 136, 121);
+            drawMaskedShopkeeper(g, 240, 136, 102);
             drawPlayer(g, playerX, playerY);
             drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
