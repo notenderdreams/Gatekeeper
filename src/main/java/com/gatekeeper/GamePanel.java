@@ -113,6 +113,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private GateType heldGate = GateType.AND;
     private String boardMessage = "Left-click to place. Right-click a socket to remove.";
     private int boardMessageTimer;
+    private boolean autoTesterAttached;
+    private boolean autoTestRunning;
+    private int autoTestRow = -1;
+    private int autoTestTick;
+    private int autoTestFailures;
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;
@@ -178,6 +183,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == Scene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
         else sound.stopAmbient();
         if (dialogueVisible()) lineAge++;
+        if (scene == Scene.BOARD && autoTestRunning) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null
             && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
@@ -784,8 +790,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelText(g, recipe.subtitle, 62, 67, 1);
         g.setColor(crafted[selectedRecipe] ? CYAN : YELLOW);
         pixelText(g, crafted[selectedRecipe] ? "BUILT" : "ACTIVE", 305, 67, 1);
-        drawSwitch(g, 20, 81, "A", circuit.inputA());
-        drawSwitch(g, 20, 116, "B", circuit.inputB());
+        drawSwitch(g, 28, 81, "A", circuit.inputA(), autoTesterAttached);
+        drawSwitch(g, 28, 116, "B", circuit.inputB(), autoTesterAttached);
 
         int[][] layout = socketLayout(recipe);
         boolean[] nodeValues = circuit.nodeValues();
@@ -796,12 +802,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int[] last = layout[recipe.slotCount() - 1];
         drawRoutedWire(g, last[0] + BOARD_SOCKET_W, last[1] + BOARD_SOCKET_H / 2,
             337, 112, circuit.output());
-        g.setColor(circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
+        g.setColor(autoTesterAttached ? new Color(39, 76, 51)
+            : circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
         g.fillOval(334, 101, 22, 22);
-        g.setColor(circuit.output() ? CYAN : DIM);
+        g.setColor(autoTesterAttached ? new Color(143, 190, 128)
+            : circuit.output() ? CYAN : DIM);
         g.drawOval(334, 101, 21, 21);
         g.fillOval(340, 107, 10, 10);
-        g.setColor(INK);
+        g.setColor(autoTesterAttached ? new Color(143, 190, 128) : INK);
         pixelText(g, "OUT", 336, 134, 1);
 
         drawTruthTable(g);
@@ -811,9 +819,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.fillRect(13, 232, 454, 27);
         g.setColor(new Color(37, 77, 69));
         g.drawLine(14, 232, 466, 232);
-        g.setColor(boardMessageTimer > 0 ? YELLOW : CYAN);
+        g.setColor(autoTestRunning ? new Color(143, 190, 128)
+            : boardMessageTimer > 0 ? YELLOW : CYAN);
         g.fillRect(18, 239, 4, 12);
-        String status = boardMessageTimer > 0 ? boardMessage
+        String status = autoTestRunning ? "LOGICLENS TESTING ROW " + (autoTestRow + 1) + "/4"
+            : boardMessageTimer > 0 ? boardMessage
             : heldGate.label + " selected — " + heldGate.hint;
         pixelText(g, status, 28, 249, 1);
     }
@@ -868,21 +878,51 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawBoardButtons(Graphics2D g) {
-        boolean tester = chapter >= 3;
+        boolean tester = chapter >= 3 && autoTesterAttached;
         drawPanel(g, 302, 176, 165, 52);
-        boolean recordHover = isHovered(310, 187, 72, 36);
-        g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
-        g.fillRect(310, 187, 72, 36);
-        g.setColor(YELLOW);
-        g.drawRect(310, 187, 72, 36);
-        pixelText(g, tester ? "R  AUTO" : "R RECORD", 318, 202, 1);
-        pixelText(g, tester ? "TEST" : "THIS ROW", 320, 214, 1);
-        boolean verifyHover = isHovered(390, 187, 70, 36);
-        g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
-        g.fillRect(390, 187, 70, 36);
-        g.setColor(CYAN);
-        g.drawRect(390, 187, 70, 36);
-        pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 208, 1);
+        if (chapter >= 3) {
+            boolean hookHover = isHovered(310, 179, 150, 14);
+            g.setColor(hookHover ? new Color(28, 73, 62) : new Color(16, 43, 41));
+            g.fillRect(310, 179, 150, 14);
+            g.setColor(autoTesterAttached ? new Color(143, 190, 128) : new Color(105, 116, 117));
+            g.drawRect(310, 179, 150, 14);
+            if (autoTesterAttached) {
+                if (logicLensImage != null) {
+                    g.drawImage(logicLensImage, 323, 178, 28, 25, null);
+                }
+            }
+            pixelText(g, autoTesterAttached ? "WIRED  H UNHOOK" : "H  ATTACH LOGICLENS",
+                autoTesterAttached ? 356 : 318, 189, 1);
+
+            boolean recordHover = isHovered(310, 197, 72, 27);
+            g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
+            g.fillRect(310, 197, 72, 27);
+            g.setColor(YELLOW);
+            g.drawRect(310, 197, 72, 27);
+            pixelText(g, tester ? "R  AUTO" : "R RECORD", 318, 209, 1);
+            pixelText(g, tester ? "TEST" : "ROW", 325, 220, 1);
+
+            boolean verifyHover = isHovered(390, 197, 70, 27);
+            g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
+            g.fillRect(390, 197, 70, 27);
+            g.setColor(CYAN);
+            g.drawRect(390, 197, 70, 27);
+            pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 211, 1);
+        } else {
+            boolean recordHover = isHovered(310, 187, 72, 36);
+            g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
+            g.fillRect(310, 187, 72, 36);
+            g.setColor(YELLOW);
+            g.drawRect(310, 187, 72, 36);
+            pixelText(g, "R RECORD", 318, 202, 1);
+            pixelText(g, "THIS ROW", 320, 214, 1);
+            boolean verifyHover = isHovered(390, 187, 70, 36);
+            g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
+            g.fillRect(390, 187, 70, 36);
+            g.setColor(CYAN);
+            g.drawRect(390, 187, 70, 36);
+            pixelText(g, "T VERIFY", 396, 208, 1);
+        }
     }
 
     private void drawPanel(Graphics2D g, int x, int y, int width, int height) {
@@ -1223,16 +1263,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
     }
 
-    private void drawSwitch(Graphics2D g, int x, int y, String name, boolean on) {
+    private void drawSwitch(Graphics2D g, int x, int y, String name, boolean on, boolean hooked) {
         boolean hovered = isHovered(x, y, 64, 20);
         g.setColor(hovered ? new Color(36, 61, 56) : new Color(12, 25, 28));
         g.fillRect(x - 2, y - 1, 62, 20);
-        g.setColor(hovered ? YELLOW : INK);
+        g.setColor(hooked ? new Color(143, 190, 128) : hovered ? YELLOW : INK);
         pixelText(g, name, x, y + 14, 1);
         g.drawRect(x + 14, y, 23, 18);
-        g.setColor(on ? CYAN : DIM);
+        g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : DIM);
         g.fillRect(on ? x + 27 : x + 17, y + 4, 7, 10);
-        g.setColor(on ? CYAN : hovered ? YELLOW : DIM);
+        g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : hovered ? YELLOW : DIM);
         pixelText(g, on ? "1" : "0", x + 43, y + 14, 1);
     }
 
@@ -1653,7 +1693,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "Every socket needs a gate first.";
             playSound("ui-error");
-        } else if (chapter >= 3) {
+        } else if (chapter >= 3 && autoTesterAttached) {
             autoTest();
             return;
         } else {
@@ -1665,7 +1705,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void verify() {
-        if (chapter >= 3) {
+        if (chapter >= 3 && autoTesterAttached) {
             autoTest();
         } else if (!circuit.allRowsRecorded()) {
             boardMessage = "Test and RECORD all four switch settings.";
@@ -1683,23 +1723,65 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "LogicLens: incomplete circuit.";
             playSound("ui-error");
-        } else {
-            boolean passed = true;
-            for (int row = 0; row < 4; row++) {
-                boolean a = row >= 2;
-                boolean b = row % 2 == 1;
-                if (circuit.recipe().evaluate(a, b, circuit.placed()) != circuit.recipe().truth[row]) {
-                    passed = false;
-                    break;
-                }
-            }
-            if (passed) completeCurrent();
-            else {
+            boardMessageTimer = 180;
+            return;
+        }
+        if (autoTestRunning) return;
+        autoTestRunning = true;
+        autoTestRow = 0;
+        autoTestTick = 0;
+        autoTestFailures = 0;
+        circuit.clearObservations();
+        circuit.setInputs(false, false);
+        boardMessage = "LogicLens: starting four-row sweep.";
+        boardMessageTimer = 180;
+        playSound("ui-open");
+    }
+
+    private void updateAutoTest() {
+        autoTestTick++;
+        if (autoTestTick < 36) return;
+
+        boolean a = autoTestRow >= 2;
+        boolean b = autoTestRow % 2 == 1;
+        boolean actual = circuit.output();
+        circuit.recordCurrent();
+        if (actual != circuit.recipe().truth[autoTestRow]) autoTestFailures++;
+
+        if (autoTestRow == 3) {
+            autoTestRunning = false;
+            autoTestRow = -1;
+            boardMessageTimer = 240;
+            if (autoTestFailures == 0) {
+                completeCurrent();
+            } else {
                 boardMessage = "LogicLens: FAILED on one or more rows.";
                 playSound("failure");
             }
+            return;
         }
-        boardMessageTimer = 240;
+
+        autoTestRow++;
+        autoTestTick = 0;
+        circuit.setInputs(autoTestRow >= 2, autoTestRow % 2 == 1);
+        boardMessage = "LogicLens: testing row " + (autoTestRow + 1) + " of 4.";
+        boardMessageTimer = 180;
+        playSound("ui-click");
+    }
+
+    private void toggleAutoTester() {
+        if (chapter < 3) return;
+        if (autoTestRunning) {
+            boardMessage = "Finish the LogicLens sweep first.";
+            boardMessageTimer = 120;
+            return;
+        }
+        autoTesterAttached = !autoTesterAttached;
+        boardMessage = autoTesterAttached
+            ? "LogicLens leads clipped to A, B, and OUT."
+            : "LogicLens detached. Manual recording restored.";
+        boardMessageTimer = 180;
+        playSound(autoTesterAttached ? "ui-confirm" : "ui-close");
     }
 
     private void completeCurrent() {
@@ -1873,6 +1955,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 scene = returnScene;
                 playSound("ui-close");
             }
+            else if (key == KeyEvent.VK_H) toggleAutoTester();
+            else if (autoTestRunning) return;
             else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
                 heldGate = GateType.values()[key - KeyEvent.VK_1];
                 playSound("ui-select");
@@ -1969,7 +2053,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene != Scene.BOARD || line != null) return;
+        if (scene != Scene.BOARD || line != null || autoTestRunning) return;
         boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
 
         int available = chapter >= 3 ? 5 : 3;
@@ -1977,8 +2061,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             for (int i = 0; i < available; i++) {
                 if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
             }
-            if (inside(x, y, 20, 81, 64, 20)) toggleInputA();
-            if (inside(x, y, 20, 116, 64, 20)) toggleInputB();
+            if (inside(x, y, 28, 81, 64, 20)) toggleInputA();
+            if (inside(x, y, 28, 116, 64, 20)) toggleInputB();
             for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) {
                 heldGate = GateType.values()[i];
                 playSound("ui-select");
@@ -2003,8 +2087,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
         }
         if (rightClick) return;
-        if (inside(x, y, 310, 187, 72, 36)) recordOrAutoTest();
-        if (inside(x, y, 390, 187, 70, 36)) verify();
+        if (chapter >= 3 && inside(x, y, 310, 179, 150, 14)) toggleAutoTester();
+        else if (chapter >= 3 && inside(x, y, 310, 197, 72, 27)) recordOrAutoTest();
+        else if (chapter >= 3 && inside(x, y, 390, 197, 70, 27)) verify();
+        else if (chapter < 3 && inside(x, y, 310, 187, 72, 36)) recordOrAutoTest();
+        else if (chapter < 3 && inside(x, y, 390, 187, 70, 36)) verify();
     }
 
     @Override public void mouseReleased(MouseEvent event) {}
@@ -2073,6 +2160,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         exitPrompt = false;
+        autoTesterAttached = false;
+        autoTestRunning = false;
+        autoTestRow = -1;
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
@@ -2173,6 +2263,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         chapter = 0;
+        autoTesterAttached = false;
+        autoTestRunning = false;
+        autoTestRow = -1;
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));

@@ -26,8 +26,14 @@ public final class CircuitModel {
     public Boolean[] observations() { return observations; }
     public boolean inputA() { return inputA; }
     public boolean inputB() { return inputB; }
+    public void setInputs(boolean a, boolean b) {
+        inputA = a;
+        inputB = b;
+    }
     public void toggleA() { inputA = !inputA; }
     public void toggleB() { inputB = !inputB; }
+
+    public void clearObservations() { Arrays.fill(observations, null); }
 
     public void place(int slot, GateType gate) {
         if (slot >= 0 && slot < placed.length) {
