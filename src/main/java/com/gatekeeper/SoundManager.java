@@ -18,6 +18,9 @@ public final class SoundManager {
     private String ambientPath;
     private boolean musicUnavailable;
     private boolean ambientUnavailable;
+    private float masterVolume = 1.0f;
+    private float musicVolume = 0.75f;
+    private float fxVolume = 0.85f;
 
     public void play(String resourcePath) {
         Clip clip = clips.get(resourcePath);
@@ -28,6 +31,7 @@ public final class SoundManager {
         }
         if (clip.isRunning()) clip.stop();
         clip.setFramePosition(0);
+        setGain(clip, masterVolume * fxVolume);
         clip.start();
     }
 
@@ -48,6 +52,7 @@ public final class SoundManager {
             return;
         }
         musicPath = resourcePath;
+        setGain(music, masterVolume * musicVolume);
         music.loop(Clip.LOOP_CONTINUOUSLY);
     }
 
@@ -59,7 +64,7 @@ public final class SoundManager {
         if (fadingMusic == null) return;
         setGain(fadingMusic, 0.0f);
         fadingMusic.loop(Clip.LOOP_CONTINUOUSLY);
-        setGain(music, 1.0f);
+        setGain(music, masterVolume * musicVolume);
         musicCrossfadeStart = System.nanoTime();
     }
 
@@ -69,8 +74,9 @@ public final class SoundManager {
         if (fadingMusic == null) return;
         float progress = Math.min(1.0f, (System.nanoTime() - musicCrossfadeStart) / 1_000_000_000.0f
             / (MUSIC_CROSSFADE_MICROS / 1_000_000.0f));
-        setGain(music, 1.0f - progress);
-        setGain(fadingMusic, progress);
+        float musicGain = masterVolume * musicVolume;
+        setGain(music, musicGain * (1.0f - progress));
+        setGain(fadingMusic, musicGain * progress);
         if (progress >= 1.0f) {
             music.stop();
             music.close();
@@ -89,7 +95,37 @@ public final class SoundManager {
             return;
         }
         ambientPath = resourcePath;
+        setGain(ambient, masterVolume * musicVolume);
         ambient.loop(Clip.LOOP_CONTINUOUSLY);
+    }
+
+    public float masterVolume() { return masterVolume; }
+    public float musicVolume() { return musicVolume; }
+    public float fxVolume() { return fxVolume; }
+
+    public void setMasterVolume(float volume) {
+        masterVolume = clampVolume(volume);
+        refreshVolumes();
+    }
+
+    public void setMusicVolume(float volume) {
+        musicVolume = clampVolume(volume);
+        refreshVolumes();
+    }
+
+    public void setFxVolume(float volume) {
+        fxVolume = clampVolume(volume);
+        for (Clip clip : clips.values()) setGain(clip, masterVolume * fxVolume);
+    }
+
+    private void refreshVolumes() {
+        if (music != null && fadingMusic == null) setGain(music, masterVolume * musicVolume);
+        if (ambient != null) setGain(ambient, masterVolume * musicVolume);
+        for (Clip clip : clips.values()) setGain(clip, masterVolume * fxVolume);
+    }
+
+    private static float clampVolume(float volume) {
+        return Math.max(0.0f, Math.min(1.0f, volume));
     }
 
     public void stopAmbient() {
