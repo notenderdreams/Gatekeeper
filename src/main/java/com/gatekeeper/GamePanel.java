@@ -44,6 +44,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int INDOOR_PLAYER_HEIGHT = 52;
     private static final int STREET_PLAYER_HEIGHT = 36;
     private static final String AUDIO_ROOT = "/assets/audio/game/";
+    private static final String LOGICLENS_ITEM_CARD = "@ITEM_LOGICLENS";
     private static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
     private static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
     private static final int STREET_WORLD_WIDTH = 922;
@@ -77,6 +78,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage shopBackground = loadImage("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
+    private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Set<Integer> keys = new HashSet<>();
@@ -1445,6 +1447,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawDialogue(Graphics2D g) {
+        if (LOGICLENS_ITEM_CARD.equals(line)) {
+            drawLogicLensReceived(g);
+            return;
+        }
         int boxWidth = Math.round(448 * uiScale);
         int boxHeight = Math.round(61 * uiScale);
         int x = (W - boxWidth) / 2;
@@ -1468,6 +1474,72 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
                 y + Math.round(51 * uiScale), 1);
         }
+    }
+
+    private void drawLogicLensReceived(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 196));
+        g.fillRect(0, 0, W, H);
+
+        int x = 74;
+        int y = 34;
+        int width = 332;
+        int height = 202;
+        g.setColor(new Color(5, 9, 13, 252));
+        g.fillRect(x, y, width, height);
+        g.setColor(new Color(35, 72, 68));
+        g.fillRect(x + 5, y + 5, width - 10, height - 10);
+        g.setColor(new Color(7, 12, 16));
+        g.fillRect(x + 7, y + 7, width - 14, height - 14);
+        g.setColor(new Color(94, 145, 124));
+        g.drawRect(x, y, width, height);
+        g.setColor(new Color(152, 95, 47));
+        g.drawRect(x + 4, y + 4, width - 8, height - 8);
+        g.fillRect(x - 2, y + 10, 4, 12);
+        g.fillRect(x + width - 1, y + height - 22, 4, 12);
+
+        g.setColor(new Color(204, 180, 135));
+        drawCenteredPixelText(g, "MIRA GAVE YOU", W / 2, y + 25, 1);
+        g.setColor(new Color(48, 67, 68));
+        g.fillRect(x + 18, y + 34, width - 36, 1);
+        g.setColor(new Color(143, 190, 128));
+        g.fillRect(W / 2 - 18, y + 33, 36, 2);
+
+        // The generated item asset sits in a quiet display area like Mira's shop shelves.
+        g.setColor(new Color(13, 20, 21));
+        g.fillRect(x + 18, y + 48, 116, 105);
+        g.setColor(new Color(84, 68, 50));
+        g.drawRect(x + 18, y + 48, 116, 105);
+        g.setColor(new Color(37, 32, 27));
+        g.fillRect(x + 24, y + 146, 104, 2);
+        if (logicLensImage != null) {
+            g.drawImage(logicLensImage, x + 20, y + 51, 112, 100, null);
+        }
+
+        int copyX = x + 154;
+        g.setColor(new Color(0, 0, 0, 190));
+        pixelText(g, "LOGICLENS", copyX + 2, y + 72, 2);
+        g.setColor(INK);
+        pixelText(g, "LOGICLENS", copyX, y + 70, 2);
+        g.setColor(new Color(143, 190, 128));
+        pixelText(g, "AUTOMATIC TESTING TOOL", copyX, y + 91, 1);
+        g.setColor(new Color(54, 62, 65));
+        g.fillRect(copyX, y + 100, 150, 1);
+
+        g.setColor(new Color(183, 185, 180));
+        pixelText(g, "TESTS ALL INPUT ROWS", copyX, y + 119, 1);
+        pixelText(g, "IN A SINGLE RUN.", copyX, y + 135, 1);
+
+        g.setColor(new Color(45, 39, 29));
+        g.fillRect(copyX, y + 145, 153, 23);
+        g.setColor(new Color(152, 95, 47));
+        g.drawRect(copyX, y + 145, 153, 23);
+        g.setColor(new Color(204, 180, 135));
+        pixelText(g, "ADDED TO WORKBENCH", copyX + 12, y + 161, 1);
+
+        g.setColor(new Color(48, 67, 68));
+        g.fillRect(x + 18, y + 177, width - 36, 1);
+        g.setColor((ticks / 28) % 2 == 0 ? INK : new Color(120, 125, 123));
+        drawCenteredPixelText(g, "ENTER  CONTINUE", W / 2, y + 193, 1);
     }
 
     private void prompt(Graphics2D g, String text) {
@@ -1539,6 +1611,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             chapter = 3;
             say("MIRA|Clean work. You tested every possible input.",
                 "MIRA|Take this LogicLens. It checks every row at once.",
+                LOGICLENS_ITEM_CARD,
                 "MIRA|Now try XNOR and IMPLY. The notebook has new pages.");
         } else if (chapter == 2) {
             say("MIRA|I still need NAND, NOR, and XOR. Your board is at home.");
@@ -1662,12 +1735,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else {
             line = next;
             lineAge = 0;
-            playSound("ui-click");
+            playSound(LOGICLENS_ITEM_CARD.equals(next) ? "success" : "ui-click");
         }
     }
 
     private boolean dialogueLineComplete() {
         if (line == null) return true;
+        if (LOGICLENS_ITEM_CARD.equals(line)) return true;
         int separator = line.indexOf('|');
         String words = separator >= 0 ? line.substring(separator + 1) : line;
         return lineAge / 2 + 1 >= words.length();
@@ -1834,16 +1908,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         if (scene == Scene.TITLE) {
-            if (inside(x, y, 185, 151, 110, 16)) {
+            if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 0;
                 activateTitleSelection();
-            } else if (inside(x, y, 185, 171, 110, 16)) {
+            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
+                TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 1;
                 activateTitleSelection();
-            } else if (inside(x, y, 185, 191, 110, 16)) {
+            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
+                TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 2;
                 activateTitleSelection();
-            } else if (inside(x, y, 185, 211, 110, 16)) {
+            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
+                TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 3;
                 activateTitleSelection();
             }

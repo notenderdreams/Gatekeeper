@@ -55,6 +55,18 @@ cells, crisp silhouettes, no labels or dividers, and a perfectly flat magenta re
 background. Alex wears a navy jacket and red heart accent; Mira wears a teal work shirt
 and cream electronics apron.
 
+## LogicLens item
+
+Saved as `src/main/resources/assets/items/logiclens.png`.
+
+Prompt summary: an original hand-painted pixel-art portable circuit tester styled as
+a worn neighborhood electronics-shop instrument, with a boxy charcoal and faded-teal
+casing, brass hardware, physical sockets, a cream test control, indicator lamps, and
+a small CRT waveform screen. It was generated on a flat magenta removal background,
+converted to an alpha PNG, and downsampled with nearest-neighbor filtering for the
+game's low-resolution reward screen. No text, logo, watermark, holograms, or futuristic
+controls.
+
 ## Audio starter library
 
 Downloaded under `src/main/resources/assets/audio/kenney/` for the upcoming Java audio
