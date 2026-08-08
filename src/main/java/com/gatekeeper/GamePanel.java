@@ -33,6 +33,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int H = 270;
     private static final int BOARD_SOCKET_W = 40;
     private static final int BOARD_SOCKET_H = 34;
+    private static final int INDOOR_PLAYER_HEIGHT = 52;
+    private static final int STREET_PLAYER_HEIGHT = 36;
     private static final int STREET_WORLD_WIDTH = 922;
     private static final int STREET_HOME_X = 93;
     private static final int STREET_SHOP_X = 870;
@@ -167,6 +169,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             precisePlayerX = clamp(precisePlayerX, minX, maxX);
             if (sideView) precisePlayerY = STREET_GROUND_Y;
             else precisePlayerY = clamp(precisePlayerY, minY, 232);
+            if (scene == Scene.BEDROOM) {
+                double targetX = precisePlayerX;
+                double targetY = precisePlayerY;
+                precisePlayerX = oldPreciseX;
+                precisePlayerY = oldPreciseY;
+                if (!bedroomBlocked(targetX, precisePlayerY)) precisePlayerX = targetX;
+                if (!bedroomBlocked(precisePlayerX, targetY)) precisePlayerY = targetY;
+            }
             playerX = (int) Math.round(precisePlayerX);
             playerY = (int) Math.round(precisePlayerY);
             playerMoving = playerX != oldX || playerY != oldY;
@@ -319,7 +329,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
             drawWorldVignette(g);
             if (chapter == 0) drawInteractionGlow(g, 299, 132, YELLOW);
-            drawPlayer(g, playerX, playerY);
+            drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
             if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
@@ -424,7 +434,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(INK);
         pixelText(g, "OUTSIDE", 418, 57, 1);
 
-        drawPlayer(g, playerX, playerY);
+        drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
         if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
@@ -463,7 +473,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         drawWorldVignette(g);
-        drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, 36);
+        drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, STREET_PLAYER_HEIGHT);
         drawHud(g, "LANTERN STREET");
         if (Math.abs(playerX - STREET_HOME_X) < 38) {
             prompt(g, "E  ENTER HOME");
@@ -481,7 +491,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             g.drawImage(shopBackground, 0, 0, W, H, null);
             drawWorldVignette(g);
             drawMaskedShopkeeper(g, 240, 136, 102);
-            drawPlayer(g, playerX, playerY);
+            drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
             drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
             else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
@@ -555,7 +565,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.drawLine(354, 117, 365, 117);
 
         drawShopkeeper(g, 240, 120);
-        drawPlayer(g, playerX, playerY);
+        drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
         drawHud(g, "MIRA'S ELECTRONICS");
         if (near(240, 155)) prompt(g, "E  TALK TO MIRA");
         if (playerX < 45) prompt(g, "E  GO OUTSIDE");
@@ -1471,6 +1481,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
     private boolean advancedComplete() { return crafted[3] && crafted[4]; }
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
+
+    private static boolean bedroomBlocked(double x, double y) {
+        // The bed and its left-side furniture occupy the upper-left footprint.
+        // Padding keeps Alex's feet outside the mattress instead of letting the
+        // taller sprite appear to walk across it.
+        return x < 160 && y < 203;
+    }
 
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
