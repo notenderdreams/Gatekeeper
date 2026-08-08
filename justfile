@@ -15,7 +15,10 @@ check:
 
 clean:
     gradle clean
-    rm -rf out out-test
+    rm -rf out out-test gatekeep.json
+
+clean-save:
+    rm -f gatekeep.json
 
 tasks:
     @gradle tasks --group verification

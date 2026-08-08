@@ -19,7 +19,13 @@ final class MenuRenderer {
         drawStars(g, ticks);
 
         g.setColor(new Color(111, 105, 148));
-        GamePanel.pixelText(g, "MAIN MENU", TITLE_MENU_X + 23, TITLE_MENU_Y - 12, 1);
+        boolean hasSave = SaveManager.hasSave();
+        String[] options = hasSave ?
+            new String[]{"CONTINUE", "BEGIN", "CONTROLS", "SETTINGS", "EXIT"} :
+            new String[]{"BEGIN", "CONTROLS", "SETTINGS", "EXIT"};
+
+        int startY = hasSave ? 92 : 102;
+        GamePanel.pixelText(g, "MAIN MENU", TITLE_MENU_X + 23, startY - 12, 1);
         g.setColor(new Color(55, 58, 72, 190));
         g.fillRect(220, 86, 1, 101);
         g.setColor(new Color(119, 110, 178));
@@ -39,17 +45,11 @@ final class MenuRenderer {
         g.setColor(new Color(115, 111, 164));
         GamePanel.pixelText(g, "+", 452, 146, 1);
 
-        boolean hasSave = SaveManager.hasSave();
-        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X, TITLE_MENU_Y,
-            TITLE_MENU_W, TITLE_MENU_H, "CONTINUE", 0, hasSave);
-        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP, TITLE_MENU_W, TITLE_MENU_H, "BEGIN", 1, true);
-        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP * 2, TITLE_MENU_W, TITLE_MENU_H, "CONTROLS", 2, true);
-        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP * 3, TITLE_MENU_W, TITLE_MENU_H, "SETTINGS", 3, true);
-        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP * 4, TITLE_MENU_W, TITLE_MENU_H, "EXIT", 4, true);
+        for (int i = 0; i < options.length; i++) {
+            int y = startY + i * TITLE_MENU_GAP;
+            drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X, y,
+                TITLE_MENU_W, TITLE_MENU_H, options[i], i);
+        }
     }
 
     static void drawControls(Graphics2D g, BufferedImage background, int mouseX, int mouseY) {
@@ -184,14 +184,11 @@ final class MenuRenderer {
 
     private static void drawTitleButton(Graphics2D g, int mouseX, int mouseY, int current,
                                         int x, int y, int width, int height,
-                                        String label, int selection, boolean enabled) {
-        boolean hovered = enabled && GamePanel.inside(mouseX, mouseY, x, y, width, height);
-        boolean selected = enabled && (current == selection);
+                                        String label, int selection) {
+        boolean hovered = GamePanel.inside(mouseX, mouseY, x, y, width, height);
+        boolean selected = current == selection;
 
-        if (!enabled) {
-            g.setColor(new Color(75, 80, 85));
-            GamePanel.pixelText(g, label, x + 23, y + 13, 1);
-        } else if (selected) {
+        if (selected) {
             g.setColor(new Color(143, 190, 128));
             GamePanel.pixelText(g, ">", x + 10, y + 13, 1);
             GamePanel.pixelText(g, label, x + 23, y + 13, 1);

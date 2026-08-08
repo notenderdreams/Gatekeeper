@@ -59,7 +59,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private String line;
     private int lineAge;
     private int chapter;
-    private int titleSelection = SaveManager.hasSave() ? 0 : 1;
+    private int titleSelection;
     private int settingsSelection;
     private int devSelection;
     private GameScene devReturnScene = GameScene.TITLE;
@@ -523,13 +523,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.TITLE) {
+            int max = SaveManager.hasSave() ? 5 : 4;
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                titleSelection = (titleSelection + direction + 5) % 5;
-                if (titleSelection == 0 && !SaveManager.hasSave()) {
-                    titleSelection = (titleSelection + direction + 5) % 5;
-                }
+                titleSelection = (titleSelection + direction + max) % max;
                 playSound("ui-select");
             }
             else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) activateTitleSelection();
@@ -625,29 +623,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         if (scene == GameScene.TITLE) {
-            if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H)) {
-                if (SaveManager.hasSave()) {
-                    titleSelection = 0;
+            boolean hasSave = SaveManager.hasSave();
+            int max = hasSave ? 5 : 4;
+            int startY = hasSave ? 92 : 102;
+            for (int i = 0; i < max; i++) {
+                int itemY = startY + i * TITLE_MENU_GAP;
+                if (inside(x, y, TITLE_MENU_X, itemY, TITLE_MENU_W, TITLE_MENU_H)) {
+                    titleSelection = i;
                     activateTitleSelection();
-                } else {
-                    playSound("ui-error");
+                    return;
                 }
-            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
-                TITLE_MENU_W, TITLE_MENU_H)) {
-                titleSelection = 1;
-                activateTitleSelection();
-            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
-                TITLE_MENU_W, TITLE_MENU_H)) {
-                titleSelection = 2;
-                activateTitleSelection();
-            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
-                TITLE_MENU_W, TITLE_MENU_H)) {
-                titleSelection = 3;
-                activateTitleSelection();
-            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 4,
-                TITLE_MENU_W, TITLE_MENU_H)) {
-                titleSelection = 4;
-                activateTitleSelection();
             }
             return;
         }
@@ -748,18 +733,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.TITLE) {
             int previous = titleSelection;
-            if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y,
-                TITLE_MENU_W, TITLE_MENU_H)) {
-                if (SaveManager.hasSave()) titleSelection = 0;
+            boolean hasSave = SaveManager.hasSave();
+            int max = hasSave ? 5 : 4;
+            int startY = hasSave ? 92 : 102;
+            for (int i = 0; i < max; i++) {
+                int y = startY + i * TITLE_MENU_GAP;
+                if (inside(mouseX, mouseY, TITLE_MENU_X, y, TITLE_MENU_W, TITLE_MENU_H)) {
+                    titleSelection = i;
+                    break;
+                }
             }
-            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
-                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 1;
-            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
-                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 2;
-            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
-                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 3;
-            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 4,
-                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 4;
             if (previous != titleSelection) playSound("ui-select");
         }
         repaint();
@@ -781,15 +764,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void activateTitleSelection() {
-        if (titleSelection == 0) {
-            if (SaveManager.hasSave() && loadSavedProgress()) {
+        boolean hasSave = SaveManager.hasSave();
+        int action = hasSave ? titleSelection : titleSelection + 1;
+
+        if (action == 0) {
+            if (loadSavedProgress()) {
                 playSound("ui-confirm");
             } else {
                 playSound("ui-error");
             }
             return;
         }
-        if (titleSelection == 1) {
+        if (action == 1) {
             playSound("ui-confirm");
             chapter = 0;
             scene = GameScene.BEDROOM;
@@ -806,18 +792,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             saveCurrentProgress();
             return;
         }
-        if (titleSelection == 2) {
+        if (action == 2) {
             playSound("ui-confirm");
             scene = GameScene.CONTROLS;
             return;
         }
-        if (titleSelection == 3) {
+        if (action == 3) {
             playSound("ui-confirm");
             settingsOpenedFromPause = false;
             scene = GameScene.SETTINGS;
             return;
         }
-        if (titleSelection == 4) {
+        if (action == 4) {
             playSound("ui-confirm");
             System.exit(0);
         }
@@ -945,7 +931,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         setPlayerPosition(210, 157);
         facing = Facing.DOWN;
         walkDistance = 0;
-        titleSelection = SaveManager.hasSave() ? 0 : 1;
+        titleSelection = 0;
         scene = GameScene.TITLE;
     }
 

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /** Handles game state serialization, file persistence, and save slot loading. */
 public final class SaveManager {
-    private static final Path SAVE_FILE_PATH = Path.of("save.json");
+    private static final Path SAVE_FILE_PATH = Path.of("gatekeep.json");
 
     private SaveManager() {}
 

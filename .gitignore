@@ -21,4 +21,4 @@ replay_pid*.log
 graphify-out/
 
 # Local game save state
-save.json
+gatekeep.json
