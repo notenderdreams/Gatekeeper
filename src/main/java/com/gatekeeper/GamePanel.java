@@ -61,7 +61,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int chapter;
     private int titleSelection;
     private int settingsSelection;
+    private int devSection = 0;
     private int devSelection;
+    private boolean devFocusRight = true;
+    private boolean calibratorEnabled = false;
     private GameScene devReturnScene = GameScene.TITLE;
     private boolean exitPrompt;
     private int exitPromptSelection;
@@ -136,7 +139,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case CONTROLS -> MenuRenderer.drawControls(g, bedroomBackground, mouseX, mouseY);
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
-            case DEV -> MenuRenderer.drawDeveloper(g, devSelection);
+            case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
+                devFocusRight, calibratorEnabled);
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -475,8 +479,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         keys.add(key);
         if (key == KeyEvent.VK_F1 && scene != GameScene.DEV) {
             devReturnScene = scene;
-            scene = GameScene.DEV;
+            devSection = 0;
             devSelection = 0;
+            devFocusRight = true;
+            scene = GameScene.DEV;
             keys.clear();
             playSound("ui-open");
             return;
@@ -485,13 +491,31 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
                 playSound("ui-back");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                devFocusRight = false;
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                devFocusRight = true;
+                playSound("ui-select");
             } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                devSelection = (devSelection + direction + DEV_OPTION_COUNT) % DEV_OPTION_COUNT;
+                if (!devFocusRight) {
+                    devSection = (devSection + direction + 2) % 2;
+                    devSelection = 0;
+                } else {
+                    int max = (devSection == 0) ? DEV_OPTION_COUNT : 1;
+                    devSelection = (devSelection + direction + max) % max;
+                }
                 playSound("ui-select");
             } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
-                loadDevPreset(devSelection);
+                if (!devFocusRight) {
+                    devFocusRight = true;
+                    devSelection = 0;
+                    playSound("ui-select");
+                } else {
+                    activateDevSelection();
+                }
             }
             return;
         }
@@ -679,13 +703,48 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene == GameScene.STREET) {
-            int cameraX = worldRenderer.streetCameraX();
-            int worldX = cameraX + x;
-            int worldY = y;
-            worldRenderer.addCalibratedPoint(worldX, worldY);
-            repaint();
+        if (scene == GameScene.DEV) {
+            String[] sections = {"BREAKPOINTS", "DEBUG TOOLS"};
+            for (int i = 0; i < sections.length; i++) {
+                int sy = 58 + i * 28;
+                if (inside(x, y, 25, sy, 118, 22)) {
+                    devSection = i;
+                    devFocusRight = true;
+                    devSelection = 0;
+                    playSound("ui-select");
+                    return;
+                }
+            }
+            if (devSection == 0) {
+                for (int i = 0; i < DEV_OPTION_COUNT; i++) {
+                    int oy = 56 + i * 24;
+                    if (inside(x, y, 160, oy, 285, 20)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        activateDevSelection();
+                        return;
+                    }
+                }
+            } else if (devSection == 1) {
+                int oy = 58;
+                if (inside(x, y, 160, oy, 285, 22)) {
+                    devFocusRight = true;
+                    devSelection = 0;
+                    activateDevSelection();
+                    return;
+                }
+            }
             return;
+        }
+        if (scene == GameScene.STREET) {
+            if (calibratorEnabled) {
+                int cameraX = worldRenderer.streetCameraX();
+                int worldX = cameraX + x;
+                int worldY = y;
+                worldRenderer.addCalibratedPoint(worldX, worldY);
+                repaint();
+                return;
+            }
         }
         if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
         boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
@@ -743,6 +802,41 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (previous != exitPromptSelection) playSound("ui-select");
             repaint();
             return;
+        }
+        if (scene == GameScene.DEV) {
+            int prevSection = devSection;
+            int prevSelection = devSelection;
+            boolean prevFocus = devFocusRight;
+
+            for (int i = 0; i < 2; i++) {
+                int sy = 58 + i * 28;
+                if (inside(mouseX, mouseY, 25, sy, 118, 22)) {
+                    devSection = i;
+                    devFocusRight = false;
+                    break;
+                }
+            }
+
+            if (devSection == 0) {
+                for (int i = 0; i < DEV_OPTION_COUNT; i++) {
+                    int oy = 56 + i * 24;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 20)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        break;
+                    }
+                }
+            } else if (devSection == 1) {
+                int oy = 58;
+                if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
+                    devFocusRight = true;
+                    devSelection = 0;
+                }
+            }
+
+            if (prevSection != devSection || prevSelection != devSelection || prevFocus != devFocusRight) {
+                playSound("ui-select");
+            }
         }
         if (scene == GameScene.TITLE) {
             int previous = titleSelection;
@@ -819,6 +913,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (action == 4) {
             playSound("ui-confirm");
             System.exit(0);
+        }
+    }
+
+    private void activateDevSelection() {
+        if (devSection == 0) {
+            loadDevPreset(devSelection);
+        } else if (devSection == 1) {
+            if (devSelection == 0) {
+                calibratorEnabled = !calibratorEnabled;
+                playSound("ui-confirm");
+                System.out.println("[DEV MENU] Light Calibrator -> " + (calibratorEnabled ? "ENABLED" : "DISABLED"));
+            }
         }
     }
 
