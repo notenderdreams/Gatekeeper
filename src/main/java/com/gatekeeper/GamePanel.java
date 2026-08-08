@@ -63,6 +63,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int settingsSelection;
     private int devSection = 0;
     private int devSelection;
+    private int soundSceneSelection;
     private boolean devFocusRight = true;
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
@@ -99,6 +100,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     public GamePanel() {
         setPreferredSize(new Dimension(1280, 720));
         setFocusable(true);
+        setFocusTraversalKeysEnabled(false);
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
@@ -141,7 +143,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions);
+                devFocusRight, calibratorEnabled, showCollisions, sound, soundSceneSelection);
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -224,7 +226,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 int footstep = walkDistance / 30;
                 if (footstep > lastFootstep) {
                     lastFootstep = footstep;
-                    sound.play(AUDIO_ROOT + String.format("footstep-%02d.wav", (footstep - 1) % 4 + 1), 0.25f);
+                    sound.play(AUDIO_ROOT + String.format("footstep-%02d.wav", (footstep - 1) % 4 + 1),
+                        scene.name(), 0.25f);
                 }
             }
         } else {
@@ -426,7 +429,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void playSound(String file) {
-        sound.play(AUDIO_ROOT + file + ".wav");
+        sound.play(AUDIO_ROOT + file + ".wav", scene.name(), 1.0f);
     }
 
     private void toggleInputA() {
@@ -491,6 +494,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             devReturnScene = scene;
             devSection = 0;
             devSelection = 0;
+            soundSceneSelection = 0;
             devFocusRight = true;
             scene = GameScene.DEV;
             keys.clear();
@@ -501,6 +505,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
                 playSound("ui-back");
+            } else if (key == KeyEvent.VK_TAB) {
+                devFocusRight = !devFocusRight;
+                playSound("ui-select");
+            } else if (devSection == 1 && devFocusRight
+                && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
+                    || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
+                adjustSelectedDevSound((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
             } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
                 devFocusRight = false;
                 playSound("ui-select");
@@ -511,10 +522,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
                 if (!devFocusRight) {
-                    devSection = (devSection + direction + 2) % 2;
+                    devSection = (devSection + direction + 3) % 3;
                     devSelection = 0;
                 } else {
-                    int max = (devSection == 0) ? DEV_OPTION_COUNT : 2;
+                    int max = devOptionCount();
                     devSelection = (devSelection + direction + max) % max;
                 }
                 playSound("ui-select");
@@ -728,7 +739,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.DEV) {
-            String[] sections = {"BREAKPOINTS", "DEBUG TOOLS"};
+            String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS"};
             for (int i = 0; i < sections.length; i++) {
                 int sy = 58 + i * 28;
                 if (inside(x, y, 25, sy, 118, 22)) {
@@ -750,6 +761,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 1) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 56 + i * 18;
+                    if (inside(x, y, 160, oy, 285, 17)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        activateDevSelection();
+                        return;
+                    }
+                }
+            } else if (devSection == 2) {
                 for (int i = 0; i < 2; i++) {
                     int oy = 58 + i * 26;
                     if (inside(x, y, 160, oy, 285, 22)) {
@@ -832,7 +853,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int prevSelection = devSelection;
             boolean prevFocus = devFocusRight;
 
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < 3; i++) {
                 int sy = 58 + i * 28;
                 if (inside(mouseX, mouseY, 25, sy, 118, 22)) {
                     devSection = i;
@@ -851,6 +872,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 1) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 56 + i * 18;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 17)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        break;
+                    }
+                }
+            } else if (devSection == 2) {
                 for (int i = 0; i < 2; i++) {
                     int oy = 58 + i * 26;
                     if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
@@ -948,6 +978,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             loadDevPreset(devSelection);
         } else if (devSection == 1) {
             if (devSelection == 0) {
+                String[] scenes = SoundManager.soundScenes();
+                soundSceneSelection = (soundSceneSelection + 1) % scenes.length;
+                playSound("ui-select");
+            }
+        } else if (devSection == 2) {
+            if (devSelection == 0) {
                 calibratorEnabled = !calibratorEnabled;
                 playSound("ui-confirm");
                 System.out.println("[DEV MENU] Light Calibrator -> " + (calibratorEnabled ? "ENABLED" : "DISABLED"));
@@ -958,6 +994,29 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 System.out.println("[DEV MENU] Show Collisions -> " + (showCollisions ? "ENABLED" : "DISABLED"));
             }
         }
+    }
+
+    private int devOptionCount() {
+        if (devSection == 0) return DEV_OPTION_COUNT;
+        if (devSection == 1) {
+            return 1 + SoundManager.sceneSounds(
+                SoundManager.soundScenes()[soundSceneSelection]).length;
+        }
+        return 2;
+    }
+
+    private void adjustSelectedDevSound(int direction) {
+        String sceneName = SoundManager.soundScenes()[soundSceneSelection];
+        if (devSelection == 0) {
+            String[] scenes = SoundManager.soundScenes();
+            soundSceneSelection = (soundSceneSelection + direction + scenes.length) % scenes.length;
+        } else {
+            String file = SoundManager.sceneSounds(sceneName)[devSelection - 1];
+            String resourcePath = AUDIO_ROOT + file;
+            sound.setSceneVolume(sceneName, resourcePath,
+                sound.sceneVolume(sceneName, resourcePath) + direction * 0.1f);
+        }
+        playSound("ui-click");
     }
 
     private void loadDevPreset(int preset) {

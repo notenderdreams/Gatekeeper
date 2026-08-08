@@ -4,14 +4,21 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Small cached WAV player. Missing or unsupported audio never interrupts gameplay. */
 public final class SoundManager {
     private static final long MUSIC_CROSSFADE_MICROS = 1_500_000L;
+    private static final Map<String, List<String>> SCENE_SOUNDS = buildSceneSounds();
     private final Map<String, Clip> clips = new HashMap<>();
     private final Map<String, Float> clipVolumeMultipliers = new HashMap<>();
+    private final Map<String, String> clipScenes = new HashMap<>();
+    private final Map<String, Map<String, Float>> sceneVolumes = new HashMap<>();
     private Clip music;
     private Clip fadingMusic;
     private String musicPath;
@@ -24,10 +31,14 @@ public final class SoundManager {
     private float fxVolume = 0.85f;
 
     public void play(String resourcePath) {
-        play(resourcePath, 1.0f);
+        play(resourcePath, "GLOBAL", 1.0f);
     }
 
     public void play(String resourcePath, float volumeMultiplier) {
+        play(resourcePath, "GLOBAL", volumeMultiplier);
+    }
+
+    public void play(String resourcePath, String sceneName, float volumeMultiplier) {
         Clip clip = clips.get(resourcePath);
         if (clip == null) {
             clip = load(resourcePath);
@@ -36,9 +47,10 @@ public final class SoundManager {
         }
         float safeMultiplier = clampVolume(volumeMultiplier);
         clipVolumeMultipliers.put(resourcePath, safeMultiplier);
+        clipScenes.put(resourcePath, sceneName);
         if (clip.isRunning()) clip.stop();
         clip.setFramePosition(0);
-        setGain(clip, masterVolume * fxVolume * safeMultiplier);
+        setGain(clip, masterVolume * fxVolume * sceneVolume(sceneName, resourcePath) * safeMultiplier);
         clip.start();
     }
 
@@ -48,6 +60,7 @@ public final class SoundManager {
         for (Clip clip : clips.values()) clip.close();
         clips.clear();
         clipVolumeMultipliers.clear();
+        clipScenes.clear();
     }
 
     public void loop(String resourcePath) {
@@ -111,6 +124,26 @@ public final class SoundManager {
     public float musicVolume() { return musicVolume; }
     public float fxVolume() { return fxVolume; }
 
+    public static String[] soundScenes() {
+        return SCENE_SOUNDS.keySet().toArray(new String[0]);
+    }
+
+    public static String[] sceneSounds(String sceneName) {
+        List<String> sounds = SCENE_SOUNDS.get(sceneName);
+        return sounds == null ? new String[0] : sounds.toArray(new String[0]);
+    }
+
+    public float sceneVolume(String sceneName, String resourcePath) {
+        return sceneVolumes.computeIfAbsent(sceneName, ignored -> new HashMap<>())
+            .getOrDefault(resourcePath, 1.0f);
+    }
+
+    public void setSceneVolume(String sceneName, String resourcePath, float volume) {
+        sceneVolumes.computeIfAbsent(sceneName, ignored -> new HashMap<>())
+            .put(resourcePath, clampVolume(volume));
+        refreshVolumes();
+    }
+
     public void setMasterVolume(float volume) {
         masterVolume = clampVolume(volume);
         refreshVolumes();
@@ -124,8 +157,7 @@ public final class SoundManager {
     public void setFxVolume(float volume) {
         fxVolume = clampVolume(volume);
         for (Map.Entry<String, Clip> entry : clips.entrySet()) {
-            setGain(entry.getValue(), masterVolume * fxVolume
-                * clipVolumeMultipliers.getOrDefault(entry.getKey(), 1.0f));
+            setClipGain(entry.getKey(), entry.getValue());
         }
     }
 
@@ -133,9 +165,40 @@ public final class SoundManager {
         if (music != null && fadingMusic == null) setGain(music, masterVolume * musicVolume);
         if (ambient != null) setGain(ambient, masterVolume * musicVolume);
         for (Map.Entry<String, Clip> entry : clips.entrySet()) {
-            setGain(entry.getValue(), masterVolume * fxVolume
-                * clipVolumeMultipliers.getOrDefault(entry.getKey(), 1.0f));
+            setClipGain(entry.getKey(), entry.getValue());
         }
+    }
+
+    private void setClipGain(String resourcePath, Clip clip) {
+        String sceneName = clipScenes.getOrDefault(resourcePath, "GLOBAL");
+        setGain(clip, masterVolume * fxVolume * sceneVolume(sceneName, resourcePath)
+            * clipVolumeMultipliers.getOrDefault(resourcePath, 1.0f));
+    }
+
+    private static Map<String, List<String>> buildSceneSounds() {
+        Map<String, List<String>> sounds = new LinkedHashMap<>();
+        List<String> movement = Arrays.asList(
+            "footstep-01.wav", "footstep-02.wav", "footstep-03.wav", "footstep-04.wav");
+        sounds.put("TITLE", Arrays.asList("ui-open.wav", "ui-select.wav", "ui-confirm.wav",
+            "ui-error.wav", "ui-click.wav"));
+        sounds.put("CONTROLS", Collections.singletonList("ui-back.wav"));
+        sounds.put("SETTINGS", Arrays.asList("ui-back.wav", "ui-select.wav", "ui-click.wav"));
+        sounds.put("DEV", Arrays.asList("ui-open.wav", "ui-back.wav", "ui-select.wav",
+            "ui-confirm.wav", "ui-click.wav"));
+        sounds.put("BEDROOM", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
+        sounds.put("STREET", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
+        sounds.put("SHOP", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
+        sounds.put("BOARD", Arrays.asList("ui-open.wav", "ui-close.wav", "ui-select.wav", "ui-error.wav",
+            "ui-confirm.wav", "ui-click.wav", "gate-place.wav", "switch.wav", "success.wav", "failure.wav"));
+        sounds.put("NOTEBOOK", Arrays.asList("book-open.wav", "book-close.wav", "book-flip.wav", "ui-select.wav"));
+        sounds.put("END", Collections.singletonList("ui-confirm.wav"));
+        return Collections.unmodifiableMap(sounds);
+    }
+
+    private static List<String> withMovement(List<String> movement, String... sounds) {
+        List<String> result = new java.util.ArrayList<>(movement);
+        result.addAll(Arrays.asList(sounds));
+        return Collections.unmodifiableList(result);
     }
 
     private static float clampVolume(float volume) {

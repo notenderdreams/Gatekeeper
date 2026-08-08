@@ -104,7 +104,8 @@ final class MenuRenderer {
     }
 
     static void drawDeveloper(Graphics2D g, int mouseX, int mouseY, int section, int selection,
-                               boolean focusRight, boolean calibratorEnabled, boolean showCollisions) {
+                               boolean focusRight, boolean calibratorEnabled, boolean showCollisions,
+                               SoundManager sound, int soundSceneSelection) {
         g.setColor(new Color(2, 5, 8));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
@@ -119,7 +120,7 @@ final class MenuRenderer {
         g.fillRect(150, 52, 1, 205);
 
         // --- LEFT COLUMN: SECTIONS ---
-        String[] sections = {"BREAKPOINTS", "DEBUG TOOLS"};
+        String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS"};
         for (int i = 0; i < sections.length; i++) {
             int y = 58 + i * 28;
             boolean isCurrentSection = (section == i);
@@ -193,7 +194,34 @@ final class MenuRenderer {
                     GamePanel.pixelText(g, options[i], 183, y + 14, 1);
                 }
             }
-        } else if (section == 1) { // DEBUG TOOLS
+        } else if (section == 1) { // SOUNDS
+            String[] soundScenes = SoundManager.soundScenes();
+            String sceneName = soundScenes[Math.max(0, Math.min(soundSceneSelection, soundScenes.length - 1))];
+            String[] soundFiles = SoundManager.sceneSounds(sceneName);
+            for (int i = 0; i <= soundFiles.length; i++) {
+                int y = 56 + i * 18;
+                boolean isSelected = focusRight && selection == i;
+                boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 17);
+                g.setColor(isSelected ? new Color(25, 48, 42, 190)
+                    : hovered ? new Color(18, 32, 28, 160) : new Color(8, 14, 18, 120));
+                g.fillRect(160, y, 285, 17);
+                g.setColor(isSelected ? new Color(55, 110, 92, 200)
+                    : hovered ? new Color(45, 75, 68, 180) : new Color(20, 28, 32));
+                g.drawRect(160, y, 285, 17);
+                g.setColor(isSelected ? new Color(143, 190, 128) : new Color(160, 168, 168));
+                if (isSelected) GamePanel.pixelText(g, ">", 170, y + 12, 1);
+                String label;
+                if (i == 0) {
+                    label = "SCENE: " + sceneName;
+                } else {
+                    String file = soundFiles[i - 1];
+                    label = file.substring(0, file.length() - 4);
+                    int percent = Math.round(sound.sceneVolume(sceneName, AUDIO_ROOT + file) * 100.0f);
+                    GamePanel.pixelText(g, percent + "%", 402, y + 12, 1);
+                }
+                GamePanel.pixelText(g, label, 183, y + 12, 1);
+            }
+        } else if (section == 2) { // DEBUG TOOLS
             String[] tools = {
                 "GLOBAL POSITION MARKER: " + (calibratorEnabled ? "ON" : "OFF"),
                 "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF")
