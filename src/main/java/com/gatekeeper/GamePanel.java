@@ -165,7 +165,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case NOTEBOOK -> drawNotebook(g);
             case END -> drawEnding(g);
         }
-        if (line != null) drawDialogue(g);
+        if (dialogueVisible()) drawDialogue(g);
         if (exitPrompt) drawExitPrompt(g);
         g.dispose();
     }
@@ -177,7 +177,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         sound.updateCrossfade();
         if (scene == Scene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
         else sound.stopAmbient();
-        if (line != null) lineAge++;
+        if (dialogueVisible()) lineAge++;
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null
             && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
@@ -1747,6 +1747,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         return lineAge / 2 + 1 >= words.length();
     }
 
+    private boolean dialogueVisible() {
+        return line != null && !exitPrompt
+            && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP);
+    }
+
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
     private boolean advancedComplete() { return crafted[3] && crafted[4]; }
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
@@ -1890,12 +1895,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         mouseX = x;
         mouseY = y;
 
-        if (line != null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
-            if (dialogueLineComplete()) nextLine();
-            else lineAge = Integer.MAX_VALUE / 2;
-            return;
-        }
-
         if (exitPrompt) {
             if (inside(x, y, 170, 118, 140, 20)) {
                 exitPromptSelection = 0;
@@ -1904,6 +1903,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 exitPromptSelection = 1;
                 activateExitPromptSelection();
             }
+            return;
+        }
+
+        if (dialogueVisible()) {
+            if (dialogueLineComplete()) nextLine();
+            else lineAge = Integer.MAX_VALUE / 2;
             return;
         }
 
