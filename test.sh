@@ -13,6 +13,10 @@ test -s "$PROJECT_DIR/src/main/resources/assets/characters/mira-sprites.png"
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GateType.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/Facing.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameScene.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveManager.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitRecipe.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitModel.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \

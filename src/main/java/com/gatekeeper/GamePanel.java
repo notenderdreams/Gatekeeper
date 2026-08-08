@@ -59,7 +59,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private String line;
     private int lineAge;
     private int chapter;
-    private int titleSelection;
+    private int titleSelection = SaveManager.hasSave() ? 0 : 1;
     private int settingsSelection;
     private int devSelection;
     private GameScene devReturnScene = GameScene.TITLE;
@@ -240,6 +240,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
+                saveCurrentProgress();
             } else if (near(205, 126)) {
                 if (chapter >= 2) openBoard();
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
@@ -248,6 +249,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("door-open");
                 setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
                 facing = Facing.RIGHT;
+                saveCurrentProgress();
             }
         } else if (scene == GameScene.STREET) {
             if (Math.abs(playerX - STREET_HOME_X) < 38) {
@@ -255,11 +257,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("door-open");
                 setPlayerPosition(420, 160);
                 facing = Facing.LEFT;
+                saveCurrentProgress();
             } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
                 scene = GameScene.SHOP;
                 playSound("door-open");
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
+                saveCurrentProgress();
             }
         } else if (scene == GameScene.SHOP) {
             if (playerX < 50) {
@@ -267,6 +271,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("door-close");
                 setPlayerPosition(STREET_SHOP_X - 47, STREET_GROUND_Y);
                 facing = Facing.LEFT;
+                saveCurrentProgress();
             } else if (near(240, 160)) talkToMira();
         }
     }
@@ -281,12 +286,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Use every switch setting. Match the notebook exactly.",
                 "ALEX|So the truth table is... a list of promises?",
                 "MIRA|Exactly. A circuit must keep every one.");
+            saveCurrentProgress();
         } else if (chapter == 2 && basicComplete()) {
             chapter = 3;
             say("MIRA|Clean work. You tested every possible input.",
                 "MIRA|Take this LogicLens. It checks every row at once.",
                 LOGICLENS_ITEM_CARD,
                 "MIRA|Now try XNOR and IMPLY. The notebook has new pages.");
+            saveCurrentProgress();
         } else if (chapter == 2) {
             say("MIRA|I still need NAND, NOR, and XOR. Your board is at home.");
         } else if (chapter == 3 && advancedComplete()) {
@@ -296,6 +303,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "ALEX|What's on the next page?",
                 "MIRA|That's tomorrow's circuit.");
             dialogue.add("@END");
+            saveCurrentProgress();
         } else {
             say("MIRA|Let the LogicLens test XNOR and IMPLY for you.");
         }
@@ -404,6 +412,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         crafted[selectedRecipe] = true;
         boardMessage = circuit.recipe().name + " COMPLETE! Take it to Mira.";
         playSound("success");
+        saveCurrentProgress();
     }
 
     private void say(String... lines) {
@@ -517,7 +526,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                titleSelection = (titleSelection + direction + 4) % 4;
+                titleSelection = (titleSelection + direction + 5) % 5;
+                if (titleSelection == 0 && !SaveManager.hasSave()) {
+                    titleSelection = (titleSelection + direction + 5) % 5;
+                }
                 playSound("ui-select");
             }
             else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) activateTitleSelection();
@@ -614,8 +626,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         if (scene == GameScene.TITLE) {
             if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y, TITLE_MENU_W, TITLE_MENU_H)) {
-                titleSelection = 0;
-                activateTitleSelection();
+                if (SaveManager.hasSave()) {
+                    titleSelection = 0;
+                    activateTitleSelection();
+                } else {
+                    playSound("ui-error");
+                }
             } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
                 TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 1;
@@ -627,6 +643,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
                 TITLE_MENU_W, TITLE_MENU_H)) {
                 titleSelection = 3;
+                activateTitleSelection();
+            } else if (inside(x, y, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 4,
+                TITLE_MENU_W, TITLE_MENU_H)) {
+                titleSelection = 4;
                 activateTitleSelection();
             }
             return;
@@ -729,13 +749,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.TITLE) {
             int previous = titleSelection;
             if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y,
-                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 0;
+                TITLE_MENU_W, TITLE_MENU_H)) {
+                if (SaveManager.hasSave()) titleSelection = 0;
+            }
             else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP,
                 TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 1;
             else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 2,
                 TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 2;
             else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 3,
                 TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 3;
+            else if (inside(mouseX, mouseY, TITLE_MENU_X, TITLE_MENU_Y + TITLE_MENU_GAP * 4,
+                TITLE_MENU_W, TITLE_MENU_H)) titleSelection = 4;
             if (previous != titleSelection) playSound("ui-select");
         }
         repaint();
@@ -757,19 +781,46 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void activateTitleSelection() {
-        playSound("ui-confirm");
         if (titleSelection == 0) {
+            if (SaveManager.hasSave() && loadSavedProgress()) {
+                playSound("ui-confirm");
+            } else {
+                playSound("ui-error");
+            }
+            return;
+        }
+        if (titleSelection == 1) {
+            playSound("ui-confirm");
+            chapter = 0;
             scene = GameScene.BEDROOM;
             setPlayerPosition(210, 157);
             facing = Facing.DOWN;
+            Arrays.fill(crafted, false);
+            selectedRecipe = 0;
+            notebookPage = 0;
+            autoTester.reset();
+            circuit.selectRecipe(recipes.get(0));
+            dialogue.clear();
+            line = null;
             say("ALEX|It started with a box I wasn't supposed to find.");
-        } else if (titleSelection == 1) {
+            saveCurrentProgress();
+            return;
+        }
+        if (titleSelection == 2) {
+            playSound("ui-confirm");
             scene = GameScene.CONTROLS;
-        } else {
+            return;
+        }
+        if (titleSelection == 3) {
+            playSound("ui-confirm");
             settingsOpenedFromPause = false;
             scene = GameScene.SETTINGS;
+            return;
         }
-        if (titleSelection == 3) System.exit(0);
+        if (titleSelection == 4) {
+            playSound("ui-confirm");
+            System.exit(0);
+        }
     }
 
     private void loadDevPreset(int preset) {
@@ -832,6 +883,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         facing = Facing.DOWN;
         playSound("ui-confirm");
+        saveCurrentProgress();
     }
 
     private void activateExitPromptSelection() {
@@ -879,6 +931,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void resetToTitle() {
+        saveCurrentProgress();
         exitPrompt = false;
         settingsOpenedFromPause = false;
         Arrays.fill(crafted, false);
@@ -892,8 +945,47 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         setPlayerPosition(210, 157);
         facing = Facing.DOWN;
         walkDistance = 0;
-        titleSelection = 0;
+        titleSelection = SaveManager.hasSave() ? 0 : 1;
         scene = GameScene.TITLE;
+    }
+
+    public void saveCurrentProgress() {
+        if (scene == GameScene.TITLE || scene == GameScene.CONTROLS
+            || scene == GameScene.SETTINGS || scene == GameScene.DEV) {
+            return;
+        }
+        SaveData data = new SaveData();
+        data.chapter = chapter;
+        data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
+        data.playerX = playerX;
+        data.playerY = playerY;
+        data.facing = facing;
+        data.crafted = Arrays.copyOf(crafted, crafted.length);
+        data.notebookPage = notebookPage;
+        data.autoTesterAttached = autoTester.isAttached();
+        SaveManager.saveGame(data);
+    }
+
+    public boolean loadSavedProgress() {
+        SaveData data = SaveManager.loadGame();
+        if (data == null) return false;
+        this.chapter = data.chapter;
+        this.scene = data.scene != null ? data.scene : GameScene.BEDROOM;
+        setPlayerPosition(data.playerX, data.playerY);
+        this.facing = data.facing != null ? data.facing : Facing.DOWN;
+        if (data.crafted != null && data.crafted.length == crafted.length) {
+            System.arraycopy(data.crafted, 0, this.crafted, 0, crafted.length);
+        }
+        this.notebookPage = data.notebookPage;
+        this.autoTester.reset();
+        if (data.autoTesterAttached && !autoTester.isAttached()) {
+            this.autoTester.toggleAttachment();
+        }
+        this.circuit.selectRecipe(recipes.get(0));
+        this.dialogue.clear();
+        this.line = null;
+        this.exitPrompt = false;
+        return true;
     }
 
     static boolean inside(int px, int py, int x, int y, int w, int h) {

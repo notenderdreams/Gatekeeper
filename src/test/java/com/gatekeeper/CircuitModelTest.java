@@ -54,6 +54,32 @@ public final class CircuitModelTest {
         require(!xorAt01[0] && !xorAt01[1] && xorAt01[2]
                 && xorAt01[3] && xorAt01[4],
             "XOR topology should accept A=0, B=1 at the final parallel merge");
+        SaveData save = new SaveData();
+        save.chapter = 3;
+        save.scene = GameScene.SHOP;
+        save.playerX = 94;
+        save.playerY = 190;
+        save.facing = Facing.RIGHT;
+        save.crafted = new boolean[]{true, true, true, false, false};
+        save.notebookPage = 2;
+        save.autoTesterAttached = true;
+
+        require(SaveManager.saveGame(save), "saveGame should return true");
+        require(SaveManager.hasSave(), "hasSave should return true after saving");
+
+        SaveData loaded = SaveManager.loadGame();
+        require(loaded != null, "loaded save should not be null");
+        require(loaded.chapter == 3, "loaded chapter should be 3");
+        require(loaded.scene == GameScene.SHOP, "loaded scene should be SHOP");
+        require(loaded.playerX == 94 && loaded.playerY == 190, "loaded coordinates should match");
+        require(loaded.facing == Facing.RIGHT, "loaded facing should match");
+        require(loaded.crafted[0] && loaded.crafted[1] && loaded.crafted[2] && !loaded.crafted[3], "loaded crafted array should match");
+        require(loaded.notebookPage == 2, "loaded notebook page should be 2");
+        require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
+
+        SaveManager.deleteSave();
+        require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");
+
         System.out.println("CircuitModelTest: all checks passed");
     }
 

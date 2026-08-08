@@ -7,7 +7,7 @@ final class GameConstants {
     static final int W = 480;
     static final int H = 270;
     static final int TITLE_MENU_X = 52;
-    static final int TITLE_MENU_Y = 108;
+    static final int TITLE_MENU_Y = 92;
     static final int TITLE_MENU_W = 142;
     static final int TITLE_MENU_H = 18;
     static final int TITLE_MENU_GAP = 20;

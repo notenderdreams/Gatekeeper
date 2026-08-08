@@ -39,14 +39,17 @@ final class MenuRenderer {
         g.setColor(new Color(115, 111, 164));
         GamePanel.pixelText(g, "+", 452, 146, 1);
 
+        boolean hasSave = SaveManager.hasSave();
         drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X, TITLE_MENU_Y,
-            TITLE_MENU_W, TITLE_MENU_H, "BEGIN", 0);
+            TITLE_MENU_W, TITLE_MENU_H, "CONTINUE", 0, hasSave);
         drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP, TITLE_MENU_W, TITLE_MENU_H, "CONTROLS", 1);
+            TITLE_MENU_Y + TITLE_MENU_GAP, TITLE_MENU_W, TITLE_MENU_H, "BEGIN", 1, true);
         drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP * 2, TITLE_MENU_W, TITLE_MENU_H, "SETTINGS", 2);
+            TITLE_MENU_Y + TITLE_MENU_GAP * 2, TITLE_MENU_W, TITLE_MENU_H, "CONTROLS", 2, true);
         drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
-            TITLE_MENU_Y + TITLE_MENU_GAP * 3, TITLE_MENU_W, TITLE_MENU_H, "EXIT", 3);
+            TITLE_MENU_Y + TITLE_MENU_GAP * 3, TITLE_MENU_W, TITLE_MENU_H, "SETTINGS", 3, true);
+        drawTitleButton(g, mouseX, mouseY, selection, TITLE_MENU_X,
+            TITLE_MENU_Y + TITLE_MENU_GAP * 4, TITLE_MENU_W, TITLE_MENU_H, "EXIT", 4, true);
     }
 
     static void drawControls(Graphics2D g, BufferedImage background, int mouseX, int mouseY) {
@@ -181,11 +184,14 @@ final class MenuRenderer {
 
     private static void drawTitleButton(Graphics2D g, int mouseX, int mouseY, int current,
                                         int x, int y, int width, int height,
-                                        String label, int selection) {
-        boolean hovered = GamePanel.inside(mouseX, mouseY, x, y, width, height);
-        boolean selected = current == selection;
+                                        String label, int selection, boolean enabled) {
+        boolean hovered = enabled && GamePanel.inside(mouseX, mouseY, x, y, width, height);
+        boolean selected = enabled && (current == selection);
 
-        if (selected) {
+        if (!enabled) {
+            g.setColor(new Color(75, 80, 85));
+            GamePanel.pixelText(g, label, x + 23, y + 13, 1);
+        } else if (selected) {
             g.setColor(new Color(143, 190, 128));
             GamePanel.pixelText(g, ">", x + 10, y + 13, 1);
             GamePanel.pixelText(g, label, x + 23, y + 13, 1);

@@ -19,3 +19,6 @@ replay_pid*.log
 
 # Local Graphify code graph and analysis cache
 graphify-out/
+
+# Local game save state
+save.json
