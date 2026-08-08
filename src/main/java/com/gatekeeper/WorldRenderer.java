@@ -323,12 +323,22 @@ final class WorldRenderer {
             g.drawPolygon(polyX, polyY, 4);
             GamePanel.pixelText(g, "BLOCKED (BED/DESK)", 28, 165, 1);
 
+            // Blocked Box Physical Footprint (Red) — calibrated: {310,141}, {331,116}, {271,84}, {272,131}
+            int[] boxPolyX = {310, 331, 271, 272};
+            int[] boxPolyY = {141, 116,  84, 131};
+            g.setColor(new Color(240, 60, 60, 85));
+            g.fillPolygon(boxPolyX, boxPolyY, 4);
+            g.setColor(new Color(255, 90, 90, 230));
+            g.drawPolygon(boxPolyX, boxPolyY, 4);
+            GamePanel.pixelText(g, "BOX COLLISION", 270, 148, 1);
+
+            // Interaction Triggers (Yellow)
             g.setColor(new Color(255, 230, 50, 200));
             g.drawRect(163, 86, 84, 80);
             GamePanel.pixelText(g, "BOARD/DESK", 172, 126, 1);
 
             g.drawRect(257, 92, 84, 80);
-            GamePanel.pixelText(g, "BOX", 288, 132, 1);
+            GamePanel.pixelText(g, "BOX TRIGGER", 278, 112, 1);
 
             g.drawRect(365, 92, 84, 80);
             GamePanel.pixelText(g, "EXIT DOOR", 382, 132, 1);

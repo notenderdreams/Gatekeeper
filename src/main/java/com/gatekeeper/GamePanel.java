@@ -470,10 +470,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private static boolean bedroomBlocked(double x, double y) {
         // Perspective-angled bed/desk footprint calibrated by user points: {97,92}, {148,131}, {58,206}, {1,142}
-        if (y >= 206 || y < 110) return false;
-        if (y < 131) return x < 148;
-        double maxX = 148.0 - (y - 131.0) * 1.2;
-        return x < maxX;
+        if (y < 206 && y >= 110) {
+            if (y < 131 && x < 148) return true;
+            double maxX = 148.0 - (y - 131.0) * 1.2;
+            if (x < maxX) return true;
+        }
+
+        // Calibrated Box physical collision footprint: { 310, 141 }, { 331, 116 }, { 271, 84 }, { 272, 131 }
+        if (x >= 271 && x <= 331 && y >= 84 && y <= 141) {
+            return true;
+        }
+
+        return false;
     }
 
     @Override public void keyPressed(KeyEvent event) {
