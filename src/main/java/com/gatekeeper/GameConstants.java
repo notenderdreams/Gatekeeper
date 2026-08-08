@@ -9,7 +9,7 @@ final class GameConstants {
     static final int TITLE_MENU_X = 52;
     static final int TITLE_MENU_Y = 108;
     static final int TITLE_MENU_W = 142;
-    static final int TITLE_MENU_H = 16;
+    static final int TITLE_MENU_H = 18;
     static final int TITLE_MENU_GAP = 20;
     static final int TITLE_COPY_CENTER_X = 348;
     static final int DEV_OPTION_COUNT = 8;

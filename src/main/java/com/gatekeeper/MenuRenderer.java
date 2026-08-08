@@ -19,7 +19,7 @@ final class MenuRenderer {
         drawStars(g, ticks);
 
         g.setColor(new Color(111, 105, 148));
-        GamePanel.pixelText(g, "MAIN MENU", TITLE_MENU_X + 18, TITLE_MENU_Y - 12, 1);
+        GamePanel.pixelText(g, "MAIN MENU", TITLE_MENU_X + 23, TITLE_MENU_Y - 12, 1);
         g.setColor(new Color(55, 58, 72, 190));
         g.fillRect(220, 86, 1, 101);
         g.setColor(new Color(119, 110, 178));
@@ -184,15 +184,19 @@ final class MenuRenderer {
                                         String label, int selection) {
         boolean hovered = GamePanel.inside(mouseX, mouseY, x, y, width, height);
         boolean selected = current == selection;
-        if (selected || hovered) {
-            g.setColor(selected ? new Color(31, 57, 52, 190) : new Color(27, 39, 42, 170));
-            g.fillRect(x, y, width, height);
-            g.setColor(selected ? new Color(143, 190, 128) : new Color(102, 137, 124));
-            g.fillRect(x, y, 2, height);
+
+        if (selected) {
+            g.setColor(new Color(143, 190, 128));
+            GamePanel.pixelText(g, ">", x + 10, y + 13, 1);
+            GamePanel.pixelText(g, label, x + 23, y + 13, 1);
+        } else if (hovered) {
+            g.setColor(new Color(191, 192, 185));
+            GamePanel.pixelText(g, ">", x + 10, y + 13, 1);
+            GamePanel.pixelText(g, label, x + 23, y + 13, 1);
+        } else {
+            g.setColor(new Color(160, 168, 168));
+            GamePanel.pixelText(g, label, x + 23, y + 13, 1);
         }
-        g.setColor(selected || hovered ? new Color(143, 190, 128) : new Color(191, 192, 185));
-        GamePanel.pixelText(g, label, x + 18, y + 14, 1);
-        if (selected || hovered) GamePanel.pixelText(g, ">", x + 5, y + 14, 1);
     }
 
     private static void drawVolumeRow(Graphics2D g, int y, String label, float volume,
