@@ -38,7 +38,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Color YELLOW = new Color(250, 204, 21);
     private static final Color DIM = new Color(100, 104, 112);
 
-    private enum Scene { TITLE, BEDROOM, SHOP, BOARD, NOTEBOOK, END }
+    private enum Scene { TITLE, CONTROLS, BEDROOM, SHOP, BOARD, NOTEBOOK, END }
     private enum Direction { DOWN, LEFT, RIGHT, UP }
 
     private final BufferedImage canvas = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
@@ -58,6 +58,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private String line;
     private int lineAge;
     private int chapter;
+    private int titleSelection;
     private int selectedRecipe;
     private int playerX = 210;
     private int playerY = 157;
@@ -92,6 +93,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         switch (scene) {
             case TITLE -> drawTitle(g);
+            case CONTROLS -> drawControls(g);
             case BEDROOM -> drawBedroom(g);
             case SHOP -> drawShop(g);
             case BOARD -> drawBoard(g);
@@ -150,18 +152,137 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawTitle(Graphics2D g) {
+        if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
+        g.setColor(new Color(3, 6, 12, 188));
+        g.fillRect(0, 0, W, H);
+        g.setColor(new Color(4, 7, 12, 150));
+        g.fillRect(0, 0, W, 25);
+        g.fillRect(0, 245, W, 25);
+
+        // A live circuit motif frames the logo.
+        boolean pulseA = (ticks / 36) % 2 == 0;
+        boolean pulseB = (ticks / 54) % 2 == 0;
+        drawTitleTrace(g, 24, 50, 117, 50, pulseA);
+        drawTitleTrace(g, 363, 50, 456, 50, pulseB);
+        drawTitleTrace(g, 34, 119, 121, 119, pulseB);
+        drawTitleTrace(g, 359, 119, 447, 119, pulseA);
+        g.setColor(pulseA ? CYAN : DIM);
+        g.fillOval(19, 46, 8, 8);
+        g.setColor(pulseB ? YELLOW : DIM);
+        g.fillOval(453, 46, 8, 8);
+
+        g.setColor(new Color(0, 0, 0, 180));
+        pixelText(g, "GATEKEEPER", 153, 83, 3);
         g.setColor(INK);
-        pixelText(g, "G A T E K E E P E R", 135, 86, 2);
+        pixelText(g, "GATEKEEPER", 150, 80, 3);
         g.setColor(CYAN);
-        pixelText(g, "A LOGIC TALE", 190, 112, 1);
-        g.setColor(INK);
-        drawGate(g, 215, 137, GateType.AND, true);
-        drawWire(g, 175, 143, 215, 143, false);
-        drawWire(g, 175, 157, 215, 157, true);
-        drawWire(g, 259, 150, 304, 150, ((ticks / 30) % 2) == 0);
-        if ((ticks / 35) % 2 == 0) pixelText(g, "[ PRESS ENTER ]", 181, 210, 1);
+        pixelText(g, "A  L O G I C  T A L E", 168, 104, 1);
+        g.setColor(YELLOW);
+        g.fillRect(146, 112, 188, 2);
         g.setColor(DIM);
-        pixelText(g, "A tiny game about making sense of things", 119, 242, 1);
+        pixelText(g, "EVERY CIRCUIT MAKES A PROMISE", 151, 128, 1);
+
+        drawTitleButton(g, 145, 151, 190, 28, "START STORY", 0);
+        drawTitleButton(g, 145, 184, 190, 28, "HOW TO PLAY", 1);
+
+        Direction previousFacing = facing;
+        facing = Direction.DOWN;
+        drawPlayer(g, 394, 225);
+        facing = previousFacing;
+        g.setColor(new Color(0, 0, 0, 125));
+        g.fillRect(355, 231, 80, 3);
+
+        g.setColor((ticks / 35) % 2 == 0 ? INK : DIM);
+        pixelText(g, "W/S OR MOUSE  •  ENTER", 169, 231, 1);
+        g.setColor(new Color(91, 106, 109));
+        pixelText(g, "JAVA 2D  //  BUILD 01", 12, 260, 1);
+    }
+
+    private void drawControls(Graphics2D g) {
+        if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
+        g.setColor(new Color(3, 7, 11, 211));
+        g.fillRect(0, 0, W, H);
+        g.setColor(new Color(10, 17, 21));
+        g.fillRect(54, 24, 372, 222);
+        g.setColor(new Color(67, 129, 111));
+        g.drawRect(54, 24, 372, 222);
+        g.setColor(new Color(152, 95, 47));
+        g.drawRect(58, 28, 364, 214);
+
+        g.setColor(INK);
+        pixelText(g, "HOW TO PLAY", 148, 54, 2);
+        g.setColor(YELLOW);
+        g.fillRect(83, 65, 314, 2);
+
+        drawControlSection(g, 77, 79, "EXPLORE",
+            "WASD / ARROWS", "Move Alex",
+            "E / ENTER", "Interact and talk",
+            "N", "Open the notebook");
+        drawControlSection(g, 250, 79, "WORKBENCH",
+            "MOUSE", "Place gates and test",
+            "1 / 2 / 3", "Select AND / OR / NOT",
+            "A / B", "Toggle circuit inputs");
+
+        g.setColor(new Color(18, 39, 39));
+        g.fillRect(77, 185, 320, 25);
+        g.setColor(CYAN);
+        pixelText(g, "TIP", 88, 201, 1);
+        g.setColor(INK);
+        pixelText(g, "Record all four input combinations.", 121, 201, 1);
+
+        boolean hovered = inside(mouseX, mouseY, 164, 217, 152, 22);
+        g.setColor(hovered ? new Color(71, 63, 26) : new Color(27, 35, 35));
+        g.fillRect(164, 217, 152, 22);
+        g.setColor(hovered ? YELLOW : INK);
+        g.drawRect(164, 217, 152, 22);
+        pixelText(g, "< BACK TO TITLE", 192, 232, 1);
+    }
+
+    private void drawTitleTrace(Graphics2D g, int x1, int y1, int x2, int y2, boolean powered) {
+        int middle = (x1 + x2) / 2;
+        g.setColor(powered ? CYAN : new Color(48, 75, 75));
+        g.setStroke(new BasicStroke(powered ? 2 : 1));
+        g.drawLine(x1, y1, middle, y1);
+        g.drawLine(middle, y1, middle, y1 + 8);
+        g.drawLine(middle, y1 + 8, x2, y1 + 8);
+        g.setStroke(new BasicStroke(1));
+        g.fillRect(middle - 1, y1 - 1, 3, 3);
+    }
+
+    private void drawTitleButton(Graphics2D g, int x, int y, int width, int height,
+                                 String label, int selection) {
+        boolean hovered = inside(mouseX, mouseY, x, y, width, height);
+        boolean selected = titleSelection == selection;
+        g.setColor(selected || hovered ? new Color(49, 67, 61, 230) : new Color(8, 15, 18, 215));
+        g.fillRect(x, y, width, height);
+        g.setColor(selected || hovered ? YELLOW : new Color(78, 100, 97));
+        g.drawRect(x, y, width, height);
+        if (selected || hovered) {
+            g.fillRect(x + 7, y + 8, 4, 12);
+            g.fillRect(x + width - 11, y + 8, 4, 12);
+        }
+        g.setColor(selected || hovered ? INK : DIM);
+        int textX = x + (width - label.length() * 6) / 2;
+        pixelText(g, label, textX, y + 18, 1);
+    }
+
+    private void drawControlSection(Graphics2D g, int x, int y, String heading,
+                                    String key1, String action1,
+                                    String key2, String action2,
+                                    String key3, String action3) {
+        g.setColor(CYAN);
+        pixelText(g, heading, x, y, 1);
+        String[] keys = {key1, key2, key3};
+        String[] actions = {action1, action2, action3};
+        for (int i = 0; i < 3; i++) {
+            int rowY = y + 22 + i * 27;
+            g.setColor(new Color(53, 62, 63));
+            g.fillRect(x, rowY - 11, 145, 24);
+            g.setColor(YELLOW);
+            pixelText(g, keys[i], x + 7, rowY, 1);
+            g.setColor(INK);
+            pixelText(g, actions[i], x + 7, rowY + 11, 1);
+        }
     }
 
     private void drawBedroom(Graphics2D g) {
@@ -1032,13 +1153,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             nextLine();
             return;
         }
-        if (scene == Scene.TITLE && key == KeyEvent.VK_ENTER) {
-            scene = Scene.BEDROOM;
-            say("ALEX|It started with a box I wasn't supposed to find.");
+        if (scene == Scene.TITLE) {
+            if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) titleSelection = (titleSelection + 1) % 2;
+            else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) titleSelection = (titleSelection + 1) % 2;
+            else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) activateTitleSelection();
+            return;
+        } else if (scene == Scene.CONTROLS) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_BACK_SPACE
+                || key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) scene = Scene.TITLE;
+            return;
         } else if (scene == Scene.END && key == KeyEvent.VK_ENTER) {
-            Arrays.fill(crafted, false);
-            chapter = 0;
-            scene = Scene.TITLE;
+            resetToTitle();
         } else if ((scene == Scene.BEDROOM || scene == Scene.SHOP) && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N && scene != Scene.BOARD) {
@@ -1064,12 +1189,27 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     @Override public void mousePressed(MouseEvent event) {
         requestFocusInWindow();
-        if (scene != Scene.BOARD || line != null) return;
         int[] point = logicalPoint(event);
         int x = point[0];
         int y = point[1];
         mouseX = x;
         mouseY = y;
+
+        if (scene == Scene.TITLE) {
+            if (inside(x, y, 145, 151, 190, 28)) {
+                titleSelection = 0;
+                activateTitleSelection();
+            } else if (inside(x, y, 145, 184, 190, 28)) {
+                titleSelection = 1;
+                activateTitleSelection();
+            }
+            return;
+        }
+        if (scene == Scene.CONTROLS) {
+            if (inside(x, y, 164, 217, 152, 22)) scene = Scene.TITLE;
+            return;
+        }
+        if (scene != Scene.BOARD || line != null) return;
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
@@ -1097,6 +1237,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int[] point = logicalPoint(event);
         mouseX = point[0];
         mouseY = point[1];
+        if (scene == Scene.TITLE) {
+            if (inside(mouseX, mouseY, 145, 151, 190, 28)) titleSelection = 0;
+            else if (inside(mouseX, mouseY, 145, 184, 190, 28)) titleSelection = 1;
+        }
         repaint();
     }
     @Override public void mouseDragged(MouseEvent event) { mouseMoved(event); }
@@ -1113,6 +1257,33 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private boolean isHovered(int x, int y, int width, int height) {
         return scene == Scene.BOARD && inside(mouseX, mouseY, x, y, width, height);
+    }
+
+    private void activateTitleSelection() {
+        if (titleSelection == 0) {
+            scene = Scene.BEDROOM;
+            playerX = 210;
+            playerY = 157;
+            facing = Direction.DOWN;
+            say("ALEX|It started with a box I wasn't supposed to find.");
+        } else {
+            scene = Scene.CONTROLS;
+        }
+    }
+
+    private void resetToTitle() {
+        Arrays.fill(crafted, false);
+        dialogue.clear();
+        line = null;
+        chapter = 0;
+        selectedRecipe = 0;
+        circuit.selectRecipe(recipes.get(0));
+        playerX = 210;
+        playerY = 157;
+        facing = Direction.DOWN;
+        walkDistance = 0;
+        titleSelection = 0;
+        scene = Scene.TITLE;
     }
 
     private static boolean inside(int px, int py, int x, int y, int w, int h) {
