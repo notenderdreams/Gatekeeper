@@ -16,3 +16,6 @@ target/
 hs_err_pid*.log
 replay_pid*.log
 *.hprof
+
+# Local Graphify code graph and analysis cache
+graphify-out/
