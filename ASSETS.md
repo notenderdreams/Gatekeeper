@@ -1,6 +1,6 @@
 # Environment assets
 
-The two environment backgrounds are original project assets generated with OpenAI's
+The environment backgrounds are original project assets generated with OpenAI's
 built-in image generation tool on 2026-08-08. They do not reuse an external game,
 character, logo, or commercial asset pack.
 
@@ -13,6 +13,17 @@ bedroom workshop at night, with a moonlit window, bed, electronics workbench,
 component box, right-side door, warm/cool mixed lighting, dimensional furniture,
 contact shadows, and a broad unobstructed wooden floor. No characters, UI, text,
 logos, watermark, copied game assets, or side-scroller framing.
+
+## Lantern Street
+
+Saved as `src/main/resources/assets/night-street-long.png`.
+
+Prompt summary: an extra-wide side-view, hand-painted pixel-art nighttime street
+connecting Alex's warm home entrance at the far left to Mira's cyan-lit electronics
+shop entrance at the far right. The extended middle includes an uninterrupted
+sidewalk, garden wall, residential rooftops, trees, utility poles and wires, amber
+street lighting, and restrained puddle reflections. No characters, vehicles,
+readable signs, logos, UI, watermark, blocked entrances, or isometric perspective.
 
 ## Mira's electronics shop
 

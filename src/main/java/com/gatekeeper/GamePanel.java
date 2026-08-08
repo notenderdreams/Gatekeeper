@@ -31,6 +31,10 @@ import java.util.Set;
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int W = 480;
     private static final int H = 270;
+    private static final int STREET_WORLD_WIDTH = 922;
+    private static final int STREET_HOME_X = 93;
+    private static final int STREET_SHOP_X = 870;
+    private static final int STREET_GROUND_Y = 196;
     private static final Color INK = new Color(242, 241, 234);
     private static final Color VOID = new Color(10, 10, 14);
     private static final Color RED = new Color(244, 63, 74);
@@ -38,11 +42,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Color YELLOW = new Color(250, 204, 21);
     private static final Color DIM = new Color(100, 104, 112);
 
-    private enum Scene { TITLE, CONTROLS, BEDROOM, SHOP, BOARD, NOTEBOOK, END }
+    private enum Scene { TITLE, CONTROLS, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
     private enum Direction { DOWN, LEFT, RIGHT, UP }
 
     private final BufferedImage canvas = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
     private final BufferedImage bedroomBackground = loadImage("/assets/alex-bedroom.png");
+    private final BufferedImage streetBackground = loadStreetImage("/assets/night-street-long.png");
     private final BufferedImage shopBackground = loadImage("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
@@ -97,6 +102,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case TITLE -> drawTitle(g);
             case CONTROLS -> drawControls(g);
             case BEDROOM -> drawBedroom(g);
+            case STREET -> drawStreet(g);
             case SHOP -> drawShop(g);
             case BOARD -> drawBoard(g);
             case NOTEBOOK -> drawNotebook(g);
@@ -120,8 +126,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         ticks++;
         if (line != null) lineAge++;
         if (boardMessageTimer > 0) boardMessageTimer--;
-        if (line == null && (scene == Scene.BEDROOM || scene == Scene.SHOP)) {
+        if (line == null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
             int speed = 2;
+            boolean sideView = scene == Scene.STREET;
             int oldX = playerX;
             int oldY = playerY;
             double oldPreciseX = precisePlayerX;
@@ -136,11 +143,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 axisX++;
                 facing = Direction.RIGHT;
             }
-            if (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W)) {
+            if (!sideView && (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W))) {
                 axisY--;
                 facing = Direction.UP;
             }
-            if (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S)) {
+            if (!sideView && (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S))) {
                 axisY++;
                 facing = Direction.DOWN;
             }
@@ -151,9 +158,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 precisePlayerX += axisX * movementScale;
                 precisePlayerY += axisY * movementScale;
             }
+            int minX = sideView ? 45 : 22;
+            int maxX = sideView ? STREET_WORLD_WIDTH - 30 : 452;
             int minY = scene == Scene.SHOP ? 158 : 132;
-            precisePlayerX = clamp(precisePlayerX, 22, 452);
-            precisePlayerY = clamp(precisePlayerY, minY, 232);
+            precisePlayerX = clamp(precisePlayerX, minX, maxX);
+            if (sideView) precisePlayerY = STREET_GROUND_Y;
+            else precisePlayerY = clamp(precisePlayerY, minY, 232);
             playerX = (int) Math.round(precisePlayerX);
             playerY = (int) Math.round(precisePlayerY);
             playerMoving = playerX != oldX || playerY != oldY;
@@ -310,7 +320,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             drawHud(g, "ALEX'S ROOM");
             if (near(299, 132)) prompt(g, chapter == 0 ? "E  OPEN THE BOX" : "E  CHECK THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
-            else if (near(407, 132)) prompt(g, "E  GO TO SHOP");
+            else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
             return;
         }
         // Layered night-time room: wallpaper, moonlit window, floor and rug.
@@ -409,13 +419,58 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(YELLOW);
         g.fillRect(450, 123, 4, 4);
         g.setColor(INK);
-        pixelText(g, "TO SHOP", 418, 57, 1);
+        pixelText(g, "OUTSIDE", 418, 57, 1);
 
         drawPlayer(g, playerX, playerY);
         drawHud(g, "ALEX'S ROOM");
         if (near(299, 128)) prompt(g, chapter == 0 ? "E  OPEN THE BOX" : "E  CHECK THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
-        else if (near(442, 130)) prompt(g, "E  GO TO SHOP");
+        else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
+    }
+
+    private void drawStreet(Graphics2D g) {
+        int cameraX = streetCameraX();
+        if (streetBackground != null) {
+            g.drawImage(streetBackground, 0, 0, W, H,
+                cameraX, 0, cameraX + W, H, null);
+        } else {
+            g.setColor(new Color(8, 19, 38));
+            g.fillRect(0, 0, W, H);
+            g.setColor(new Color(35, 40, 48));
+            g.fillRect(0, 146, W, 64);
+            g.setColor(new Color(13, 17, 25));
+            g.fillRect(0, 210, W, 60);
+            g.setColor(YELLOW);
+            g.fillRect(62, 78, 42, 68);
+            g.setColor(CYAN);
+            g.fillRect(420, 78, 38, 68);
+        }
+
+        // Small animated reflections keep the exterior from feeling like a still image.
+        int shimmer = (int) ((ticks / 18) % 3);
+        g.setColor(new Color(250, 204, 21, 45));
+        g.fillRect(86 - cameraX - shimmer, 218, 27 + shimmer * 2, 1);
+        g.fillRect(518 - cameraX, 219 + shimmer, 38, 1);
+        g.setColor(new Color(54, 211, 224, 48));
+        g.fillRect(868 - cameraX - shimmer, 215, 38 + shimmer * 2, 1);
+        if ((ticks / 40) % 2 == 0) {
+            g.setColor(new Color(197, 222, 230, 130));
+            g.fillRect(189 - cameraX, 24, 1, 1);
+            g.fillRect(685 - cameraX, 36, 1, 1);
+        }
+
+        drawWorldVignette(g);
+        drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, 36);
+        drawHud(g, "LANTERN STREET");
+        if (Math.abs(playerX - STREET_HOME_X) < 38) {
+            prompt(g, "E  ENTER HOME");
+        } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
+            prompt(g, "E  ENTER MIRA'S SHOP");
+        }
+    }
+
+    private int streetCameraX() {
+        return clamp(playerX - W / 2, 0, STREET_WORLD_WIDTH - W);
     }
 
     private void drawShop(Graphics2D g) {
@@ -426,7 +481,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             drawPlayer(g, playerX, playerY);
             drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
-            else if (playerX < 45) prompt(g, "E  RETURN HOME");
+            else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
             return;
         }
         // A warm, crowded neighborhood electronics shop.
@@ -500,7 +555,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawPlayer(g, playerX, playerY);
         drawHud(g, "MIRA'S ELECTRONICS");
         if (near(240, 155)) prompt(g, "E  TALK TO MIRA");
-        if (playerX < 45) prompt(g, "E  RETURN HOME");
+        if (playerX < 45) prompt(g, "E  GO OUTSIDE");
     }
 
     private void drawBoard(Graphics2D g) {
@@ -792,6 +847,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawPlayer(Graphics2D g, int x, int y) {
+        drawPlayer(g, x, y, 44);
+    }
+
+    private void drawPlayer(Graphics2D g, int x, int y, int spriteHeight) {
         if (alexSprites != null && alexFrameBounds.length == 12) {
             boolean walking = line == null && playerMoving;
             int column = switch (facing) {
@@ -807,7 +866,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 default -> 0;
             };
             Rectangle frame = alexFrameBounds[row * 4 + column];
-            int height = 44;
+            int height = spriteHeight;
             int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
             int feetY = y + 5;
             g.setColor(new Color(3, 5, 8, 105));
@@ -1036,13 +1095,25 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 if (chapter >= 2) openBoard();
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
             } else if (near(407, 132)) {
+                scene = Scene.STREET;
+                setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
+                facing = Direction.RIGHT;
+            }
+        } else if (scene == Scene.STREET) {
+            if (Math.abs(playerX - STREET_HOME_X) < 38) {
+                scene = Scene.BEDROOM;
+                setPlayerPosition(420, 160);
+                facing = Direction.LEFT;
+            } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
                 scene = Scene.SHOP;
                 setPlayerPosition(55, 174);
+                facing = Direction.RIGHT;
             }
         } else if (scene == Scene.SHOP) {
             if (playerX < 50) {
-                scene = Scene.BEDROOM;
-                setPlayerPosition(420, 160);
+                scene = Scene.STREET;
+                setPlayerPosition(STREET_SHOP_X - 47, STREET_GROUND_Y);
+                facing = Direction.LEFT;
             } else if (near(240, 160)) talkToMira();
         }
     }
@@ -1178,7 +1249,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         } else if (scene == Scene.END && key == KeyEvent.VK_ENTER) {
             resetToTitle();
-        } else if ((scene == Scene.BEDROOM || scene == Scene.SHOP) && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
+        } else if ((scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)
+            && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N && scene != Scene.BOARD) {
             if (scene == Scene.NOTEBOOK) scene = returnScene;
@@ -1313,6 +1385,28 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             graphics.setRenderingHint(RenderingHints.KEY_RENDERING,
                 RenderingHints.VALUE_RENDER_QUALITY);
             graphics.drawImage(source, 0, 0, W, H, null);
+            graphics.dispose();
+            return scaled;
+        } catch (IOException error) {
+            return null;
+        }
+    }
+
+    private static BufferedImage loadStreetImage(String path) {
+        try (InputStream stream = GamePanel.class.getResourceAsStream(path)) {
+            if (stream == null) return null;
+            BufferedImage source = ImageIO.read(stream);
+            int cropTop = Math.min(90, source.getHeight() - 1);
+            int cropHeight = Math.min(600, source.getHeight() - cropTop);
+            BufferedImage scaled = new BufferedImage(STREET_WORLD_WIDTH, H,
+                BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = scaled.createGraphics();
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.drawImage(source, 0, 0, STREET_WORLD_WIDTH, H,
+                0, cropTop, source.getWidth(), cropTop + cropHeight, null);
             graphics.dispose();
             return scaled;
         } catch (IOException error) {

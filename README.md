@@ -30,7 +30,7 @@ If the scripts are not executable yet, run `chmod +x run.sh test.sh` once, or us
 ## Game loop
 
 1. Explore Alex's room and find the box of basic logic gates.
-2. Take the notebook to Mira at the electronics shop.
+2. Leave home, walk along the side-view Lantern Street, and enter Mira's electronics shop.
 3. Build NAND, NOR, and XOR from AND, OR, and NOT. The board uses real branching
    circuit topology—for example, XOR runs OR and AND in parallel before combining them.
 4. Manually try all four switch combinations and record the output.
