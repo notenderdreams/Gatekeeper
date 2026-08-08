@@ -207,49 +207,57 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void drawTitle(Graphics2D g) {
         if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
-        g.setColor(new Color(3, 6, 12, 188));
+        g.setColor(new Color(1, 3, 7, 238));
         g.fillRect(0, 0, W, H);
-        g.setColor(new Color(4, 7, 12, 150));
-        g.fillRect(0, 0, W, 25);
-        g.fillRect(0, 245, W, 25);
 
-        // A live circuit motif frames the logo.
-        boolean pulseA = (ticks / 36) % 2 == 0;
-        boolean pulseB = (ticks / 54) % 2 == 0;
-        drawTitleTrace(g, 24, 50, 117, 50, pulseA);
-        drawTitleTrace(g, 363, 50, 456, 50, pulseB);
-        drawTitleTrace(g, 34, 119, 121, 119, pulseB);
-        drawTitleTrace(g, 359, 119, 447, 119, pulseA);
-        g.setColor(pulseA ? CYAN : DIM);
-        g.fillOval(19, 46, 8, 8);
-        g.setColor(pulseB ? YELLOW : DIM);
-        g.fillOval(453, 46, 8, 8);
+        drawTitleBorder(g);
+        drawTitleStars(g);
 
+        g.setColor(new Color(157, 149, 202));
+        pixelText(g, "A LOGIC TALE", 194, 63, 1);
         g.setColor(new Color(0, 0, 0, 180));
-        pixelText(g, "GATEKEEPER", 153, 83, 3);
+        pixelText(g, "GATEKEEPER", 135, 103, 3);
         g.setColor(INK);
-        pixelText(g, "GATEKEEPER", 150, 80, 3);
-        g.setColor(CYAN);
-        pixelText(g, "A  L O G I C  T A L E", 168, 104, 1);
-        g.setColor(YELLOW);
-        g.fillRect(146, 112, 188, 2);
-        g.setColor(DIM);
-        pixelText(g, "EVERY CIRCUIT MAKES A PROMISE", 151, 128, 1);
+        pixelText(g, "GATEKEEPER", 132, 100, 3);
+        g.setColor(new Color(166, 143, 71));
+        g.fillOval(310, 47, 34, 34);
+        g.setColor(new Color(1, 3, 7));
+        g.fillOval(301, 40, 34, 34);
+        g.setColor(new Color(115, 111, 164));
+        pixelText(g, "+", 119, 72, 2);
+        pixelText(g, "+", 348, 91, 1);
 
-        drawTitleButton(g, 145, 151, 190, 28, "START STORY", 0);
-        drawTitleButton(g, 145, 184, 190, 28, "HOW TO PLAY", 1);
+        g.setColor(new Color(105, 116, 117));
+        pixelText(g, "EVERY CIRCUIT MAKES A PROMISE", 157, 121, 1);
 
-        Direction previousFacing = facing;
-        facing = Direction.DOWN;
-        drawPlayer(g, 394, 225);
-        facing = previousFacing;
-        g.setColor(new Color(0, 0, 0, 125));
-        g.fillRect(355, 231, 80, 3);
+        drawTitleButton(g, 170, 158, 140, 20, "BEGIN", 0);
+        drawTitleButton(g, 170, 183, 140, 20, "CONTROLS", 1);
 
-        g.setColor((ticks / 35) % 2 == 0 ? INK : DIM);
-        pixelText(g, "W/S OR MOUSE  •  ENTER", 169, 231, 1);
-        g.setColor(new Color(91, 106, 109));
-        pixelText(g, "JAVA 2D  //  BUILD 01", 12, 260, 1);
+        g.setColor(new Color(68, 76, 79));
+        pixelText(g, "W/S  SELECT      ENTER  CONFIRM", 145, 238, 1);
+    }
+
+    private void drawTitleBorder(Graphics2D g) {
+        g.setColor(new Color(150, 154, 151));
+        g.drawRect(7, 7, W - 15, H - 15);
+        g.setColor(new Color(65, 70, 70));
+        g.drawRect(10, 10, W - 21, H - 21);
+        g.setColor(new Color(188, 190, 183));
+        for (int[] corner : new int[][]{{7, 7}, {W - 8, 7}, {7, H - 8}, {W - 8, H - 8}}) {
+            int x = corner[0];
+            int y = corner[1];
+            g.fillRect(x - 2, y - 2, 5, 5);
+        }
+    }
+
+    private void drawTitleStars(Graphics2D g) {
+        int shimmer = (ticks / 45) % 2 == 0 ? 190 : 115;
+        g.setColor(new Color(119, 110, 178, shimmer));
+        g.fillRect(181, 43, 1, 11);
+        g.fillRect(176, 48, 11, 1);
+        g.fillRect(238, 39, 2, 2);
+        g.fillRect(354, 57, 2, 2);
+        g.fillRect(116, 89, 2, 2);
     }
 
     private void drawControls(Graphics2D g) {
@@ -292,32 +300,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelText(g, "< BACK TO TITLE", 192, 232, 1);
     }
 
-    private void drawTitleTrace(Graphics2D g, int x1, int y1, int x2, int y2, boolean powered) {
-        int middle = (x1 + x2) / 2;
-        g.setColor(powered ? CYAN : new Color(48, 75, 75));
-        g.setStroke(new BasicStroke(powered ? 2 : 1));
-        g.drawLine(x1, y1, middle, y1);
-        g.drawLine(middle, y1, middle, y1 + 8);
-        g.drawLine(middle, y1 + 8, x2, y1 + 8);
-        g.setStroke(new BasicStroke(1));
-        g.fillRect(middle - 1, y1 - 1, 3, 3);
-    }
-
     private void drawTitleButton(Graphics2D g, int x, int y, int width, int height,
                                  String label, int selection) {
         boolean hovered = inside(mouseX, mouseY, x, y, width, height);
         boolean selected = titleSelection == selection;
-        g.setColor(selected || hovered ? new Color(49, 67, 61, 230) : new Color(8, 15, 18, 215));
-        g.fillRect(x, y, width, height);
-        g.setColor(selected || hovered ? YELLOW : new Color(78, 100, 97));
-        g.drawRect(x, y, width, height);
-        if (selected || hovered) {
-            g.fillRect(x + 7, y + 8, 4, 12);
-            g.fillRect(x + width - 11, y + 8, 4, 12);
-        }
-        g.setColor(selected || hovered ? INK : DIM);
+        g.setColor(selected || hovered ? new Color(143, 190, 128) : INK);
         int textX = x + (width - label.length() * 6) / 2;
-        pixelText(g, label, textX, y + 18, 1);
+        pixelText(g, label, textX, y + 14, 1);
+        if (selected || hovered) {
+            g.setColor(new Color(143, 190, 128));
+            pixelText(g, ">", textX - 14, y + 14, 1);
+        }
     }
 
     private void drawControlSection(Graphics2D g, int x, int y, String heading,
@@ -1544,13 +1537,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == Scene.TITLE) {
-            if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) titleSelection = (titleSelection + 1) % 2;
-            else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) titleSelection = (titleSelection + 1) % 2;
+            if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
+                || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
+                titleSelection = (titleSelection + 1) % 2;
+                playSound("ui-select");
+            }
             else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) activateTitleSelection();
             return;
         } else if (scene == Scene.CONTROLS) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_BACK_SPACE
-                || key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) scene = Scene.TITLE;
+                || key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                scene = Scene.TITLE;
+                playSound("ui-back");
+            }
             return;
         } else if (scene == Scene.END && key == KeyEvent.VK_ENTER) {
             resetToTitle();
@@ -1603,17 +1602,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         mouseY = y;
 
         if (scene == Scene.TITLE) {
-            if (inside(x, y, 145, 151, 190, 28)) {
+            if (inside(x, y, 170, 158, 140, 20)) {
                 titleSelection = 0;
                 activateTitleSelection();
-            } else if (inside(x, y, 145, 184, 190, 28)) {
+            } else if (inside(x, y, 170, 183, 140, 20)) {
                 titleSelection = 1;
                 activateTitleSelection();
             }
             return;
         }
         if (scene == Scene.CONTROLS) {
-            if (inside(x, y, 164, 217, 152, 22)) scene = Scene.TITLE;
+            if (inside(x, y, 164, 217, 152, 22)) {
+                scene = Scene.TITLE;
+                playSound("ui-back");
+            }
             return;
         }
         if (scene == Scene.NOTEBOOK) {
@@ -1663,8 +1665,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         mouseX = point[0];
         mouseY = point[1];
         if (scene == Scene.TITLE) {
-            if (inside(mouseX, mouseY, 145, 151, 190, 28)) titleSelection = 0;
-            else if (inside(mouseX, mouseY, 145, 184, 190, 28)) titleSelection = 1;
+            int previous = titleSelection;
+            if (inside(mouseX, mouseY, 170, 158, 140, 20)) titleSelection = 0;
+            else if (inside(mouseX, mouseY, 170, 183, 140, 20)) titleSelection = 1;
+            if (previous != titleSelection) playSound("ui-select");
         }
         repaint();
     }
@@ -1685,6 +1689,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void activateTitleSelection() {
+        playSound("ui-confirm");
         if (titleSelection == 0) {
             scene = Scene.BEDROOM;
             setPlayerPosition(210, 157);
