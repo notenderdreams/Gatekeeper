@@ -7,6 +7,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.FontFormatException;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -1407,9 +1408,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(VOID);
         g.fillRect(x, y, boxWidth, boxHeight);
         g.setColor(INK);
-        g.setStroke(new BasicStroke(Math.max(1, Math.round(3 * uiScale))));
-        g.drawRect(x + 1, y + 1, boxWidth - 2, boxHeight - 2);
         g.setStroke(new BasicStroke(1));
+        g.drawLine(x + 1, y + 1, x + boxWidth - 2, y + 1);
         String[] parts = line.split("\\|", 2);
         String speaker = parts.length == 2 ? parts[0] : "";
         String words = parts.length == 2 ? parts[1] : parts[0];
@@ -1427,12 +1427,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void prompt(Graphics2D g, String text) {
-        int width = text.length() * 6 + 14;
-        g.setColor(VOID);
-        g.fillRect((W - width) / 2, 219, width, 19);
+        Font promptFont = PIXEL_FONT.deriveFont(Font.PLAIN,
+            Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * uiScale)));
+        FontMetrics metrics = g.getFontMetrics(promptFont);
+        String[] parts = text.split(" ", 2);
+        String key = parts[0];
+        String action = parts.length > 1 ? " " + parts[1] : "";
+        int gap = Math.max(1, Math.round(3 * uiScale));
+        int totalWidth = metrics.stringWidth(key) + gap + metrics.stringWidth(action);
+        int x = (W - totalWidth) / 2;
         g.setColor(YELLOW);
-        g.drawRect((W - width) / 2, 219, width, 19);
-        pixelText(g, text, (W - text.length() * 6) / 2, 232, 1);
+        pixelText(g, key, x, 242, 1);
+        g.setColor(INK);
+        pixelText(g, action, x + metrics.stringWidth(key) + gap, 242, 1);
     }
 
     private void interact() {
