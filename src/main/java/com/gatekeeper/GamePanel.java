@@ -62,6 +62,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int selectedRecipe;
     private int playerX = 210;
     private int playerY = 157;
+    private double precisePlayerX = 210;
+    private double precisePlayerY = 157;
     private Direction facing = Direction.DOWN;
     private boolean playerMoving;
     private int walkDistance;
@@ -122,28 +124,42 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int speed = 2;
             int oldX = playerX;
             int oldY = playerY;
+            double oldPreciseX = precisePlayerX;
+            double oldPreciseY = precisePlayerY;
+            int axisX = 0;
+            int axisY = 0;
             if (keys.contains(KeyEvent.VK_LEFT) || keys.contains(KeyEvent.VK_A)) {
-                playerX -= speed;
+                axisX--;
                 facing = Direction.LEFT;
             }
             if (keys.contains(KeyEvent.VK_RIGHT) || keys.contains(KeyEvent.VK_D)) {
-                playerX += speed;
+                axisX++;
                 facing = Direction.RIGHT;
             }
             if (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W)) {
-                playerY -= speed;
+                axisY--;
                 facing = Direction.UP;
             }
             if (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S)) {
-                playerY += speed;
+                axisY++;
                 facing = Direction.DOWN;
             }
-            playerX = clamp(playerX, 22, 452);
+
+            double vectorLength = Math.hypot(axisX, axisY);
+            if (vectorLength > 0) {
+                double movementScale = speed / vectorLength;
+                precisePlayerX += axisX * movementScale;
+                precisePlayerY += axisY * movementScale;
+            }
             int minY = scene == Scene.SHOP ? 158 : 132;
-            playerY = clamp(playerY, minY, 232);
+            precisePlayerX = clamp(precisePlayerX, 22, 452);
+            precisePlayerY = clamp(precisePlayerY, minY, 232);
+            playerX = (int) Math.round(precisePlayerX);
+            playerY = (int) Math.round(precisePlayerY);
             playerMoving = playerX != oldX || playerY != oldY;
             if (playerMoving) {
-                walkDistance += Math.abs(playerX - oldX) + Math.abs(playerY - oldY);
+                walkDistance += Math.max(1, (int) Math.round(
+                    Math.hypot(precisePlayerX - oldPreciseX, precisePlayerY - oldPreciseY)));
             }
         } else {
             playerMoving = false;
@@ -1021,14 +1037,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
             } else if (near(407, 132)) {
                 scene = Scene.SHOP;
-                playerX = 55;
-                playerY = 174;
+                setPlayerPosition(55, 174);
             }
         } else if (scene == Scene.SHOP) {
             if (playerX < 50) {
                 scene = Scene.BEDROOM;
-                playerX = 420;
-                playerY = 160;
+                setPlayerPosition(420, 160);
             } else if (near(240, 160)) talkToMira();
         }
     }
@@ -1262,8 +1276,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void activateTitleSelection() {
         if (titleSelection == 0) {
             scene = Scene.BEDROOM;
-            playerX = 210;
-            playerY = 157;
+            setPlayerPosition(210, 157);
             facing = Direction.DOWN;
             say("ALEX|It started with a box I wasn't supposed to find.");
         } else {
@@ -1278,8 +1291,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         chapter = 0;
         selectedRecipe = 0;
         circuit.selectRecipe(recipes.get(0));
-        playerX = 210;
-        playerY = 157;
+        setPlayerPosition(210, 157);
         facing = Direction.DOWN;
         walkDistance = 0;
         titleSelection = 0;
@@ -1352,6 +1364,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private void setPlayerPosition(int x, int y) {
+        playerX = x;
+        playerY = y;
+        precisePlayerX = x;
+        precisePlayerY = y;
+    }
     private static String bit(boolean value) { return value ? "1" : "0"; }
 
     private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
