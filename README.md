@@ -28,6 +28,7 @@ The equivalent Gradle commands are `gradle run`, `gradle build`, and
 - `R` — record the current truth-table row
 - `T` / `Enter` — verify or run the tester
 - `Esc` — leave the board or notebook
+- `F1` — open the developer quick-scene menu
 
 ## Game loop
 

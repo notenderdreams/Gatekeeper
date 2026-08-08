@@ -63,7 +63,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         return new Font(Font.MONOSPACED, Font.BOLD, 10);
     }
 
-    private enum Scene { TITLE, CONTROLS, SETTINGS, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
+    private enum Scene { TITLE, CONTROLS, SETTINGS, DEV, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
     private enum Direction { DOWN, LEFT, RIGHT, UP }
 
     private final BufferedImage bedroomBackground = loadImage("/assets/alex-bedroom.png");
@@ -86,6 +86,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int chapter;
     private int titleSelection;
     private int settingsSelection;
+    private int devSelection;
+    private Scene devReturnScene = Scene.TITLE;
     private boolean exitPrompt;
     private int exitPromptSelection;
     private boolean settingsOpenedFromPause;
@@ -147,6 +149,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case TITLE -> drawTitle(g);
             case CONTROLS -> drawControls(g);
             case SETTINGS -> drawSettings(g);
+            case DEV -> drawDevMenu(g);
             case BEDROOM -> drawBedroom(g);
             case STREET -> drawStreet(g);
             case SHOP -> drawShop(g);
@@ -170,8 +173,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null
             && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
-            int speed = 2;
             boolean sideView = scene == Scene.STREET;
+            double speed = sideView ? 1.6 : 2.0;
             int oldX = playerX;
             int oldY = playerY;
             double oldPreciseX = precisePlayerX;
@@ -333,9 +336,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawTitleBorder(g);
         drawTitleStars(g);
         g.setColor(INK);
-        pixelText(g, "SETTINGS", 192, 56, 2);
+        pixelTextScaled(g, "SETTINGS", 198, 56, 2, 0.85f);
         g.setColor(new Color(105, 116, 117));
-        pixelText(g, "AUDIO", 225, 76, 1);
+        pixelTextScaled(g, "AUDIO", 227, 76, 1, 0.85f);
 
         drawVolumeRow(g, 92, "MASTER", sound.masterVolume(), 0);
         drawVolumeRow(g, 127, "MUSIC", sound.musicVolume(), 1);
@@ -344,22 +347,45 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         boolean hovered = inside(mouseX, mouseY, 170, 219, 140, 20);
         g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        pixelText(g, "< BACK", 216, 233, 1);
+        pixelTextScaled(g, "< BACK", 219, 233, 1, 0.85f);
         g.setColor(new Color(68, 76, 79));
-        pixelText(g, "W/S SELECT    A/D ADJUST", 164, 253, 1);
+        pixelTextScaled(g, "W/S SELECT    A/D ADJUST", 172, 253, 1, 0.85f);
+    }
+
+    private void drawDevMenu(Graphics2D g) {
+        g.setColor(new Color(2, 5, 8));
+        g.fillRect(0, 0, W, H);
+        drawTitleBorder(g);
+        g.setColor(new Color(240, 102, 110));
+        pixelText(g, "DEVELOPER MENU", 176, 42, 1);
+        g.setColor(new Color(112, 123, 125));
+        pixelText(g, "F1 QUICK TEST SCENES", 181, 57, 1);
+        String[] options = {
+            "FRESH BEDROOM", "BOARD PROGRESSION", "FIRST 3 COMPLETE", "STREET",
+            "SHOP", "ADVANCED CHAPTER", "ENDING"
+        };
+        for (int i = 0; i < options.length; i++) {
+            int y = 73 + i * 25;
+            boolean selected = devSelection == i;
+            g.setColor(selected ? new Color(143, 190, 128) : DIM);
+            if (selected) pixelText(g, ">", 145, y + 13, 1);
+            pixelText(g, options[i], 159, y + 13, 1);
+        }
+        g.setColor(new Color(74, 82, 83));
+        pixelText(g, "W/S SELECT   ENTER LOAD   ESC BACK", 150, 250, 1);
     }
 
     private void drawVolumeRow(Graphics2D g, int y, String label, float volume, int selection) {
         boolean selected = settingsSelection == selection;
         g.setColor(selected ? new Color(143, 190, 128) : INK);
-        pixelText(g, selected ? "> " + label : "  " + label, 126, y + 12, 1);
+        pixelTextScaled(g, selected ? "> " + label : "  " + label, 132, y + 12, 1, 0.85f);
         int filled = Math.round(volume * 10.0f);
         for (int i = 0; i < 10; i++) {
             g.setColor(i < filled ? new Color(143, 190, 128) : new Color(45, 53, 55));
             g.fillRect(223 + i * 11, y + 3, 8, 10);
         }
         g.setColor(DIM);
-        pixelText(g, Math.round(volume * 100.0f) + "%", 344, y + 12, 1);
+        pixelTextScaled(g, Math.round(volume * 100.0f) + "%", 347, y + 12, 1, 0.85f);
     }
 
     private void drawTitleButton(Graphics2D g, int x, int y, int width, int height,
@@ -1643,6 +1669,28 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
         keys.add(key);
+        if (key == KeyEvent.VK_F1 && scene != Scene.DEV) {
+            devReturnScene = scene;
+            scene = Scene.DEV;
+            devSelection = 0;
+            keys.clear();
+            playSound("ui-open");
+            return;
+        }
+        if (scene == Scene.DEV) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
+                scene = devReturnScene;
+                playSound("ui-back");
+            } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
+                || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
+                int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
+                devSelection = (devSelection + direction + 7) % 7;
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                loadDevPreset(devSelection);
+            }
+            return;
+        }
         if (exitPrompt) {
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
@@ -1917,6 +1965,59 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (titleSelection == 3) System.exit(0);
     }
 
+    private void loadDevPreset(int preset) {
+        dialogue.clear();
+        line = null;
+        exitPrompt = false;
+        Arrays.fill(crafted, false);
+        selectedRecipe = 0;
+        notebookPage = 0;
+        circuit.selectRecipe(recipes.get(0));
+        switch (preset) {
+            case 0 -> {
+                chapter = 0;
+                scene = Scene.BEDROOM;
+                setPlayerPosition(210, 157);
+            }
+            case 1 -> {
+                chapter = 1;
+                scene = Scene.BEDROOM;
+                setPlayerPosition(205, 126);
+            }
+            case 2 -> {
+                chapter = 2;
+                crafted[0] = true;
+                crafted[1] = true;
+                crafted[2] = true;
+                scene = Scene.SHOP;
+                setPlayerPosition(94, 190);
+            }
+            case 3 -> {
+                chapter = 1;
+                scene = Scene.STREET;
+                setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
+            }
+            case 4 -> {
+                chapter = 1;
+                scene = Scene.SHOP;
+                setPlayerPosition(94, 190);
+            }
+            case 5 -> {
+                chapter = 3;
+                Arrays.fill(crafted, true);
+                scene = Scene.SHOP;
+                setPlayerPosition(94, 190);
+            }
+            default -> {
+                chapter = 4;
+                Arrays.fill(crafted, true);
+                scene = Scene.END;
+            }
+        }
+        facing = Direction.DOWN;
+        playSound("ui-confirm");
+    }
+
     private void activateExitPromptSelection() {
         playSound("ui-confirm");
         if (exitPromptSelection == 1) {
@@ -2079,8 +2180,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static String bit(boolean value) { return value ? "1" : "0"; }
 
     private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
+        pixelTextScaled(g, text, x, y, scale, 1.0f);
+    }
+
+    private static void pixelTextScaled(Graphics2D g, String text, int x, int y, int scale,
+                                        float sizeFactor) {
         Font old = g.getFont();
-        int fontSize = Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale));
+        int fontSize = Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale * sizeFactor));
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,
