@@ -31,6 +31,8 @@ import java.util.Set;
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int W = 480;
     private static final int H = 270;
+    private static final int BOARD_SOCKET_W = 40;
+    private static final int BOARD_SOCKET_H = 34;
     private static final int STREET_WORLD_WIDTH = 922;
     private static final int STREET_HOME_X = 93;
     private static final int STREET_SHOP_X = 870;
@@ -81,7 +83,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private long ticks;
 
     public GamePanel() {
-        setPreferredSize(new Dimension(960, 540));
+        setPreferredSize(new Dimension(1280, 720));
         setFocusable(true);
         addKeyListener(this);
         addMouseListener(this);
@@ -633,21 +635,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         int[][] layout = socketLayout(recipe);
         boolean[] nodeValues = circuit.nodeValues();
-        // Route every socket from its actual graph sources. XOR/XNOR visibly
-        // split A and B into parallel OR and AND paths before recombining them.
-        for (int i = 0; i < recipe.slotCount(); i++) {
-            int x = layout[i][0];
-            int y = layout[i][1];
-            drawSourceWire(g, recipe.leftSources[i], x, y + 12, layout, nodeValues);
-            if (recipe.solution[i] != GateType.NOT) {
-                drawSourceWire(g, recipe.rightSources[i], x, y + 28, layout, nodeValues);
-            }
-        }
+        drawCircuitWires(g, recipe, layout, nodeValues);
         for (int i = 0; i < recipe.slotCount(); i++) {
             drawSocket(g, layout[i][0], layout[i][1], i, circuit.placed()[i], nodeValues[i]);
         }
         int[] last = layout[recipe.slotCount() - 1];
-        drawRoutedWire(g, last[0] + 44, last[1] + 20, 337, 112, circuit.output());
+        drawRoutedWire(g, last[0] + BOARD_SOCKET_W, last[1] + BOARD_SOCKET_H / 2,
+            337, 112, circuit.output());
         g.setColor(circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
         g.fillOval(334, 101, 22, 22);
         g.setColor(circuit.output() ? CYAN : DIM);
@@ -1039,25 +1033,25 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawSocket(Graphics2D g, int x, int y, int number, GateType gate, boolean powered) {
-        boolean hovered = isHovered(x, y, 44, 40);
+        boolean hovered = isHovered(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(new Color(1, 4, 5, 155));
-        g.fillRect(x + 3, y + 3, 44, 40);
+        g.fillRect(x + 3, y + 3, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(powered ? new Color(17, 70, 67)
             : hovered ? new Color(42, 55, 51) : new Color(12, 23, 26));
-        g.fillRect(x, y, 44, 40);
+        g.fillRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(hovered ? YELLOW : gate == null ? DIM : powered ? CYAN : INK);
-        g.drawRect(x, y, 44, 40);
+        g.drawRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(hovered ? YELLOW : DIM);
-        pixelText(g, "G" + (number + 1), x + 3, y + 10, 1);
-        g.fillRect(x - 2, y + 11, 3, 4);
-        g.fillRect(x - 2, y + 27, 3, 4);
-        g.fillRect(x + 44, y + 18, 3, 4);
+        pixelText(g, "G" + (number + 1), x + 2, y + 9, 1);
+        g.fillRect(x - 2, y + 8, 3, 4);
+        g.fillRect(x - 2, y + 22, 3, 4);
+        g.fillRect(x + BOARD_SOCKET_W, y + 15, 3, 4);
         if (gate == null) {
             g.setColor(hovered ? YELLOW : DIM);
-            pixelText(g, "+", x + 19, y + 28, 1);
+            pixelText(g, "+", x + 17, y + 25, 1);
         } else {
             g.setColor(powered ? CYAN : INK);
-            drawGate(g, x + 5, y + 9, gate, powered);
+            drawGate(g, x + 3, y + 6, gate, powered);
         }
     }
 
@@ -1090,10 +1084,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void drawWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
         g.setColor(new Color(1, 5, 6, 190));
-        g.setStroke(new BasicStroke(3));
+        g.setStroke(new BasicStroke(4));
         g.drawLine(x1, y1, x2, y2);
-        g.setColor(on ? CYAN : DIM);
-        g.setStroke(new BasicStroke(on ? 2 : 1));
+        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
+        g.setStroke(new BasicStroke(on ? 3 : 2));
         g.drawLine(x1, y1, x2, y2);
         g.setStroke(new BasicStroke(1));
     }
@@ -1112,27 +1106,116 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             sourceY = 129;
             powered = circuit.inputB();
         } else {
-            sourceX = layout[source][0] + 44;
-            sourceY = layout[source][1] + 20;
+            sourceX = layout[source][0] + BOARD_SOCKET_W;
+            sourceY = layout[source][1] + BOARD_SOCKET_H / 2;
             powered = nodeValues[source];
         }
         drawRoutedWire(g, sourceX, sourceY, targetX, targetY, powered);
     }
 
+    private void drawCircuitWires(Graphics2D g, CircuitRecipe recipe,
+                                  int[][] layout, boolean[] nodeValues) {
+        if ("XOR".equals(recipe.name)) {
+            drawXorWires(g, layout, nodeValues);
+            return;
+        }
+        for (int i = 0; i < recipe.slotCount(); i++) {
+            int x = layout[i][0];
+            int y = layout[i][1];
+            drawSourceWire(g, recipe.leftSources[i], x, y + 10, layout, nodeValues);
+            if (recipe.solution[i] != GateType.NOT) {
+                drawSourceWire(g, recipe.rightSources[i], x, y + 24, layout, nodeValues);
+            }
+        }
+    }
+
+    private void drawXorWires(Graphics2D g, int[][] layout, boolean[] values) {
+        int aX = 57, aY = 94;
+        int bX = 57, bY = 129;
+
+        // G3 = NOT A and G1 = NOT B: short, direct branch starters.
+        drawWirePath(g, circuit.inputA(), aX, aY, 79, aY, 79, layout[2][1] + 10,
+            layout[2][0], layout[2][1] + 10);
+        drawWirePath(g, circuit.inputB(), bX, bY, 79, bY, 79, layout[0][1] + 10,
+            layout[0][0], layout[0][1] + 10);
+
+        // The un-inverted inputs take clearly separated outer lanes to the
+        // opposite AND gates instead of disappearing behind other modules.
+        drawWirePath(g, circuit.inputA(), aX, aY, 69, aY, 69, 168, 164, 168,
+            164, layout[1][1] + 10, layout[1][0], layout[1][1] + 10);
+        drawWirePath(g, circuit.inputB(), bX, bY, 64, bY, 64, 71, 164, 71,
+            164, layout[3][1] + 24, layout[3][0], layout[3][1] + 24);
+
+        // Each NOT feeds only its neighboring AND.
+        drawWirePath(g, values[2], layout[2][0] + BOARD_SOCKET_W,
+            layout[2][1] + BOARD_SOCKET_H / 2, 158, layout[2][1] + BOARD_SOCKET_H / 2,
+            158, layout[3][1] + 10, layout[3][0], layout[3][1] + 10);
+        drawWirePath(g, values[0], layout[0][0] + BOARD_SOCKET_W,
+            layout[0][1] + BOARD_SOCKET_H / 2, 158, layout[0][1] + BOARD_SOCKET_H / 2,
+            158, layout[1][1] + 24, layout[1][0], layout[1][1] + 24);
+
+        // The two product terms remain separate until the final OR.
+        drawWirePath(g, values[3], layout[3][0] + BOARD_SOCKET_W,
+            layout[3][1] + BOARD_SOCKET_H / 2, 246, layout[3][1] + BOARD_SOCKET_H / 2,
+            246, layout[4][1] + 10, layout[4][0], layout[4][1] + 10);
+        drawWirePath(g, values[1], layout[1][0] + BOARD_SOCKET_W,
+            layout[1][1] + BOARD_SOCKET_H / 2, 252, layout[1][1] + BOARD_SOCKET_H / 2,
+            252, layout[4][1] + 24, layout[4][0], layout[4][1] + 24);
+
+        // Break the two visual crossings so they cannot be mistaken for
+        // junctions, then annotate both product terms directly on the board.
+        drawHorizontalCrossover(g, 64, aY, circuit.inputA());
+        drawHorizontalCrossover(g, 69, bY, circuit.inputB());
+        g.setColor(new Color(5, 13, 16, 235));
+        g.fillRect(222, 75, 47, 12);
+        g.fillRect(222, 150, 47, 12);
+        g.setColor(new Color(127, 205, 194));
+        pixelText(g, "!A & B", 225, 85, 1);
+        pixelText(g, "A & !B", 225, 160, 1);
+    }
+
+    private void drawHorizontalCrossover(Graphics2D g, int x, int y, boolean on) {
+        g.setColor(new Color(5, 13, 16));
+        g.fillRect(x - 4, y - 4, 9, 9);
+        drawWire(g, x - 5, y, x + 5, y, on);
+    }
+
+    private void drawWirePath(Graphics2D g, boolean on, int... points) {
+        g.setColor(new Color(1, 5, 6, 195));
+        g.setStroke(new BasicStroke(4));
+        drawPathSegments(g, points);
+        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
+        g.setStroke(new BasicStroke(on ? 3 : 2));
+        drawPathSegments(g, points);
+        g.setStroke(new BasicStroke(1));
+        for (int i = 2; i < points.length - 2; i += 2) {
+            g.fillRect(points[i] - 2, points[i + 1] - 2, 4, 4);
+        }
+        int end = points.length - 2;
+        g.fillRect(points[end] - 2, points[end + 1] - 2, 4, 4);
+    }
+
+    private static void drawPathSegments(Graphics2D g, int[] points) {
+        for (int i = 0; i < points.length - 2; i += 2) {
+            g.drawLine(points[i], points[i + 1], points[i + 2], points[i + 3]);
+        }
+    }
+
     private void drawRoutedWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {
         int bendX = x1 + Math.max(7, (x2 - x1) / 2);
         g.setColor(new Color(1, 5, 6, 195));
-        g.setStroke(new BasicStroke(3));
+        g.setStroke(new BasicStroke(4));
         g.drawLine(x1, y1, bendX, y1);
         g.drawLine(bendX, y1, bendX, y2);
         g.drawLine(bendX, y2, x2, y2);
-        g.setColor(on ? CYAN : DIM);
-        g.setStroke(new BasicStroke(on ? 2 : 1));
+        g.setColor(on ? new Color(103, 255, 244) : new Color(155, 164, 164));
+        g.setStroke(new BasicStroke(on ? 3 : 2));
         g.drawLine(x1, y1, bendX, y1);
         g.drawLine(bendX, y1, bendX, y2);
         g.drawLine(bendX, y2, x2, y2);
         g.setStroke(new BasicStroke(1));
-        g.fillRect(bendX - 1, y1 - 1, 3, 3);
+        g.fillRect(bendX - 2, y1 - 2, 4, 4);
+        g.fillRect(x2 - 2, y2 - 2, 4, 4);
         if (on) {
             g.setColor(new Color(196, 255, 247));
             g.fillRect(bendX, y1, 1, 1);
@@ -1141,10 +1224,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private int[][] socketLayout(CircuitRecipe recipe) {
         return switch (recipe.name) {
-            case "XOR" -> new int[][]{{84, 74}, {84, 124}, {164, 124}, {255, 96}};
-            case "XNOR" -> new int[][]{{70, 73}, {70, 124}, {137, 124}, {211, 96}, {282, 96}};
-            case "IMPLY" -> new int[][]{{120, 78}, {235, 96}};
-            default -> new int[][]{{115, 92}, {230, 92}};
+            case "XOR" -> new int[][]{{100, 127}, {180, 127}, {100, 76}, {180, 76}, {272, 102}};
+            case "XNOR" -> new int[][]{{92, 76}, {92, 127}, {158, 127}, {224, 102}, {286, 102}};
+            case "IMPLY" -> new int[][]{{125, 84}, {235, 102}};
+            default -> new int[][]{{125, 102}, {235, 102}};
         };
     }
 
@@ -1479,7 +1562,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         int[][] layout = socketLayout(circuit.recipe());
         for (int i = 0; i < circuit.recipe().slotCount(); i++) {
-            if (inside(x, y, layout[i][0], layout[i][1], 44, 40)) {
+            if (inside(x, y, layout[i][0], layout[i][1], BOARD_SOCKET_W, BOARD_SOCKET_H)) {
                 circuit.place(i, heldGate);
                 boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
                 boardMessageTimer = 120;

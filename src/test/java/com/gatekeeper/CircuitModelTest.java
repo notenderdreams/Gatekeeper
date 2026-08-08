@@ -25,13 +25,17 @@ public final class CircuitModelTest {
         require(!incomplete.allRowsRecorded(), "incomplete circuits must not record");
 
         CircuitRecipe xor = recipes.get(2);
-        require(xor.leftSources[3] == 0 && xor.rightSources[3] == 2,
-            "XOR's final AND must combine the parallel OR and inverted-AND branches");
+        require(xor.solution.length == 5 && xor.solution[4] == GateType.OR,
+            "XOR must use two product branches feeding a final OR");
+        require(xor.leftSources[4] == 1 && xor.rightSources[4] == 3,
+            "XOR's final OR must combine A AND NOT B with NOT A AND B");
         boolean[] xorAt11 = xor.evaluateNodes(true, true, xor.solution);
-        require(xorAt11[0] && xorAt11[1] && !xorAt11[2] && !xorAt11[3],
+        require(!xorAt11[0] && !xorAt11[1] && !xorAt11[2]
+                && !xorAt11[3] && !xorAt11[4],
             "XOR topology should reject A=1, B=1 at the final parallel merge");
         boolean[] xorAt01 = xor.evaluateNodes(false, true, xor.solution);
-        require(xorAt01[0] && !xorAt01[1] && xorAt01[2] && xorAt01[3],
+        require(!xorAt01[0] && !xorAt01[1] && xorAt01[2]
+                && xorAt01[3] && xorAt01[4],
             "XOR topology should accept A=0, B=1 at the final parallel merge");
         System.out.println("CircuitModelTest: all checks passed");
     }
