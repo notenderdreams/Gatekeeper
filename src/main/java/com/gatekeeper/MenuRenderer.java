@@ -195,7 +195,7 @@ final class MenuRenderer {
             }
         } else if (section == 1) { // DEBUG TOOLS
             String[] tools = {
-                "LIGHT CALIBRATOR: " + (calibratorEnabled ? "ON" : "OFF"),
+                "GLOBAL POSITION MARKER: " + (calibratorEnabled ? "ON" : "OFF"),
                 "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF")
             };
             boolean[] activeState = {calibratorEnabled, showCollisions};

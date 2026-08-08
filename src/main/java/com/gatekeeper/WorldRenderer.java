@@ -73,6 +73,7 @@ final class WorldRenderer {
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
             }
+            drawCalibratedPoints(g, 0);
             return;
         }
         // Layered night-time room: wallpaper, moonlit window, floor and rug.
@@ -182,6 +183,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
         }
+        drawCalibratedPoints(g, 0);
     }
 
     void drawStreet(Graphics2D g) {
@@ -230,28 +232,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.STREET, playerX, playerY, cameraX);
         }
-
-        // Draw all multi-point calibrator crosshairs
-        for (CalibratedPoint p : calibratedPoints) {
-            int screenX = p.worldX - cameraX;
-            int screenY = p.worldY;
-            if (screenX >= -20 && screenX <= W + 20) {
-                g.setColor(new Color(255, 60, 60, 230));
-                g.drawOval(screenX - 7, screenY - 7, 14, 14);
-                g.drawLine(screenX - 10, screenY, screenX + 10, screenY);
-                g.drawLine(screenX, screenY - 10, screenX, screenY + 10);
-                g.setColor(YELLOW);
-                GamePanel.pixelText(g, "#" + p.index + " (" + p.worldX + "," + p.worldY + ")",
-                    Math.max(5, Math.min(W - 90, screenX - 25)), Math.max(25, screenY - 10), 1);
-            }
-        }
-
-        if (!calibratedPoints.isEmpty()) {
-            g.setColor(new Color(0, 0, 0, 190));
-            g.fillRect(10, 22, 295, 14);
-            g.setColor(CYAN);
-            GamePanel.pixelText(g, "CALIBRATOR: " + calibratedPoints.size() + " LIGHTS | BACKSPACE UNDO | C CLEAR", 14, 32, 1);
-        }
+        drawCalibratedPoints(g, cameraX);
     }
 
     static final class CalibratedPoint {
@@ -281,21 +262,44 @@ final class WorldRenderer {
 
     void clearCalibratedPoints() {
         calibratedPoints.clear();
-        System.out.println("[CALIBRATOR] Cleared all light points.");
+        System.out.println("[POSITION MARKER] Cleared all marked points.");
     }
 
     void dumpCalibratedPoints() {
-        System.out.println("\n==================== LIGHT CALIBRATION DUMP ====================");
+        System.out.println("\n==================== POSITION CALIBRATION DUMP ====================");
         System.out.println("// Total points marked: " + calibratedPoints.size());
-        System.out.println("static final int[][] CALIBRATED_LIGHTS = {");
+        System.out.println("static final int[][] CALIBRATED_POINTS = {");
         for (int i = 0; i < calibratedPoints.size(); i++) {
             CalibratedPoint p = calibratedPoints.get(i);
             System.out.print("    { " + p.worldX + ", " + p.worldY + " }");
             if (i < calibratedPoints.size() - 1) System.out.print(",");
-            System.out.println(" // Light #" + p.index);
+            System.out.println(" // Point #" + p.index);
         }
         System.out.println("};");
-        System.out.println("================================================================\n");
+        System.out.println("===================================================================\n");
+    }
+
+    private void drawCalibratedPoints(Graphics2D g, int cameraX) {
+        for (CalibratedPoint p : calibratedPoints) {
+            int screenX = p.worldX - cameraX;
+            int screenY = p.worldY;
+            if (screenX >= -20 && screenX <= W + 20) {
+                g.setColor(new Color(255, 60, 60, 230));
+                g.drawOval(screenX - 7, screenY - 7, 14, 14);
+                g.drawLine(screenX - 10, screenY, screenX + 10, screenY);
+                g.drawLine(screenX, screenY - 10, screenX, screenY + 10);
+                g.setColor(YELLOW);
+                GamePanel.pixelText(g, "#" + p.index + " (" + p.worldX + "," + p.worldY + ")",
+                    Math.max(5, Math.min(W - 90, screenX - 25)), Math.max(25, screenY - 10), 1);
+            }
+        }
+
+        if (!calibratedPoints.isEmpty()) {
+            g.setColor(new Color(0, 0, 0, 190));
+            g.fillRect(10, 22, 315, 14);
+            g.setColor(CYAN);
+            GamePanel.pixelText(g, "POSITION MARKER: " + calibratedPoints.size() + " PTS | BACKSPACE UNDO | C CLEAR | P DUMP", 14, 32, 1);
+        }
     }
 
     private boolean showCollisions;
@@ -311,10 +315,12 @@ final class WorldRenderer {
             g.setColor(new Color(60, 240, 120, 210));
             g.drawRect(22, 132, 430, 100);
 
-            g.setColor(new Color(240, 60, 60, 75));
-            g.fillRect(22, 132, 138, 71);
+            int[] polyX = {22, 148, 58, 22};
+            int[] polyY = {132, 131, 206, 206};
+            g.setColor(new Color(240, 60, 60, 85));
+            g.fillPolygon(polyX, polyY, 4);
             g.setColor(new Color(255, 90, 90, 230));
-            g.drawRect(22, 132, 138, 71);
+            g.drawPolygon(polyX, polyY, 4);
             GamePanel.pixelText(g, "BLOCKED (BED/DESK)", 28, 165, 1);
 
             g.setColor(new Color(255, 230, 50, 200));
@@ -391,6 +397,7 @@ final class WorldRenderer {
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.SHOP, playerX, playerY, 0);
             }
+            drawCalibratedPoints(g, 0);
             return;
         }
         // A warm, crowded neighborhood electronics shop.

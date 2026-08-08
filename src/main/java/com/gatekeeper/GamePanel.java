@@ -469,10 +469,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
 
     private static boolean bedroomBlocked(double x, double y) {
-        // The bed and its left-side furniture occupy the upper-left footprint.
-        // Padding keeps Alex's feet outside the mattress instead of letting the
-        // taller sprite appear to walk across it.
-        return x < 160 && y < 203;
+        // Perspective-angled bed/desk footprint calibrated by user points: {97,92}, {148,131}, {58,206}, {1,142}
+        if (y >= 206 || y < 110) return false;
+        if (y < 131) return x < 148;
+        double maxX = 148.0 - (y - 131.0) * 1.2;
+        return x < maxX;
     }
 
     @Override public void keyPressed(KeyEvent event) {
@@ -532,6 +533,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-back");
             }
             return;
+        }
+        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+            if (key == KeyEvent.VK_BACK_SPACE) {
+                worldRenderer.undoCalibratedPoint();
+                repaint();
+                return;
+            } else if (key == KeyEvent.VK_C) {
+                worldRenderer.clearCalibratedPoints();
+                repaint();
+                return;
+            } else if (key == KeyEvent.VK_P) {
+                worldRenderer.dumpCalibratedPoints();
+                return;
+            }
         }
         if (key == KeyEvent.VK_ESCAPE
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET
@@ -739,15 +754,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (scene == GameScene.STREET) {
-            if (calibratorEnabled) {
-                int cameraX = worldRenderer.streetCameraX();
-                int worldX = cameraX + x;
-                int worldY = y;
-                worldRenderer.addCalibratedPoint(worldX, worldY);
-                repaint();
-                return;
-            }
+        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+            int cameraX = (scene == GameScene.STREET) ? worldRenderer.streetCameraX() : 0;
+            int worldX = cameraX + x;
+            int worldY = y;
+            worldRenderer.addCalibratedPoint(worldX, worldY);
+            repaint();
+            return;
         }
         if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
         boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
