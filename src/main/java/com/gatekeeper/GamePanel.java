@@ -48,6 +48,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Color CYAN = new Color(54, 211, 224);
     private static final Color YELLOW = new Color(250, 204, 21);
     private static final Color DIM = new Color(100, 104, 112);
+    private static float uiScale = 0.85f;
 
     private enum Scene { TITLE, CONTROLS, SETTINGS, BEDROOM, STREET, SHOP, BOARD, NOTEBOOK, END }
     private enum Direction { DOWN, LEFT, RIGHT, UP }
@@ -320,12 +321,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         drawVolumeRow(g, 92, "MASTER", sound.masterVolume(), 0);
         drawVolumeRow(g, 127, "MUSIC", sound.musicVolume(), 1);
         drawVolumeRow(g, 162, "FX", sound.fxVolume(), 2);
+        drawVolumeRow(g, 197, "UI SIZE", uiScale, 3);
 
-        boolean hovered = inside(mouseX, mouseY, 170, 213, 140, 20);
+        boolean hovered = inside(mouseX, mouseY, 170, 238, 140, 20);
         g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        pixelText(g, "< BACK", 216, 227, 1);
+        pixelText(g, "< BACK", 216, 252, 1);
         g.setColor(new Color(68, 76, 79));
-        pixelText(g, "W/S SELECT    A/D ADJUST", 164, 249, 1);
+        pixelText(g, "W/S SELECT    A/D ADJUST", 164, 266, 1);
     }
 
     private void drawVolumeRow(Graphics2D g, int y, String label, float volume, int selection) {
@@ -1380,22 +1382,30 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void drawDialogue(Graphics2D g) {
-        int y = 200;
+        int boxWidth = Math.round(448 * uiScale);
+        int boxHeight = Math.round(61 * uiScale);
+        int x = (W - boxWidth) / 2;
+        int y = H - boxHeight - 9;
         g.setColor(VOID);
-        g.fillRect(16, y, 448, 61);
+        g.fillRect(x, y, boxWidth, boxHeight);
         g.setColor(INK);
-        g.setStroke(new BasicStroke(3));
-        g.drawRect(17, y + 1, 446, 59);
+        g.setStroke(new BasicStroke(Math.max(1, Math.round(3 * uiScale))));
+        g.drawRect(x + 1, y + 1, boxWidth - 2, boxHeight - 2);
         g.setStroke(new BasicStroke(1));
         String[] parts = line.split("\\|", 2);
         String speaker = parts.length == 2 ? parts[0] : "";
         String words = parts.length == 2 ? parts[1] : parts[0];
         g.setColor(speaker.equals("MIRA") ? CYAN : (speaker.equals("ALEX") ? YELLOW : INK));
-        if (!speaker.isEmpty()) pixelText(g, speaker, 28, y + 17, 1);
+        if (!speaker.isEmpty()) pixelText(g, speaker, x + Math.round(12 * uiScale),
+            y + Math.round(17 * uiScale), 1);
         g.setColor(INK);
         int visible = Math.min(words.length(), lineAge / 2 + 1);
-        drawWrapped(g, "* " + words.substring(0, visible), 28, y + 34, 66);
-        if (visible == words.length() && (ticks / 25) % 2 == 0) pixelText(g, "v", 444, y + 51, 1);
+        drawWrapped(g, "* " + words.substring(0, visible), x + Math.round(12 * uiScale),
+            y + Math.round(34 * uiScale), 66);
+        if (visible == words.length() && (ticks / 25) % 2 == 0) {
+            pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
+                y + Math.round(51 * uiScale), 1);
+        }
     }
 
     private void prompt(Graphics2D g, String text) {
@@ -1650,7 +1660,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                settingsSelection = (settingsSelection + direction + 3) % 3;
+                settingsSelection = (settingsSelection + direction + 4) % 4;
                 playSound("ui-select");
             } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                 || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
@@ -1742,11 +1752,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == Scene.SETTINGS) {
-            if (inside(x, y, 170, 213, 140, 20)) {
+            if (inside(x, y, 170, 238, 140, 20)) {
                 leaveSettings();
                 playSound("ui-back");
             } else {
-                for (int row = 0; row < 3; row++) {
+                for (int row = 0; row < 4; row++) {
                     int rowY = 92 + row * 35;
                     if (inside(x, y, 115, rowY, 265, 20)) {
                         settingsSelection = row;
@@ -1881,9 +1891,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         float current = switch (settingsSelection) {
             case 0 -> sound.masterVolume();
             case 1 -> sound.musicVolume();
-            default -> sound.fxVolume();
+            case 2 -> sound.fxVolume();
+            default -> uiScale;
         };
-        setSelectedVolume(Math.round(current * 10.0f + direction) / 10.0f);
+        float step = settingsSelection == 3 ? 0.05f : 0.1f;
+        setSelectedVolume(Math.round((current + direction * step) / step) * step);
         playSound("ui-click");
     }
 
@@ -1891,7 +1903,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         switch (settingsSelection) {
             case 0 -> sound.setMasterVolume(volume);
             case 1 -> sound.setMusicVolume(volume);
-            default -> sound.setFxVolume(volume);
+            case 2 -> sound.setFxVolume(volume);
+            default -> uiScale = (float) clamp(volume, 0.75, 1.0);
         }
     }
 
@@ -2014,7 +2027,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
         Font old = g.getFont();
-        g.setFont(old.deriveFont((float) (10 * scale)));
+        g.setFont(old.deriveFont(10 * scale * uiScale));
         g.drawString(text, x, y);
         g.setFont(old);
     }
