@@ -215,7 +215,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void drawTitle(Graphics2D g) {
         if (bedroomBackground != null) g.drawImage(bedroomBackground, 0, 0, W, H, null);
-        g.setColor(new Color(1, 3, 7, 238));
+        g.setColor(new Color(1, 3, 7, 202));
         g.fillRect(0, 0, W, H);
 
         drawTitleBorder(g);
