@@ -341,15 +341,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         pixelTextScaled(g, "AUDIO", 227, 76, 1, 0.85f);
 
         drawVolumeRow(g, 92, "MASTER", sound.masterVolume(), 0);
-        drawVolumeRow(g, 127, "MUSIC", sound.musicVolume(), 1);
-        drawVolumeRow(g, 162, "FX", sound.fxVolume(), 2);
-        drawVolumeRow(g, 197, "UI SIZE", uiScale, 3);
+        drawVolumeRow(g, 121, "MUSIC", sound.musicVolume(), 1);
+        drawVolumeRow(g, 150, "FX", sound.fxVolume(), 2);
+        drawVolumeRow(g, 179, "UI SIZE", uiScale, 3);
 
-        boolean hovered = inside(mouseX, mouseY, 170, 219, 140, 20);
+        boolean hovered = inside(mouseX, mouseY, 170, 207, 140, 20);
         g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        pixelTextScaled(g, "< BACK", 219, 233, 1, 0.85f);
-        g.setColor(new Color(68, 76, 79));
-        pixelTextScaled(g, "W/S SELECT    A/D ADJUST", 172, 253, 1, 0.85f);
+        pixelTextScaled(g, "< BACK", 219, 221, 1, 0.85f);
     }
 
     private void drawDevMenu(Graphics2D g) {
@@ -365,7 +363,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             "SHOP", "ADVANCED CHAPTER", "ENDING"
         };
         for (int i = 0; i < options.length; i++) {
-            int y = 73 + i * 25;
+            int y = 73 + i * 20;
             boolean selected = devSelection == i;
             g.setColor(selected ? new Color(143, 190, 128) : DIM);
             if (selected) pixelText(g, ">", 145, y + 13, 1);
@@ -412,11 +410,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.drawRect(143, 88, 194, 97);
 
         g.setColor(INK);
-        pixelText(g, "PAUSED", 222, 108, 1);
+        drawCenteredPixelText(g, "PAUSED", 240, 108, 1);
         drawExitPromptChoice(g, 170, 118, 140, 20, "SETTINGS", 0);
         drawExitPromptChoice(g, 170, 143, 140, 20, "RETURN TO MENU", 1);
         g.setColor(new Color(77, 84, 85));
-        pixelText(g, "ESC  CLOSE", 210, 179, 1);
+        drawCenteredPixelText(g, "ESC  CLOSE", 240, 179, 1);
     }
 
     private void drawExitPromptChoice(Graphics2D g, int x, int y, int width, int height,
@@ -424,9 +422,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         boolean hovered = inside(mouseX, mouseY, x, y, width, height);
         boolean selected = exitPromptSelection == selection;
         g.setColor(selected || hovered ? new Color(143, 190, 128) : DIM);
-        int textX = x + (width - label.length() * 6) / 2;
+        int textX = x + (width - pixelTextWidth(g, label, 1)) / 2;
         pixelText(g, label, textX, y + 14, 1);
-        if (selected || hovered) pixelText(g, ">", textX - 14, y + 14, 1);
+        if (selected || hovered) pixelText(g, ">", textX - pixelTextWidth(g, ">", 1) - 7, y + 14, 1);
     }
 
     private void drawControlSection(Graphics2D g, int x, int y, String heading,
@@ -1839,12 +1837,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == Scene.SETTINGS) {
-            if (inside(x, y, 170, 219, 140, 20)) {
+            if (inside(x, y, 170, 207, 140, 20)) {
                 leaveSettings();
                 playSound("ui-back");
             } else {
                 for (int row = 0; row < 4; row++) {
-                    int rowY = 92 + row * 35;
+                    int rowY = 92 + row * 29;
                     if (inside(x, y, 115, rowY, 265, 20)) {
                         settingsSelection = row;
                         float volume = (float) clamp((x - 223) / 107.0f, 0.0f, 1.0f);
@@ -2181,6 +2179,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private static void pixelText(Graphics2D g, String text, int x, int y, int scale) {
         pixelTextScaled(g, text, x, y, scale, 1.0f);
+    }
+
+    private static void drawCenteredPixelText(Graphics2D g, String text, int centerX, int y,
+                                              int scale) {
+        pixelText(g, text, centerX - pixelTextWidth(g, text, scale) / 2, y, scale);
+    }
+
+    private static int pixelTextWidth(Graphics2D g, String text, int scale) {
+        Font font = PIXEL_FONT.deriveFont(Font.PLAIN,
+            Math.max(1, Math.round(PIXEL_FONT_BASE_SIZE * scale * uiScale)));
+        return g.getFontMetrics(font).stringWidth(text);
     }
 
     private static void pixelTextScaled(Graphics2D g, String text, int x, int y, int scale,
