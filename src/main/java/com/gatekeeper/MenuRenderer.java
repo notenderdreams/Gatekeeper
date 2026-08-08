@@ -104,21 +104,40 @@ final class MenuRenderer {
         g.setColor(new Color(2, 5, 8));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
+
         g.setColor(new Color(240, 102, 110));
-        GamePanel.pixelText(g, "DEVELOPER MENU", 176, 42, 1);
+        GamePanel.drawCenteredPixelText(g, "DEVELOPER MENU", 240, 38, 1);
         g.setColor(new Color(112, 123, 125));
-        GamePanel.pixelText(g, "F1 QUICK TEST SCENES", 181, 57, 1);
-        String[] options = {"FRESH BEDROOM", "BOARD PROGRESSION", "FIRST 3 COMPLETE",
-            "STREET", "SHOP", "ADVANCED CHAPTER", "AUTO TESTER HOME", "ENDING"};
+        GamePanel.drawCenteredPixelText(g, "F1 QUICK TEST SCENES", 240, 52, 1);
+
+        g.setColor(new Color(35, 44, 48));
+        g.fillRect(125, 62, 230, 1);
+
+        String[] options = {"FRESH BEDROOM", "BOARD PROGRESSION", "STREET",
+            "SHOP", "FIRST 3 COMPLETE", "AUTO TESTER HOME", "ADVANCED CHAPTER", "ENDING"};
+
         for (int i = 0; i < options.length; i++) {
-            int y = 73 + i * 20;
+            int y = 70 + i * 20;
             boolean selected = selection == i;
-            g.setColor(selected ? new Color(143, 190, 128) : DIM);
-            if (selected) GamePanel.pixelText(g, ">", 145, y + 13, 1);
-            GamePanel.pixelText(g, options[i], 159, y + 13, 1);
+
+            if (selected) {
+                g.setColor(new Color(25, 48, 42, 190));
+                g.fillRect(125, y, 230, 18);
+                g.setColor(new Color(55, 110, 92, 200));
+                g.drawRect(125, y, 230, 18);
+                g.setColor(new Color(143, 190, 128));
+                g.fillRect(125, y, 3, 18);
+                GamePanel.pixelText(g, ">", 135, y + 13, 1);
+                GamePanel.pixelText(g, options[i], 148, y + 13, 1);
+            } else {
+                g.setColor(new Color(8, 14, 18, 120));
+                g.fillRect(125, y, 230, 18);
+                g.setColor(new Color(20, 28, 32));
+                g.drawRect(125, y, 230, 18);
+                g.setColor(new Color(160, 168, 168));
+                GamePanel.pixelText(g, options[i], 148, y + 13, 1);
+            }
         }
-        g.setColor(new Color(74, 82, 83));
-        GamePanel.pixelText(g, "W/S SELECT   ENTER LOAD   ESC BACK", 150, 250, 1);
     }
 
     static void drawPause(Graphics2D g, int mouseX, int mouseY, int selection) {

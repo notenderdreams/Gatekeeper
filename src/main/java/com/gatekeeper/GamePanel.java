@@ -793,6 +793,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 setPlayerPosition(205, 126);
             }
             case 2 -> {
+                chapter = 1;
+                scene = GameScene.STREET;
+                setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
+            }
+            case 3 -> {
+                chapter = 1;
+                scene = GameScene.SHOP;
+                setPlayerPosition(94, 190);
+            }
+            case 4 -> {
                 chapter = 2;
                 crafted[0] = true;
                 crafted[1] = true;
@@ -800,29 +810,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
-            case 3 -> {
-                chapter = 1;
-                scene = GameScene.STREET;
-                setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
-            }
-            case 4 -> {
-                chapter = 1;
-                scene = GameScene.SHOP;
-                setPlayerPosition(94, 190);
-            }
             case 5 -> {
-                chapter = 3;
-                Arrays.fill(crafted, true);
-                scene = GameScene.SHOP;
-                setPlayerPosition(94, 190);
-            }
-            case 6 -> {
                 chapter = 3;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
+            }
+            case 6 -> {
+                chapter = 3;
+                Arrays.fill(crafted, true);
+                scene = GameScene.SHOP;
+                setPlayerPosition(94, 190);
             }
             default -> {
                 chapter = 4;
