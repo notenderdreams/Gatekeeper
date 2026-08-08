@@ -1,19 +1,20 @@
 # GATEKEEPER: A Logic Tale
 
-A small, dependency-free Java 2D story/puzzle game based on `STORY.md`. It uses Java2D for a crisp low-resolution retro-RPG presentation, original illustrated three-quarter-view environments, pixel-style characters, monochrome dialogue boxes, and an interactive circuit crafting board.
+A small Java 2D story/puzzle game based on `STORY.md`. It uses Java2D for a crisp low-resolution retro-RPG presentation, original illustrated three-quarter-view environments, pixel-style characters, monochrome dialogue boxes, and an interactive circuit crafting board. Gradle provides the build and run lifecycle; the project has no runtime dependencies.
 
 The original environment art, animated character sheets, and generation notes are
 documented in `ASSETS.md`.
 
 ## Play
 
-Requires Java 17 or newer.
+Requires Java 17 or newer, Gradle, and optionally [just](https://github.com/casey/just) for shortcuts.
 
 ```sh
-./run.sh
+just run
 ```
 
-If the scripts are not executable yet, run `chmod +x run.sh test.sh` once, or use `sh run.sh`.
+The equivalent Gradle commands are `gradle run`, `gradle build`, and
+`gradle logicTest`. If `just` is installed, run `just` to list the shortcuts.
 
 ## Controls
 
@@ -42,5 +43,6 @@ If the scripts are not executable yet, run `chmod +x run.sh test.sh` once, or us
 Run the dependency-free logic checks with:
 
 ```sh
-./test.sh
+just test
+# or: gradle logicTest
 ```

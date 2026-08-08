@@ -1,0 +1,37 @@
+plugins {
+    id 'application'
+}
+
+group = 'com.gatekeeper'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'com.gatekeeper.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+// CircuitModelTest is dependency-free and runs without a test framework.
+tasks.register('logicTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the dependency-free circuit model checks.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.gatekeeper.CircuitModelTest'
+}
+
+// The project uses a plain Java test entry point instead of JUnit.
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('logicTest')
+}

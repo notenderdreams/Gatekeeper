@@ -1,4 +1,18 @@
 out/
 out-test/
+.gradle/
+build/
+bin/
+target/
 *.class
 .DS_Store
+
+# IDE metadata
+.idea/
+*.iml
+.vscode/
+
+# Local Gradle/JVM logs
+hs_err_pid*.log
+replay_pid*.log
+*.hprof

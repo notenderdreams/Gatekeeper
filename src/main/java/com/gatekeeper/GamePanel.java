@@ -100,7 +100,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
-    private String boardMessage = "Choose a gate, then place it in a socket.";
+    private String boardMessage = "Left-click to place. Right-click a socket to remove.";
     private int boardMessageTimer;
     private int mouseX = -1;
     private int mouseY = -1;
@@ -1801,25 +1801,39 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene != Scene.BOARD || line != null) return;
+        boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
 
         int available = chapter >= 3 ? 5 : 3;
-        for (int i = 0; i < available; i++) if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
-        if (inside(x, y, 20, 81, 64, 20)) toggleInputA();
-        if (inside(x, y, 20, 116, 64, 20)) toggleInputB();
-        for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) {
-            heldGate = GateType.values()[i];
-            playSound("ui-select");
+        if (!rightClick) {
+            for (int i = 0; i < available; i++) {
+                if (inside(x, y, 126 + i * 66, 30, 59, 18)) selectRecipe(i);
+            }
+            if (inside(x, y, 20, 81, 64, 20)) toggleInputA();
+            if (inside(x, y, 20, 116, 64, 20)) toggleInputB();
+            for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 93, 190, 80, 33)) {
+                heldGate = GateType.values()[i];
+                playSound("ui-select");
+            }
         }
 
         int[][] layout = socketLayout(circuit.recipe());
         for (int i = 0; i < circuit.recipe().slotCount(); i++) {
             if (inside(x, y, layout[i][0], layout[i][1], BOARD_SOCKET_W, BOARD_SOCKET_H)) {
-                circuit.place(i, heldGate);
-                boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
+                if (rightClick) {
+                    if (circuit.placed()[i] == null) return;
+                    circuit.place(i, null);
+                    boardMessage = "Removed gate from socket " + (i + 1) + ".";
+                    playSound("ui-close");
+                } else {
+                    circuit.place(i, heldGate);
+                    boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
+                    playSound("gate-place");
+                }
                 boardMessageTimer = 120;
-                playSound("gate-place");
+                return;
             }
         }
+        if (rightClick) return;
         if (inside(x, y, 310, 187, 72, 36)) recordOrAutoTest();
         if (inside(x, y, 390, 187, 70, 36)) verify();
     }
