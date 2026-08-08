@@ -36,7 +36,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int INDOOR_PLAYER_HEIGHT = 52;
     private static final int STREET_PLAYER_HEIGHT = 36;
     private static final String AUDIO_ROOT = "/assets/audio/game/";
-    private static final String MUSIC_LOOP = "/assets/audio/opengameart/chiptune-2/chiptune_2.wav";
+    private static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
     private static final int STREET_WORLD_WIDTH = 922;
     private static final int STREET_HOME_X = 93;
     private static final int STREET_SHOP_X = 870;

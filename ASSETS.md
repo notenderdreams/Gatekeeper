@@ -65,13 +65,13 @@ audio map is implemented.
 - `rpg-audio`: footsteps, doors, books, pickups and physical room sounds.
 - `ui-audio`: switches, clicks and interface feedback.
 - `music-jingles`: short CC0 musical stingers for title, crafting, success and ending.
-- `opengameart/chiptune-2/chiptune_2.wav`: a 68-second CC0 loop used as the current
-  prototype background bed while scene-specific themes are selected.
+- `audio/music/solitude-main.m4a`: the user-provided ambient main theme.
+- `audio/music/solitude-main.wav`: its Java-compatible PCM conversion used at runtime.
 
 All four packs are from Kenney and include their license files. The source pages list
 the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,
 `https://kenney.nl/assets/rpg-audio`, `https://kenney.nl/assets/ui-audio`, and
 `https://kenney.nl/assets/music-jingles`.
 
-The background loop is from OpenGameArt's [music loops collection](https://opengameart.org/content/music-loops-0)
-and is distributed under CC0.
+The earlier OpenGameArt loop remains downloaded as a fallback reference, but the game
+now uses the user-provided `solitude-main.wav` as its continuous ambient theme.
