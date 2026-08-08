@@ -72,6 +72,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int lineAge;
     private int chapter;
     private int titleSelection;
+    private boolean exitPrompt;
     private int selectedRecipe;
     private int notebookPage;
     private int playerX = 210;
@@ -119,6 +120,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case END -> drawEnding(g);
         }
         if (line != null) drawDialogue(g);
+        if (exitPrompt) drawExitPrompt(g);
         g.dispose();
 
         Graphics2D out = (Graphics2D) graphics.create();
@@ -141,7 +143,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         else sound.stopAmbient();
         if (line != null) lineAge++;
         if (boardMessageTimer > 0) boardMessageTimer--;
-        if (line == null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
+        if (!exitPrompt && line == null
+            && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {
             int speed = 2;
             boolean sideView = scene == Scene.STREET;
             int oldX = playerX;
@@ -288,9 +291,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(new Color(18, 39, 39));
         g.fillRect(77, 185, 320, 25);
         g.setColor(CYAN);
-        pixelText(g, "TIP", 88, 201, 1);
+        pixelText(g, "ESC", 88, 201, 1);
         g.setColor(INK);
-        pixelText(g, "Record all four input combinations.", 121, 201, 1);
+        pixelText(g, "Open the return menu.", 121, 201, 1);
 
         boolean hovered = inside(mouseX, mouseY, 164, 217, 152, 22);
         g.setColor(hovered ? new Color(71, 63, 26) : new Color(27, 35, 35));
@@ -311,6 +314,32 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             g.setColor(new Color(143, 190, 128));
             pixelText(g, ">", textX - 14, y + 14, 1);
         }
+    }
+
+    private void drawExitPrompt(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 174));
+        g.fillRect(0, 0, W, H);
+        g.setColor(new Color(5, 8, 12, 245));
+        g.fillRect(139, 94, 202, 81);
+        g.setColor(new Color(151, 155, 151));
+        g.drawRect(139, 94, 202, 81);
+        g.setColor(new Color(65, 70, 70));
+        g.drawRect(143, 98, 194, 73);
+
+        g.setColor(INK);
+        pixelText(g, "RETURN TO MAIN MENU?", 180, 118, 1);
+        drawExitPromptChoice(g, 170, 130, 140, 20, "RETURN TO MENU");
+        g.setColor(new Color(77, 84, 85));
+        pixelText(g, "ESC  CLOSE", 210, 164, 1);
+    }
+
+    private void drawExitPromptChoice(Graphics2D g, int x, int y, int width, int height,
+                                      String label) {
+        boolean hovered = inside(mouseX, mouseY, x, y, width, height);
+        g.setColor(hovered ? INK : new Color(143, 190, 128));
+        int textX = x + (width - label.length() * 6) / 2;
+        pixelText(g, label, textX, y + 14, 1);
+        pixelText(g, ">", textX - 14, y + 14, 1);
     }
 
     private void drawControlSection(Graphics2D g, int x, int y, String heading,
@@ -1532,6 +1561,24 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
         keys.add(key);
+        if (exitPrompt) {
+            if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                playSound("ui-confirm");
+                resetToTitle();
+            } else if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_BACK_SPACE) {
+                exitPrompt = false;
+                playSound("ui-back");
+            }
+            return;
+        }
+        if (key == KeyEvent.VK_ESCAPE
+            && (scene == Scene.BEDROOM || scene == Scene.STREET
+                || scene == Scene.SHOP || scene == Scene.END)) {
+            exitPrompt = true;
+            keys.clear();
+            playSound("ui-select");
+            return;
+        }
         if (line != null && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE)) {
             nextLine();
             return;
@@ -1601,6 +1648,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         mouseX = x;
         mouseY = y;
 
+        if (exitPrompt) {
+            if (inside(x, y, 170, 130, 140, 20)) {
+                playSound("ui-confirm");
+                resetToTitle();
+            }
+            return;
+        }
+
         if (scene == Scene.TITLE) {
             if (inside(x, y, 170, 158, 140, 20)) {
                 titleSelection = 0;
@@ -1664,6 +1719,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int[] point = logicalPoint(event);
         mouseX = point[0];
         mouseY = point[1];
+        if (exitPrompt) {
+            repaint();
+            return;
+        }
         if (scene == Scene.TITLE) {
             int previous = titleSelection;
             if (inside(mouseX, mouseY, 170, 158, 140, 20)) titleSelection = 0;
@@ -1701,6 +1760,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void resetToTitle() {
+        exitPrompt = false;
         Arrays.fill(crafted, false);
         dialogue.clear();
         line = null;
