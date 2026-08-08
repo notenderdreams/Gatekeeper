@@ -37,6 +37,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final int STREET_PLAYER_HEIGHT = 36;
     private static final String AUDIO_ROOT = "/assets/audio/game/";
     private static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
+    private static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
     private static final int STREET_WORLD_WIDTH = 922;
     private static final int STREET_HOME_X = 93;
     private static final int STREET_SHOP_X = 870;
@@ -134,6 +135,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void updateGame() {
         ticks++;
         sound.loop(MUSIC_LOOP);
+        sound.updateMusic();
+        sound.updateCrossfade();
+        if (scene == Scene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
+        else sound.stopAmbient();
         if (line != null) lineAge++;
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (line == null && (scene == Scene.BEDROOM || scene == Scene.STREET || scene == Scene.SHOP)) {

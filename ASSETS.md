@@ -67,6 +67,9 @@ audio map is implemented.
 - `music-jingles`: short CC0 musical stingers for title, crafting, success and ending.
 - `audio/music/solitude-main.m4a`: the user-provided ambient main theme.
 - `audio/music/solitude-main.wav`: its Java-compatible PCM conversion used at runtime.
+- `audio/ambience/road-ambience.mp3`: the user-provided Lantern Street ambience.
+- `audio/ambience/road-ambience.wav`: its Java-compatible runtime conversion, layered
+  only while Alex is on Lantern Street.
 
 All four packs are from Kenney and include their license files. The source pages list
 the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,
