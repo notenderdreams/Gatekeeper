@@ -10,6 +10,7 @@ public final class SaveData {
     public boolean[] crafted = new boolean[5];
     public int notebookPage;
     public boolean autoTesterAttached;
+    public boolean catPresent;
     public boolean instantStart;
 
     public SaveData() {

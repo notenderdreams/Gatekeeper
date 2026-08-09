@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 
 import static com.gatekeeper.GameAssets.buildCellBounds;
@@ -57,6 +58,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
     private final SoundManager sound = new SoundManager();
+    private final Random random = new Random();
+    private boolean catPresent;
     private GameScene scene = GameScene.TITLE;
     private GameScene returnScene = GameScene.BEDROOM;
     private String line;
@@ -150,7 +153,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.fillRect(0, 0, W, H);
 
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving,
-            facing, walkDistance, keys, uiScale);
+            facing, walkDistance, keys, uiScale, catPresent);
         switch (scene) {
             case TITLE -> MenuRenderer.drawTitle(g, bedroomBackground, ticks,
                 mouseX, mouseY, titleSelection);
@@ -255,6 +258,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         DialogueRenderer.drawPrompt(g, text, uiScale);
     }
 
+    private void rollCatSpawn() {
+        catPresent = random.nextInt(5) == 0;
+    }
+
     private void interact() {
         if (scene == GameScene.BEDROOM) {
             if (chapter == 0 && near(299, 132)) {
@@ -269,6 +276,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 else say("ALEX|An old pegboard. Maybe I can build something on it.");
             } else if (near(407, 132)) {
                 scene = GameScene.STREET;
+                rollCatSpawn();
                 playSound("door-open");
                 setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
                 facing = Facing.RIGHT;
@@ -287,13 +295,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
-            } else if (Math.abs(playerX - STREET_CAT_X) < 38) {
+            } else if (catPresent && Math.abs(playerX - STREET_CAT_X) < 38) {
                 say("CAT|Meow.");
                 playSound("ui-confirm");
             }
         } else if (scene == GameScene.SHOP) {
             if (playerX < 50) {
                 scene = GameScene.STREET;
+                rollCatSpawn();
                 playSound("door-close");
                 setPlayerPosition(STREET_SHOP_X - 47, STREET_GROUND_Y);
                 facing = Facing.LEFT;
@@ -1097,6 +1106,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case 2 -> {
                 chapter = 1;
                 scene = GameScene.STREET;
+                rollCatSpawn();
                 setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
             }
             case 3 -> {
@@ -1215,6 +1225,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             data.crafted = Arrays.copyOf(crafted, crafted.length);
             data.notebookPage = notebookPage;
             data.autoTesterAttached = autoTester.isAttached();
+            data.catPresent = catPresent;
         }
         SaveManager.saveGame(data);
     }
@@ -1231,6 +1242,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         this.notebookPage = data.notebookPage;
         this.instantStart = data.instantStart;
+        this.catPresent = data.catPresent;
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

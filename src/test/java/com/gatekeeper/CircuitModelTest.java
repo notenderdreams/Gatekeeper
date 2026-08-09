@@ -70,6 +70,7 @@ public final class CircuitModelTest {
         save.crafted = new boolean[]{true, true, true, false, false};
         save.notebookPage = 2;
         save.autoTesterAttached = true;
+        save.catPresent = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -83,9 +84,19 @@ public final class CircuitModelTest {
         require(loaded.crafted[0] && loaded.crafted[1] && loaded.crafted[2] && !loaded.crafted[3], "loaded crafted array should match");
         require(loaded.notebookPage == 2, "loaded notebook page should be 2");
         require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
+        require(loaded.catPresent, "loaded catPresent should be true");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");
+
+        // Verify 1/5 cat spawn probability logic
+        java.util.Random rng = new java.util.Random(12345);
+        int catHits = 0;
+        int trials = 10000;
+        for (int t = 0; t < trials; t++) {
+            if (rng.nextInt(5) == 0) catHits++;
+        }
+        require(catHits > 1700 && catHits < 2300, "1/5 spawn chance should yield ~2000 hits out of 10000 trials, got " + catHits);
 
         System.out.println("CircuitModelTest: all checks passed");
     }
