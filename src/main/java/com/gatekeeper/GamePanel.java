@@ -74,6 +74,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
     private boolean instantStart = false;
+    private boolean catAlwaysAppears = false;
     private GameScene devReturnScene = GameScene.TITLE;
     private boolean exitPrompt;
     private int exitPromptSelection;
@@ -161,7 +162,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, instantStart, sound, soundSceneSelection);
+                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, sound, soundSceneSelection);
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -259,7 +260,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void rollCatSpawn() {
-        catPresent = random.nextInt(5) == 0;
+        catPresent = catAlwaysAppears || random.nextInt(5) == 0;
     }
 
     private void interact() {
@@ -940,7 +941,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 2) {
-                for (int i = 0; i < 2; i++) {
+                for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
                         devFocusRight = true;
@@ -1056,6 +1057,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-confirm");
                 saveCurrentProgress();
                 System.out.println("[DEV MENU] Instant Start -> " + (instantStart ? "ENABLED" : "DISABLED"));
+            } else if (devSelection == 3) {
+                catAlwaysAppears = !catAlwaysAppears;
+                if (catAlwaysAppears) catPresent = true;
+                playSound("ui-confirm");
+                saveCurrentProgress();
+                System.out.println("[DEV MENU] Cat Always Appears -> " + (catAlwaysAppears ? "ENABLED" : "DISABLED"));
             }
         }
     }
@@ -1066,7 +1073,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        return 3;
+        return 4;
     }
 
     private void adjustSelectedDevSound(int direction) {
@@ -1214,6 +1221,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         SaveData data = SaveManager.hasSave() ? SaveManager.loadGame() : null;
         if (data == null) data = new SaveData();
         data.instantStart = instantStart;
+        data.catAlwaysAppears = catAlwaysAppears;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV) {
@@ -1242,7 +1250,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         this.notebookPage = data.notebookPage;
         this.instantStart = data.instantStart;
-        this.catPresent = data.catPresent;
+        this.catAlwaysAppears = data.catAlwaysAppears;
+        this.catPresent = data.catPresent || data.catAlwaysAppears;
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

@@ -37,6 +37,7 @@ public final class SaveManager {
             json.append("  \"notebookPage\": ").append(data.notebookPage).append(",\n");
             json.append("  \"autoTesterAttached\": ").append(data.autoTesterAttached).append(",\n");
             json.append("  \"catPresent\": ").append(data.catPresent).append(",\n");
+            json.append("  \"catAlwaysAppears\": ").append(data.catAlwaysAppears).append(",\n");
             json.append("  \"instantStart\": ").append(data.instantStart).append("\n");
             json.append("}\n");
 
@@ -63,6 +64,7 @@ public final class SaveManager {
             data.notebookPage = parseInt(content, "notebookPage", 0);
             data.autoTesterAttached = parseBoolean(content, "autoTesterAttached", false);
             data.catPresent = parseBoolean(content, "catPresent", false);
+            data.catAlwaysAppears = parseBoolean(content, "catAlwaysAppears", false);
             data.instantStart = parseBoolean(content, "instantStart", false);
 
             return data;

@@ -71,6 +71,7 @@ public final class CircuitModelTest {
         save.notebookPage = 2;
         save.autoTesterAttached = true;
         save.catPresent = true;
+        save.catAlwaysAppears = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -85,6 +86,7 @@ public final class CircuitModelTest {
         require(loaded.notebookPage == 2, "loaded notebook page should be 2");
         require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
         require(loaded.catPresent, "loaded catPresent should be true");
+        require(loaded.catAlwaysAppears, "loaded catAlwaysAppears should be true");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");

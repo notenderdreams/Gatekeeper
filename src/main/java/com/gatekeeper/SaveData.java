@@ -11,6 +11,7 @@ public final class SaveData {
     public int notebookPage;
     public boolean autoTesterAttached;
     public boolean catPresent;
+    public boolean catAlwaysAppears;
     public boolean instantStart;
 
     public SaveData() {
