@@ -312,15 +312,15 @@ final class WorkbenchRenderer {
         boolean powered;
         if (source == CircuitRecipe.INPUT_A) {
             sourceX = 57;
-            sourceY = 94;
+            sourceY = 90;
             powered = circuit.inputA();
         } else if (source == CircuitRecipe.INPUT_B) {
             sourceX = 57;
-            sourceY = 129;
+            sourceY = 123;
             powered = circuit.inputB();
         } else {
             sourceX = layout[source][0] + BOARD_SOCKET_W;
-            sourceY = layout[source][1] + BOARD_SOCKET_H / 2;
+            sourceY = layout[source][1] + 11;
             powered = nodeValues[source];
         }
         drawRoutedWire(g, sourceX, sourceY, targetX, targetY, powered);
@@ -333,47 +333,47 @@ final class WorkbenchRenderer {
             return;
         }
         for (int i = 0; i < recipe.slotCount(); i++) {
-            int x = layout[i][0];
+            int x = layout[i][0] - 2;
             int y = layout[i][1];
-            drawSourceWire(g, recipe.leftSources[i], x, y + 10, layout, nodeValues);
+            drawSourceWire(g, recipe.leftSources[i], x, y + 6, layout, nodeValues);
             if (recipe.solution[i] != GateType.NOT) {
-                drawSourceWire(g, recipe.rightSources[i], x, y + 24, layout, nodeValues);
+                drawSourceWire(g, recipe.rightSources[i], x, y + 17, layout, nodeValues);
             }
         }
     }
 
     private void drawXorWires(Graphics2D g, int[][] layout, boolean[] values) {
-        int aX = 57, aY = 94;
-        int bX = 57, bY = 129;
+        int aX = 57, aY = 90;
+        int bX = 57, bY = 123;
 
         // G3 = NOT A and G1 = NOT B: short, direct branch starters.
-        drawWirePath(g, circuit.inputA(), aX, aY, 79, aY, 79, layout[2][1] + 10,
-            layout[2][0], layout[2][1] + 10);
-        drawWirePath(g, circuit.inputB(), bX, bY, 79, bY, 79, layout[0][1] + 10,
-            layout[0][0], layout[0][1] + 10);
+        drawWirePath(g, circuit.inputA(), aX, aY, 79, aY, 79, layout[2][1] + 6,
+            layout[2][0] - 2, layout[2][1] + 6);
+        drawWirePath(g, circuit.inputB(), bX, bY, 79, bY, 79, layout[0][1] + 6,
+            layout[0][0] - 2, layout[0][1] + 6);
 
         // The un-inverted inputs take clearly separated outer lanes to the
         // opposite AND gates instead of disappearing behind other modules.
         drawWirePath(g, circuit.inputA(), aX, aY, 69, aY, 69, 168, 164, 168,
-            164, layout[1][1] + 10, layout[1][0], layout[1][1] + 10);
+            164, layout[1][1] + 6, layout[1][0] - 2, layout[1][1] + 6);
         drawWirePath(g, circuit.inputB(), bX, bY, 64, bY, 64, 71, 164, 71,
-            164, layout[3][1] + 24, layout[3][0], layout[3][1] + 24);
+            164, layout[3][1] + 17, layout[3][0] - 2, layout[3][1] + 17);
 
         // Each NOT feeds only its neighboring AND.
         drawWirePath(g, values[2], layout[2][0] + BOARD_SOCKET_W,
-            layout[2][1] + BOARD_SOCKET_H / 2, 158, layout[2][1] + BOARD_SOCKET_H / 2,
-            158, layout[3][1] + 10, layout[3][0], layout[3][1] + 10);
+            layout[2][1] + 11, 158, layout[2][1] + 11,
+            158, layout[3][1] + 6, layout[3][0] - 2, layout[3][1] + 6);
         drawWirePath(g, values[0], layout[0][0] + BOARD_SOCKET_W,
-            layout[0][1] + BOARD_SOCKET_H / 2, 158, layout[0][1] + BOARD_SOCKET_H / 2,
-            158, layout[1][1] + 24, layout[1][0], layout[1][1] + 24);
+            layout[0][1] + 11, 158, layout[0][1] + 11,
+            158, layout[1][1] + 17, layout[1][0] - 2, layout[1][1] + 17);
 
         // The two product terms remain separate until the final OR.
         drawWirePath(g, values[3], layout[3][0] + BOARD_SOCKET_W,
-            layout[3][1] + BOARD_SOCKET_H / 2, 246, layout[3][1] + BOARD_SOCKET_H / 2,
-            246, layout[4][1] + 10, layout[4][0], layout[4][1] + 10);
+            layout[3][1] + 11, 246, layout[3][1] + 11,
+            246, layout[4][1] + 6, layout[4][0] - 2, layout[4][1] + 6);
         drawWirePath(g, values[1], layout[1][0] + BOARD_SOCKET_W,
-            layout[1][1] + BOARD_SOCKET_H / 2, 252, layout[1][1] + BOARD_SOCKET_H / 2,
-            252, layout[4][1] + 24, layout[4][0], layout[4][1] + 24);
+            layout[1][1] + 11, 252, layout[1][1] + 11,
+            252, layout[4][1] + 17, layout[4][0] - 2, layout[4][1] + 17);
 
         // Break the two visual crossings so they cannot be mistaken for
         // junctions, then annotate both product terms directly on the board.
