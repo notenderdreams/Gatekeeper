@@ -149,16 +149,16 @@ final class NotebookRenderer {
 
     void drawEnding(Graphics2D g) {
         g.setColor(INK);
-        GamePanel.pixelText(g, "THE SIGNAL IS CLEAR.", 131, 78, 2);
+        GamePanel.drawCenteredPixelText(g, "THE SIGNAL IS CLEAR.", W / 2, 78, 2);
         g.setColor(CYAN);
-        GamePanel.pixelText(g, "Mira pins Alex's circuits above the counter.", 102, 119, 1);
-        GamePanel.pixelText(g, "Tomorrow, the notebook has harder pages.", 111, 136, 1);
+        GamePanel.drawCenteredPixelText(g, "Mira pins Alex's circuits above the counter.", W / 2, 119, 1);
+        GamePanel.drawCenteredPixelText(g, "Tomorrow, the notebook has harder pages.", W / 2, 136, 1);
         g.setColor(YELLOW);
-        GamePanel.pixelText(g, "But tonight, every little light is on.", 119, 169, 1);
+        GamePanel.drawCenteredPixelText(g, "But tonight, every little light is on.", W / 2, 169, 1);
         g.setColor(RED);
-        drawHeart(g, 235, 194);
+        drawHeart(g, (W - 12) / 2, 194);
         g.setColor(DIM);
-        GamePanel.pixelText(g, "ENTER: begin again", 178, 238, 1);
+        GamePanel.drawCenteredPixelText(g, "ENTER: begin again", W / 2, 238, 1);
     }
 
     private static int clamp(int value, int min, int max) {
