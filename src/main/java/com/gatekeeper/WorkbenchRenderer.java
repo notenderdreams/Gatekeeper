@@ -62,9 +62,9 @@ final class WorkbenchRenderer {
         }
         // Etched copper traces around the board's edge.
         g.setColor(new Color(116, 72, 37));
-        g.drawLine(13, 53, 13, 228);
-        g.drawLine(13, 228, 294, 228);
-        g.drawLine(467, 53, 467, 228);
+        g.drawLine(13, 53, 13, 255);
+        g.drawLine(13, 255, 294, 255);
+        g.drawLine(467, 53, 467, 255);
         g.setColor(new Color(201, 139, 65));
         for (int[] screw : new int[][]{{8, 8}, {466, 8}, {8, 256}, {466, 256}}) {
             g.fillRect(screw[0], screw[1], 5, 5);
@@ -74,35 +74,34 @@ final class WorkbenchRenderer {
         }
 
         g.setColor(new Color(5, 12, 15));
-        g.fillRect(12, 12, 456, 39);
+        g.fillRect(12, 12, 456, 20);
         g.setColor(new Color(21, 48, 46));
-        g.drawLine(13, 50, 467, 50);
+        g.drawLine(13, 32, 467, 32);
         g.setColor(INK);
-        GamePanel.pixelText(g, "LOGIC WORKBENCH", 18, 25, 1);
-        g.setColor(CYAN);
-        GamePanel.pixelText(g, "N GUIDE", 18, 42, 1);
-        boolean exitHovered = isHovered(410, 20, 56, 20);
+        GamePanel.pixelText(g, "LOGIC WORKBENCH", 18, 26, 1);
+
+        boolean exitHovered = isHovered(420, 15, 44, 14);
         g.setColor(exitHovered ? RED : DIM);
-        GamePanel.pixelText(g, "EXIT", 426, 33, 1);
+        GamePanel.pixelText(g, "EXIT", 430, 26, 1);
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) {
             int x = 126 + i * 52;
             boolean selected = i == selectedRecipe;
-            boolean hovered = isHovered(x, 31, 46, 16);
+            boolean hovered = isHovered(x, 15, 46, 14);
             g.setColor(selected ? new Color(83, 67, 25)
                 : hovered ? new Color(28, 63, 58) : new Color(17, 31, 34));
-            g.fillRect(x, 31, 46, 16);
+            g.fillRect(x, 15, 46, 14);
             g.setColor(crafted[i] ? CYAN : selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 31, 46, 16);
-            GamePanel.pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 3, 42, 1);
+            g.drawRect(x, 15, 46, 14);
+            GamePanel.pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 3, 26, 1);
         }
 
         CircuitRecipe recipe = circuit.recipe();
-        drawPanel(g, 13, 55, 345, 116);
+        drawPanel(g, 13, 36, 345, 164);
         g.setColor(new Color(20, 57, 51));
         for (int x = 22; x < 350; x += 12) {
-            for (int y = 72; y < 165; y += 12) g.fillRect(x, y, 2, 2);
+            for (int y = 72; y < 198; y += 12) g.fillRect(x, y, 2, 2);
         }
         g.setColor(INK);
         GamePanel.pixelText(g, recipe.name, 20, 67, 1);
@@ -135,24 +134,25 @@ final class WorkbenchRenderer {
         drawTruthTable(g);
         drawGatePalette(g);
         drawBoardButtons(g);
+        // Status strip — left column, below Parts Bin
         g.setColor(new Color(5, 12, 15));
-        g.fillRect(13, 232, 454, 27);
+        g.fillRect(13, 237, 281, 18);
         g.setColor(new Color(37, 77, 69));
-        g.drawLine(14, 232, 466, 232);
+        g.drawLine(14, 237, 294, 237);
         g.setColor(autoTester.isRunning() ? new Color(143, 190, 128)
             : boardMessageTimer > 0 ? YELLOW : CYAN);
-        g.fillRect(18, 239, 4, 12);
+        g.fillRect(18, 242, 4, 12);
         String status = autoTester.isRunning()
             ? "LOGICLENS TESTING ROW " + (autoTester.currentRow() + 1) + "/4"
             : boardMessageTimer > 0 ? boardMessage
             : heldGate.label + " selected — " + heldGate.hint;
-        GamePanel.pixelText(g, status, 28, 249, 1);
+        GamePanel.pixelText(g, status, 28, 251, 1);
     }
 
     private void drawTruthTable(Graphics2D g) {
         CircuitRecipe r = circuit.recipe();
         int x = 366, y = 61;
-        drawPanel(g, 362, 55, 105, 116);
+        drawPanel(g, 362, 36, 105, 164);
         g.setColor(INK);
         GamePanel.pixelText(g, "TARGET / LIVE", x + 2, y + 8, 1);
         g.setColor(DIM);
@@ -179,69 +179,65 @@ final class WorkbenchRenderer {
     }
 
     private void drawGatePalette(Graphics2D g) {
-        drawPanel(g, 13, 176, 281, 52);
-        g.setColor(INK);
-        GamePanel.pixelText(g, "PARTS BIN", 18, 187, 1);
+        drawPanel(g, 13, 204, 281, 30);
         GateType[] gates = GateType.values();
         for (int i = 0; i < gates.length; i++) {
             int x = 20 + i * 85;
             boolean selected = heldGate == gates[i];
-            boolean hovered = isHovered(x, 196, 70, 22);
+            boolean hovered = isHovered(x, 208, 70, 22);
             g.setColor(selected ? new Color(76, 63, 25)
                 : hovered ? new Color(28, 61, 56) : new Color(14, 27, 30));
-            g.fillRect(x, 196, 70, 22);
+            g.fillRect(x, 208, 70, 22);
             g.setColor(selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 196, 70, 22);
-            if (selected) g.fillRect(x + 2, 198, 2, 18);
-            CircuitComponents.drawGate(g, x + 5, 199, gates[i], false);
-            GamePanel.pixelText(g, (i + 1) + " " + gates[i].label, x + 30, 211, 1);
+            g.drawRect(x, 208, 70, 22);
+            if (selected) g.fillRect(x + 2, 210, 2, 18);
+            CircuitComponents.drawGate(g, x + 5, 211, gates[i], false);
+            GamePanel.pixelText(g, (i + 1) + " " + gates[i].label, x + 30, 223, 1);
         }
     }
 
     private void drawBoardButtons(Graphics2D g) {
         boolean tester = chapter >= 3 && autoTester.isAttached();
-        drawPanel(g, 302, 176, 165, 52);
+        drawPanel(g, 302, 204, 165, 51);
         if (chapter >= 3) {
-            boolean hookHover = isHovered(310, 179, 150, 14);
+            boolean hookHover = isHovered(310, 207, 150, 14);
             g.setColor(hookHover ? new Color(28, 73, 62) : new Color(16, 43, 41));
-            g.fillRect(310, 179, 150, 14);
+            g.fillRect(310, 207, 150, 14);
             g.setColor(autoTester.isAttached() ? new Color(143, 190, 128) : new Color(105, 116, 117));
-            g.drawRect(310, 179, 150, 14);
+            g.drawRect(310, 207, 150, 14);
             GamePanel.pixelText(g, autoTester.isAttached() ? "H UNHOOK LOGICLENS" : "H ATTACH LOGICLENS",
-                322, 189, 1);
+                322, 217, 1);
 
-            boolean recordHover = !tester && isHovered(310, 197, 72, 27);
+            boolean recordHover = !tester && isHovered(310, 225, 72, 27);
             g.setColor(tester ? new Color(22, 26, 28)
                 : recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
-            g.fillRect(310, 197, 72, 27);
+            g.fillRect(310, 225, 72, 27);
             g.setColor(tester ? DIM : YELLOW);
-            g.drawRect(310, 197, 72, 27);
-            GamePanel.pixelText(g, "R RECORD", 318, 209, 1);
-            GamePanel.pixelText(g, "ROW", 325, 220, 1);
+            g.drawRect(310, 225, 72, 27);
+            GamePanel.pixelText(g, "R RECORD", 318, 242, 1);
             if (tester && logicLensImage != null) {
-                g.drawImage(logicLensImage, 326, 194, 40, 33, null);
+                g.drawImage(logicLensImage, 326, 222, 40, 33, null);
             }
 
-            boolean verifyHover = isHovered(390, 197, 70, 27);
+            boolean verifyHover = isHovered(390, 225, 70, 27);
             g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
-            g.fillRect(390, 197, 70, 27);
+            g.fillRect(390, 225, 70, 27);
             g.setColor(CYAN);
-            g.drawRect(390, 197, 70, 27);
-            GamePanel.pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 211, 1);
+            g.drawRect(390, 225, 70, 27);
+            GamePanel.pixelText(g, tester ? "T RUN KIT" : "T VERIFY", 396, 239, 1);
         } else {
-            boolean recordHover = isHovered(310, 187, 72, 36);
+            boolean recordHover = isHovered(310, 215, 72, 36);
             g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
-            g.fillRect(310, 187, 72, 36);
+            g.fillRect(310, 215, 72, 36);
             g.setColor(YELLOW);
-            g.drawRect(310, 187, 72, 36);
-            GamePanel.pixelText(g, "R RECORD", 318, 202, 1);
-            GamePanel.pixelText(g, "THIS ROW", 320, 214, 1);
-            boolean verifyHover = isHovered(390, 187, 70, 36);
+            g.drawRect(310, 215, 72, 36);
+            GamePanel.pixelText(g, "R RECORD", 318, 236, 1);
+            boolean verifyHover = isHovered(390, 215, 70, 36);
             g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));
-            g.fillRect(390, 187, 70, 36);
+            g.fillRect(390, 215, 70, 36);
             g.setColor(CYAN);
-            g.drawRect(390, 187, 70, 36);
-            GamePanel.pixelText(g, "T VERIFY", 396, 208, 1);
+            g.drawRect(390, 215, 70, 36);
+            GamePanel.pixelText(g, "T VERIFY", 396, 236, 1);
         }
     }
 

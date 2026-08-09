@@ -857,11 +857,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
         }
         if (rightClick) return;
-        if (chapter >= 3 && inside(x, y, 310, 179, 150, 14)) toggleAutoTester();
-        else if (chapter >= 3 && inside(x, y, 310, 197, 72, 27)) recordOrAutoTest();
-        else if (chapter >= 3 && inside(x, y, 390, 197, 70, 27)) verify();
-        else if (chapter < 3 && inside(x, y, 310, 187, 72, 36)) recordOrAutoTest();
-        else if (chapter < 3 && inside(x, y, 390, 187, 70, 36)) verify();
+        if (chapter >= 3 && inside(x, y, 310, 207, 150, 14)) toggleAutoTester();
+        else if (chapter >= 3 && inside(x, y, 310, 225, 72, 27)) recordOrAutoTest();
+        else if (chapter >= 3 && inside(x, y, 390, 225, 70, 27)) verify();
+        else if (chapter < 3 && inside(x, y, 310, 215, 72, 36)) recordOrAutoTest();
+        else if (chapter < 3 && inside(x, y, 390, 215, 70, 36)) verify();
     }
 
     @Override public void mouseReleased(MouseEvent event) {}
