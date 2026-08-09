@@ -287,6 +287,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
+            } else if (Math.abs(playerX - STREET_CAT_X) < 38) {
+                say("CAT|Meow.");
+                playSound("ui-confirm");
             }
         } else if (scene == GameScene.SHOP) {
             if (playerX < 50) {

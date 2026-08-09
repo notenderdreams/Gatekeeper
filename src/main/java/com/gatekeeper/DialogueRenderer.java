@@ -31,7 +31,8 @@ final class DialogueRenderer {
         String[] parts = line.split("\\|", 2);
         String speaker = parts.length == 2 ? parts[0] : "";
         String words = parts.length == 2 ? parts[1] : parts[0];
-        g.setColor(speaker.equals("MIRA") ? CYAN : speaker.equals("ALEX") ? YELLOW : INK);
+        g.setColor(speaker.equals("MIRA") ? CYAN : speaker.equals("ALEX") ? YELLOW :
+            speaker.equals("CAT") ? new Color(250, 180, 70) : INK);
         if (!speaker.isEmpty()) GamePanel.pixelText(g, speaker, x + Math.round(12 * uiScale),
             y + Math.round(17 * uiScale), 1);
         g.setColor(INK);

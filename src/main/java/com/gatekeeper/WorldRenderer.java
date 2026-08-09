@@ -233,6 +233,8 @@ final class WorldRenderer {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
+        } else if (Math.abs(playerX - STREET_CAT_X) < 38) {
+            prompt(g, "E  PET CAT");
         }
 
         if (showCollisions) {
@@ -596,7 +598,7 @@ final class WorldRenderer {
     }
 
     private void drawCat(Graphics2D g, int cameraX) {
-        int catWorldX = 354;
+        int catWorldX = STREET_CAT_X;
         int catWorldY = 152;
         int screenX = catWorldX - cameraX;
         if (screenX + 40 < 0 || screenX - 40 > W) return;
