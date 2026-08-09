@@ -207,21 +207,20 @@ final class WorkbenchRenderer {
             g.fillRect(310, 179, 150, 14);
             g.setColor(autoTester.isAttached() ? new Color(143, 190, 128) : new Color(105, 116, 117));
             g.drawRect(310, 179, 150, 14);
-            if (autoTester.isAttached()) {
-                if (logicLensImage != null) {
-                    g.drawImage(logicLensImage, 323, 178, 28, 25, null);
-                }
-            }
-            GamePanel.pixelText(g, autoTester.isAttached() ? "WIRED  H UNHOOK" : "H  ATTACH LOGICLENS",
-                autoTester.isAttached() ? 356 : 318, 189, 1);
+            GamePanel.pixelText(g, autoTester.isAttached() ? "H UNHOOK LOGICLENS" : "H ATTACH LOGICLENS",
+                322, 189, 1);
 
-            boolean recordHover = isHovered(310, 197, 72, 27);
-            g.setColor(recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
+            boolean recordHover = !tester && isHovered(310, 197, 72, 27);
+            g.setColor(tester ? new Color(22, 26, 28)
+                : recordHover ? new Color(102, 78, 24) : new Color(59, 48, 23));
             g.fillRect(310, 197, 72, 27);
-            g.setColor(YELLOW);
+            g.setColor(tester ? DIM : YELLOW);
             g.drawRect(310, 197, 72, 27);
-            GamePanel.pixelText(g, tester ? "R  AUTO" : "R RECORD", 318, 209, 1);
-            GamePanel.pixelText(g, tester ? "TEST" : "ROW", 325, 220, 1);
+            GamePanel.pixelText(g, "R RECORD", 318, 209, 1);
+            GamePanel.pixelText(g, "ROW", 325, 220, 1);
+            if (tester && logicLensImage != null) {
+                g.drawImage(logicLensImage, 326, 194, 40, 33, null);
+            }
 
             boolean verifyHover = isHovered(390, 197, 70, 27);
             g.setColor(verifyHover ? new Color(23, 85, 83) : new Color(18, 52, 54));

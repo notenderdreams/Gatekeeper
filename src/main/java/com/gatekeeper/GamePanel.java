@@ -340,12 +340,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void recordOrAutoTest() {
+        if (chapter >= 3 && autoTester.isAttached()) {
+            boardMessage = "LogicLens attached — press RUN KIT (T) to test.";
+            playSound("ui-error");
+            boardMessageTimer = 180;
+            return;
+        }
         if (!circuit.recipe().isComplete(circuit.placed())) {
             boardMessage = "Every socket needs a gate first.";
             playSound("ui-error");
-        } else if (chapter >= 3 && autoTester.isAttached()) {
-            autoTest();
-            return;
         } else {
             circuit.recordCurrent();
             boardMessage = "Recorded A=" + bit(circuit.inputA()) + " B=" + bit(circuit.inputB()) + ".";
