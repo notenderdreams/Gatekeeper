@@ -19,9 +19,15 @@ final class WorldRenderer {
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
     private final BufferedImage catSprites;
+    private final BufferedImage erisIdleSprites;
+    private final BufferedImage erisWalkSprites;
+    private final BufferedImage erisInteractSprites;
     private final Rectangle[] alexFrameBounds;
     private final Rectangle[] miraFrameBounds;
     private final Rectangle[] catFrameBounds;
+    private final Rectangle[] erisIdleBounds;
+    private final Rectangle[] erisWalkBounds;
+    private final Rectangle[] erisInteractBounds;
     private int chapter;
     private int playerX;
     private int playerY;
@@ -40,7 +46,11 @@ final class WorldRenderer {
                   BufferedImage shopBackground, BufferedImage alexSprites,
                   BufferedImage miraSprites, BufferedImage catSprites,
                   Rectangle[] alexFrameBounds, Rectangle[] miraFrameBounds,
-                  Rectangle[] catFrameBounds) {
+                  Rectangle[] catFrameBounds,
+                  BufferedImage erisIdleSprites, BufferedImage erisWalkSprites,
+                  BufferedImage erisInteractSprites,
+                  Rectangle[] erisIdleBounds, Rectangle[] erisWalkBounds,
+                  Rectangle[] erisInteractBounds) {
         this.bedroomBackground = bedroomBackground;
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
@@ -50,6 +60,12 @@ final class WorldRenderer {
         this.alexFrameBounds = alexFrameBounds;
         this.miraFrameBounds = miraFrameBounds;
         this.catFrameBounds = catFrameBounds;
+        this.erisIdleSprites = erisIdleSprites;
+        this.erisWalkSprites = erisWalkSprites;
+        this.erisInteractSprites = erisInteractSprites;
+        this.erisIdleBounds = erisIdleBounds;
+        this.erisWalkBounds = erisWalkBounds;
+        this.erisInteractBounds = erisInteractBounds;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
@@ -514,13 +530,68 @@ final class WorldRenderer {
     }
 
     private void drawPlayer(Graphics2D g, int x, int y, int spriteHeight) {
+        if (erisIdleSprites != null && erisIdleBounds != null && erisIdleBounds.length == 20) {
+            boolean interacting = line != null;
+            boolean walking = !interacting && playerMoving;
+
+            BufferedImage sheet;
+            Rectangle[] bounds;
+            int frameIndexInRow;
+
+            if (interacting && erisInteractSprites != null && erisInteractBounds != null && erisInteractBounds.length == 20) {
+                sheet = erisInteractSprites;
+                bounds = erisInteractBounds;
+                frameIndexInRow = (int) ((ticks / 8) % 4);
+            } else if (walking && erisWalkSprites != null && erisWalkBounds != null && erisWalkBounds.length == 20) {
+                sheet = erisWalkSprites;
+                bounds = erisWalkBounds;
+                frameIndexInRow = (int) ((walkDistance / 8) % 4);
+            } else {
+                sheet = erisIdleSprites;
+                bounds = erisIdleBounds;
+                frameIndexInRow = (int) ((ticks / 10) % 4);
+            }
+
+            int row = 0;
+            boolean flip = false;
+            switch (facing) {
+                case DOWN -> { row = 0; flip = false; }
+                case DOWN_RIGHT -> { row = 1; flip = false; }
+                case DOWN_LEFT -> { row = 1; flip = true; }
+                case RIGHT -> { row = 2; flip = false; }
+                case LEFT -> { row = 2; flip = true; }
+                case UP_RIGHT -> { row = 3; flip = false; }
+                case UP_LEFT -> { row = 3; flip = true; }
+                case UP -> { row = 4; flip = false; }
+            }
+
+            Rectangle frame = bounds[row * 4 + frameIndexInRow];
+
+            int height = spriteHeight;
+            int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
+            int feetY = y + 5;
+
+            g.setColor(new Color(3, 5, 8, 105));
+            int shadowWidth = (int) (width * 0.7f);
+            g.fillOval(x - shadowWidth / 2, feetY - 3, shadowWidth, 5);
+
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+
+            int drawX1 = flip ? x + width / 2 : x - width / 2;
+            int drawX2 = flip ? x - width / 2 : x + width / 2;
+
+            g.drawImage(sheet, drawX1, feetY - height, drawX2, feetY,
+                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
+            return;
+        }
         if (alexSprites != null && alexFrameBounds.length == 12) {
             boolean walking = line == null && playerMoving;
             int column = switch (facing) {
-                case DOWN -> 0;
-                case LEFT -> 1;
-                case RIGHT -> 2;
+                case LEFT, DOWN_LEFT, UP_LEFT -> 1;
+                case RIGHT, DOWN_RIGHT, UP_RIGHT -> 2;
                 case UP -> 3;
+                default -> 0;
             };
             int phase = walking ? (walkDistance / 12) % 4 : 0;
             int row = switch (phase) {

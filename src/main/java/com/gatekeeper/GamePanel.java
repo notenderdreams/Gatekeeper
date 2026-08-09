@@ -49,9 +49,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         "/assets/Book/Sprites/UI_TravelBook_BookPageLeft01a.png");
     private final BufferedImage notebookRightPageImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookPageRight01a.png");
+    private final BufferedImage erisIdleSprites = loadRawImage(
+        "/assets/characters/MainCharacter/16x16/16x16 Idle-Sheet.png");
+    private final BufferedImage erisWalkSprites = loadRawImage(
+        "/assets/characters/MainCharacter/16x16/16x16 Walk-Sheet.png");
+    private final BufferedImage erisInteractSprites = loadRawImage(
+        "/assets/characters/MainCharacter/16x16/16x16 Interact-Sheet.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Rectangle[] catFrameBounds = buildCellBounds(catSprites, 15, 1);
+    private final Rectangle[] erisIdleBounds = buildCellBounds(erisIdleSprites, 4, 5);
+    private final Rectangle[] erisWalkBounds = buildCellBounds(erisWalkSprites, 4, 5);
+    private final Rectangle[] erisInteractBounds = buildCellBounds(erisInteractSprites, 4, 5);
     private final Set<Integer> keys = new HashSet<>();
     private final Queue<String> dialogue = new ArrayDeque<>();
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
@@ -102,7 +111,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites, catSprites,
-        alexFrameBounds, miraFrameBounds, catFrameBounds);
+        alexFrameBounds, miraFrameBounds, catFrameBounds,
+        erisIdleSprites, erisWalkSprites, erisInteractSprites,
+        erisIdleBounds, erisWalkBounds, erisInteractBounds);
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;
@@ -194,7 +205,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (!exitPrompt && line == null
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             boolean sideView = scene == GameScene.STREET;
-            double speed = sideView ? 1.6 : 2.0;
+            double speed = 1.0;
             int oldX = playerX;
             int oldY = playerY;
             double oldPreciseX = precisePlayerX;
@@ -203,20 +214,25 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int axisY = 0;
             if (keys.contains(KeyEvent.VK_LEFT) || keys.contains(KeyEvent.VK_A)) {
                 axisX--;
-                facing = Facing.LEFT;
             }
             if (keys.contains(KeyEvent.VK_RIGHT) || keys.contains(KeyEvent.VK_D)) {
                 axisX++;
-                facing = Facing.RIGHT;
             }
             if (!sideView && (keys.contains(KeyEvent.VK_UP) || keys.contains(KeyEvent.VK_W))) {
                 axisY--;
-                facing = Facing.UP;
             }
             if (!sideView && (keys.contains(KeyEvent.VK_DOWN) || keys.contains(KeyEvent.VK_S))) {
                 axisY++;
-                facing = Facing.DOWN;
             }
+
+            if (axisX > 0 && axisY > 0) facing = Facing.DOWN_RIGHT;
+            else if (axisX < 0 && axisY > 0) facing = Facing.DOWN_LEFT;
+            else if (axisX > 0 && axisY < 0) facing = Facing.UP_RIGHT;
+            else if (axisX < 0 && axisY < 0) facing = Facing.UP_LEFT;
+            else if (axisX > 0) facing = Facing.RIGHT;
+            else if (axisX < 0) facing = Facing.LEFT;
+            else if (axisY > 0) facing = Facing.DOWN;
+            else if (axisY < 0) facing = Facing.UP;
 
             double vectorLength = Math.hypot(axisX, axisY);
             if (vectorLength > 0) {
