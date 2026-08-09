@@ -234,11 +234,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (axisY > 0) facing = Facing.DOWN;
             else if (axisY < 0) facing = Facing.UP;
 
-            double vectorLength = Math.hypot(axisX, axisY);
-            if (vectorLength > 0) {
-                double movementScale = speed / vectorLength;
-                precisePlayerX += axisX * movementScale;
-                precisePlayerY += axisY * movementScale;
+            if (axisX != 0 || axisY != 0) {
+                if (sideView) {
+                    precisePlayerX += axisX * speed;
+                } else {
+                    precisePlayerX += axisX * speed;
+                    precisePlayerY += axisY * speed;
+                }
             }
             int minX = sideView ? 45 : 22;
             int maxX = sideView ? STREET_WORLD_WIDTH - 30 : 452;
@@ -256,7 +258,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             playerX = (int) Math.round(precisePlayerX);
             playerY = (int) Math.round(precisePlayerY);
-            playerMoving = playerX != oldX || playerY != oldY;
+
+            boolean movedX = playerX != oldX;
+            boolean movedY = playerY != oldY;
+            playerMoving = movedX || movedY;
+
+            if (movedX && !movedY) {
+                facing = (playerX > oldX) ? Facing.RIGHT : Facing.LEFT;
+            } else if (!movedX && movedY) {
+                facing = (playerY > oldY) ? Facing.DOWN : Facing.UP;
+            }
             if (playerMoving) {
                 walkDistance += Math.max(1, (int) Math.round(
                     Math.hypot(precisePlayerX - oldPreciseX, precisePlayerY - oldPreciseY)));
