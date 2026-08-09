@@ -22,18 +22,21 @@ final class WorldRenderer {
     private final BufferedImage erisIdleSprites;
     private final BufferedImage erisWalkSprites;
     private final BufferedImage erisInteractSprites;
+    private final BufferedImage erisRunSprites;
     private final Rectangle[] alexFrameBounds;
     private final Rectangle[] miraFrameBounds;
     private final Rectangle[] catFrameBounds;
     private final Rectangle[] erisIdleBounds;
     private final Rectangle[] erisWalkBounds;
     private final Rectangle[] erisInteractBounds;
+    private final Rectangle[] erisRunBounds;
     private int chapter;
     private int playerX;
     private int playerY;
     private long ticks;
     private String line;
     private boolean playerMoving;
+    private boolean playerRunning;
     private Facing facing;
     private int walkDistance;
     private Set<Integer> keys;
@@ -48,9 +51,9 @@ final class WorldRenderer {
                   Rectangle[] alexFrameBounds, Rectangle[] miraFrameBounds,
                   Rectangle[] catFrameBounds,
                   BufferedImage erisIdleSprites, BufferedImage erisWalkSprites,
-                  BufferedImage erisInteractSprites,
+                  BufferedImage erisInteractSprites, BufferedImage erisRunSprites,
                   Rectangle[] erisIdleBounds, Rectangle[] erisWalkBounds,
-                  Rectangle[] erisInteractBounds) {
+                  Rectangle[] erisInteractBounds, Rectangle[] erisRunBounds) {
         this.bedroomBackground = bedroomBackground;
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
@@ -63,21 +66,24 @@ final class WorldRenderer {
         this.erisIdleSprites = erisIdleSprites;
         this.erisWalkSprites = erisWalkSprites;
         this.erisInteractSprites = erisInteractSprites;
+        this.erisRunSprites = erisRunSprites;
         this.erisIdleBounds = erisIdleBounds;
         this.erisWalkBounds = erisWalkBounds;
         this.erisInteractBounds = erisInteractBounds;
+        this.erisRunBounds = erisRunBounds;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
-                boolean playerMoving, Facing facing, int walkDistance,
-                Set<Integer> keys, float uiScale, boolean catPresent,
-                int catX, int catY) {
+                boolean playerMoving, boolean playerRunning, Facing facing,
+                int walkDistance, Set<Integer> keys, float uiScale,
+                boolean catPresent, int catX, int catY) {
         this.chapter = chapter;
         this.playerX = playerX;
         this.playerY = playerY;
         this.ticks = ticks;
         this.line = line;
         this.playerMoving = playerMoving;
+        this.playerRunning = playerRunning;
         this.facing = facing;
         this.walkDistance = walkDistance;
         this.keys = keys;
@@ -532,24 +538,34 @@ final class WorldRenderer {
     private void drawPlayer(Graphics2D g, int x, int y, int spriteHeight) {
         if (erisIdleSprites != null && erisIdleBounds != null && erisIdleBounds.length == 20) {
             boolean interacting = line != null;
-            boolean walking = !interacting && playerMoving;
+            boolean running = !interacting && playerRunning;
+            boolean walking = !interacting && !running && playerMoving;
 
             BufferedImage sheet;
             Rectangle[] bounds;
             int frameIndexInRow;
+            int colsPerRow = 4;
 
             if (interacting && erisInteractSprites != null && erisInteractBounds != null && erisInteractBounds.length == 20) {
                 sheet = erisInteractSprites;
                 bounds = erisInteractBounds;
                 frameIndexInRow = (int) ((ticks / 8) % 4);
+                colsPerRow = 4;
+            } else if (running && erisRunSprites != null && erisRunBounds != null && erisRunBounds.length == 30) {
+                sheet = erisRunSprites;
+                bounds = erisRunBounds;
+                frameIndexInRow = (int) ((walkDistance / 10) % 6);
+                colsPerRow = 6;
             } else if (walking && erisWalkSprites != null && erisWalkBounds != null && erisWalkBounds.length == 20) {
                 sheet = erisWalkSprites;
                 bounds = erisWalkBounds;
                 frameIndexInRow = (int) ((walkDistance / 8) % 4);
+                colsPerRow = 4;
             } else {
                 sheet = erisIdleSprites;
                 bounds = erisIdleBounds;
                 frameIndexInRow = (int) ((ticks / 10) % 4);
+                colsPerRow = 4;
             }
 
             int row = 0;
@@ -565,7 +581,7 @@ final class WorldRenderer {
                 case UP -> { row = 4; flip = false; }
             }
 
-            Rectangle frame = bounds[row * 4 + frameIndexInRow];
+            Rectangle frame = bounds[row * colsPerRow + frameIndexInRow];
 
             int height = spriteHeight;
             int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));

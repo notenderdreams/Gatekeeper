@@ -55,12 +55,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         "/assets/characters/MainCharacter/16x16/16x16 Walk-Sheet.png");
     private final BufferedImage erisInteractSprites = loadRawImage(
         "/assets/characters/MainCharacter/16x16/16x16 Interact-Sheet.png");
+    private final BufferedImage erisRunSprites = loadRawImage(
+        "/assets/characters/MainCharacter/16x16/16x16 Run-Sheet.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Rectangle[] catFrameBounds = buildCellBounds(catSprites, 15, 1);
     private final Rectangle[] erisIdleBounds = buildCellBounds(erisIdleSprites, 4, 5);
     private final Rectangle[] erisWalkBounds = buildCellBounds(erisWalkSprites, 4, 5);
     private final Rectangle[] erisInteractBounds = buildCellBounds(erisInteractSprites, 4, 5);
+    private final Rectangle[] erisRunBounds = buildCellBounds(erisRunSprites, 6, 5);
     private final Set<Integer> keys = new HashSet<>();
     private final Queue<String> dialogue = new ArrayDeque<>();
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
@@ -99,6 +102,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private double precisePlayerY = 157;
     private Facing facing = Facing.DOWN;
     private boolean playerMoving;
+    private boolean playerRunning;
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
@@ -112,8 +116,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites, catSprites,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
-        erisIdleSprites, erisWalkSprites, erisInteractSprites,
-        erisIdleBounds, erisWalkBounds, erisInteractBounds);
+        erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
+        erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;
@@ -166,7 +170,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.setColor(VOID);
         g.fillRect(0, 0, W, H);
 
-        worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving,
+        worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving, playerRunning,
             facing, walkDistance, keys, uiScale, catPresent, catX, catY);
         switch (scene) {
             case TITLE -> MenuRenderer.drawTitle(g, bedroomBackground, ticks,
@@ -194,7 +198,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void updateGame() {
         ticks++;
-        sound.loop(MUSIC_LOOP);
         sound.updateMusic();
         sound.updateCrossfade();
         if (scene == GameScene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
@@ -205,7 +208,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (!exitPrompt && line == null
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             boolean sideView = scene == GameScene.STREET;
-            double speed = 1.0;
+            boolean shift = keys.contains(KeyEvent.VK_SHIFT);
+            double speed = shift ? 1.5 : 1.0;
             int oldX = playerX;
             int oldY = playerY;
             double oldPreciseX = precisePlayerX;
@@ -262,6 +266,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             boolean movedX = playerX != oldX;
             boolean movedY = playerY != oldY;
             playerMoving = movedX || movedY;
+            playerRunning = playerMoving && shift;
 
             if (movedX && !movedY) {
                 facing = (playerX > oldX) ? Facing.RIGHT : Facing.LEFT;
