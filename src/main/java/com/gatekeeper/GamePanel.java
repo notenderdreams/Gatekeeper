@@ -67,6 +67,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean devFocusRight = true;
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
+    private boolean instantStart = false;
     private GameScene devReturnScene = GameScene.TITLE;
     private boolean exitPrompt;
     private int exitPromptSelection;
@@ -104,6 +105,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
+
+        if (SaveManager.hasSave()) {
+            SaveData data = SaveManager.loadGame();
+            if (data != null) {
+                instantStart = data.instantStart;
+                if (instantStart) {
+                    loadSavedProgress();
+                }
+            }
+        }
+
         Timer timer = new Timer(1000 / 60, event -> updateGame());
         timer.start();
     }
@@ -143,7 +155,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, sound, soundSceneSelection);
+                devFocusRight, calibratorEnabled, showCollisions, instantStart, sound, soundSceneSelection);
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -798,7 +810,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 2) {
-                for (int i = 0; i < 2; i++) {
+                for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(x, y, 160, oy, 285, 22)) {
                         devFocusRight = true;
@@ -1024,6 +1036,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setShowCollisions(showCollisions);
                 playSound("ui-confirm");
                 System.out.println("[DEV MENU] Show Collisions -> " + (showCollisions ? "ENABLED" : "DISABLED"));
+            } else if (devSelection == 2) {
+                instantStart = !instantStart;
+                playSound("ui-confirm");
+                saveCurrentProgress();
+                System.out.println("[DEV MENU] Instant Start -> " + (instantStart ? "ENABLED" : "DISABLED"));
             }
         }
     }
@@ -1034,7 +1051,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        return 2;
+        return 3;
     }
 
     private void adjustSelectedDevSound(int direction) {
@@ -1178,19 +1195,21 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     public void saveCurrentProgress() {
-        if (scene == GameScene.TITLE || scene == GameScene.CONTROLS
-            || scene == GameScene.SETTINGS || scene == GameScene.DEV) {
-            return;
+        SaveData data = SaveManager.hasSave() ? SaveManager.loadGame() : null;
+        if (data == null) data = new SaveData();
+        data.instantStart = instantStart;
+
+        if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
+            && scene != GameScene.SETTINGS && scene != GameScene.DEV) {
+            data.chapter = chapter;
+            data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
+            data.playerX = playerX;
+            data.playerY = playerY;
+            data.facing = facing;
+            data.crafted = Arrays.copyOf(crafted, crafted.length);
+            data.notebookPage = notebookPage;
+            data.autoTesterAttached = autoTester.isAttached();
         }
-        SaveData data = new SaveData();
-        data.chapter = chapter;
-        data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
-        data.playerX = playerX;
-        data.playerY = playerY;
-        data.facing = facing;
-        data.crafted = Arrays.copyOf(crafted, crafted.length);
-        data.notebookPage = notebookPage;
-        data.autoTesterAttached = autoTester.isAttached();
         SaveManager.saveGame(data);
     }
 
@@ -1205,6 +1224,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             System.arraycopy(data.crafted, 0, this.crafted, 0, crafted.length);
         }
         this.notebookPage = data.notebookPage;
+        this.instantStart = data.instantStart;
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

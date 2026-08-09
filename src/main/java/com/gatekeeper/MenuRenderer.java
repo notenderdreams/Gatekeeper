@@ -105,7 +105,7 @@ final class MenuRenderer {
 
     static void drawDeveloper(Graphics2D g, int mouseX, int mouseY, int section, int selection,
                                boolean focusRight, boolean calibratorEnabled, boolean showCollisions,
-                               SoundManager sound, int soundSceneSelection) {
+                               boolean instantStart, SoundManager sound, int soundSceneSelection) {
         g.setColor(new Color(2, 5, 8));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
@@ -224,9 +224,10 @@ final class MenuRenderer {
         } else if (section == 2) { // DEBUG TOOLS
             String[] tools = {
                 "GLOBAL POSITION MARKER: " + (calibratorEnabled ? "ON" : "OFF"),
-                "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF")
+                "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF"),
+                "INSTANT START: " + (instantStart ? "ON" : "OFF")
             };
-            boolean[] activeState = {calibratorEnabled, showCollisions};
+            boolean[] activeState = {calibratorEnabled, showCollisions, instantStart};
 
             for (int i = 0; i < tools.length; i++) {
                 int y = 58 + i * 26;

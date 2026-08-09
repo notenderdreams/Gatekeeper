@@ -35,7 +35,8 @@ public final class SaveManager {
             }
             json.append("],\n");
             json.append("  \"notebookPage\": ").append(data.notebookPage).append(",\n");
-            json.append("  \"autoTesterAttached\": ").append(data.autoTesterAttached).append("\n");
+            json.append("  \"autoTesterAttached\": ").append(data.autoTesterAttached).append(",\n");
+            json.append("  \"instantStart\": ").append(data.instantStart).append("\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -60,6 +61,7 @@ public final class SaveManager {
             data.crafted = parseBooleanArray(content, "crafted", 5);
             data.notebookPage = parseInt(content, "notebookPage", 0);
             data.autoTesterAttached = parseBoolean(content, "autoTesterAttached", false);
+            data.instantStart = parseBoolean(content, "instantStart", false);
 
             return data;
         } catch (Exception e) {
