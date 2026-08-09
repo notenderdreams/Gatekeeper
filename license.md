@@ -29,6 +29,13 @@ Audio packs downloaded under `src/main/resources/assets/audio/kenney/` (`interfa
 - License: Creative Commons CC0 (Public Domain / Free for commercial & non-commercial use)
 - Website: [Kenney.nl](https://kenney.nl)
 
+## Character Templates (Eris Esra)
+
+The character sprites under `src/main/resources/assets/characters/MainCharacter/` are from **Eris Esra's Character Template 4.1** by **Eris Esra**.
+
+- License: Free for commercial and non-commercial projects. Direct resale or redistribution of the raw asset pack is prohibited.
+- Creator / Website: [Eris Esra](https://www.erisesra.com/socials)
+
 ## Gatekeeper project
 
 This file documents third-party asset licenses. No separate open-source license is granted here for Gatekeeper’s original source code or original artwork unless explicitly stated elsewhere in the repository.
