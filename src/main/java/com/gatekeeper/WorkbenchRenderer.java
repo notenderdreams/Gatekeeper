@@ -81,20 +81,21 @@ final class WorkbenchRenderer {
         GamePanel.pixelText(g, "LOGIC WORKBENCH", 18, 25, 1);
         g.setColor(CYAN);
         GamePanel.pixelText(g, "N GUIDE", 18, 42, 1);
-        g.setColor(DIM);
-        GamePanel.pixelText(g, "ESC EXIT", 418, 25, 1);
+        boolean exitHovered = isHovered(410, 20, 56, 20);
+        g.setColor(exitHovered ? RED : DIM);
+        GamePanel.pixelText(g, "EXIT", 426, 33, 1);
 
         int available = chapter >= 3 ? 5 : 3;
         for (int i = 0; i < available; i++) {
-            int x = 126 + i * 66;
+            int x = 126 + i * 52;
             boolean selected = i == selectedRecipe;
-            boolean hovered = isHovered(x, 29, 59, 20);
+            boolean hovered = isHovered(x, 31, 46, 16);
             g.setColor(selected ? new Color(83, 67, 25)
                 : hovered ? new Color(28, 63, 58) : new Color(17, 31, 34));
-            g.fillRect(x, 29, 59, 20);
+            g.fillRect(x, 31, 46, 16);
             g.setColor(crafted[i] ? CYAN : selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 30, 59, 18);
-            GamePanel.pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 4, 43, 1);
+            g.drawRect(x, 31, 46, 16);
+            GamePanel.pixelText(g, (crafted[i] ? "*" : " ") + recipes.get(i).name, x + 3, 42, 1);
         }
 
         CircuitRecipe recipe = circuit.recipe();
@@ -109,8 +110,8 @@ final class WorkbenchRenderer {
         GamePanel.pixelText(g, recipe.subtitle, 62, 67, 1);
         g.setColor(crafted[selectedRecipe] ? CYAN : YELLOW);
         GamePanel.pixelText(g, crafted[selectedRecipe] ? "BUILT" : "ACTIVE", 305, 67, 1);
-        drawSwitch(g, 28, 81, "A", circuit.inputA(), autoTester.isAttached());
-        drawSwitch(g, 28, 116, "B", circuit.inputB(), autoTester.isAttached());
+        drawSwitch(g, 24, 83, "A", circuit.inputA(), autoTester.isAttached());
+        drawSwitch(g, 24, 116, "B", circuit.inputB(), autoTester.isAttached());
 
         int[][] layout = socketLayout(recipe);
         boolean[] nodeValues = circuit.nodeValues();
@@ -120,16 +121,16 @@ final class WorkbenchRenderer {
         }
         int[] last = layout[recipe.slotCount() - 1];
         drawRoutedWire(g, last[0] + BOARD_SOCKET_W, last[1] + BOARD_SOCKET_H / 2,
-            337, 112, circuit.output());
+            340, 112, circuit.output());
         g.setColor(autoTester.isAttached() ? new Color(39, 76, 51)
             : circuit.output() ? new Color(32, 100, 99) : new Color(25, 32, 34));
-        g.fillOval(334, 101, 22, 22);
+        g.fillOval(338, 104, 16, 16);
         g.setColor(autoTester.isAttached() ? new Color(143, 190, 128)
             : circuit.output() ? CYAN : DIM);
-        g.drawOval(334, 101, 21, 21);
-        g.fillOval(340, 107, 10, 10);
+        g.drawOval(338, 104, 15, 15);
+        g.fillOval(343, 109, 6, 6);
         g.setColor(autoTester.isAttached() ? new Color(143, 190, 128) : INK);
-        GamePanel.pixelText(g, "OUT", 336, 134, 1);
+        GamePanel.pixelText(g, "OUT", 338, 130, 1);
 
         drawTruthTable(g);
         drawGatePalette(g);
@@ -183,17 +184,17 @@ final class WorkbenchRenderer {
         GamePanel.pixelText(g, "PARTS BIN", 18, 187, 1);
         GateType[] gates = GateType.values();
         for (int i = 0; i < gates.length; i++) {
-            int x = 20 + i * 93;
+            int x = 20 + i * 85;
             boolean selected = heldGate == gates[i];
-            boolean hovered = isHovered(x, 190, 80, 33);
+            boolean hovered = isHovered(x, 196, 70, 22);
             g.setColor(selected ? new Color(76, 63, 25)
                 : hovered ? new Color(28, 61, 56) : new Color(14, 27, 30));
-            g.fillRect(x, 190, 80, 33);
+            g.fillRect(x, 196, 70, 22);
             g.setColor(selected ? YELLOW : hovered ? INK : DIM);
-            g.drawRect(x, 190, 80, 33);
-            if (selected) g.fillRect(x + 2, 192, 2, 29);
-            CircuitComponents.drawGate(g, x + 5, 192, gates[i], false);
-            GamePanel.pixelText(g, (i + 1) + " " + gates[i].label, x + 40, 211, 1);
+            g.drawRect(x, 196, 70, 22);
+            if (selected) g.fillRect(x + 2, 198, 2, 18);
+            CircuitComponents.drawGate(g, x + 5, 199, gates[i], false);
+            GamePanel.pixelText(g, (i + 1) + " " + gates[i].label, x + 30, 211, 1);
         }
     }
 
@@ -262,37 +263,37 @@ final class WorkbenchRenderer {
     private void drawSocket(Graphics2D g, int x, int y, int number, GateType gate, boolean powered) {
         boolean hovered = isHovered(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(new Color(1, 4, 5, 155));
-        g.fillRect(x + 3, y + 3, BOARD_SOCKET_W, BOARD_SOCKET_H);
+        g.fillRect(x + 2, y + 2, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(powered ? new Color(17, 70, 67)
             : hovered ? new Color(42, 55, 51) : new Color(12, 23, 26));
         g.fillRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(hovered ? YELLOW : gate == null ? DIM : powered ? CYAN : INK);
         g.drawRect(x, y, BOARD_SOCKET_W, BOARD_SOCKET_H);
         g.setColor(hovered ? YELLOW : DIM);
-        GamePanel.pixelText(g, "G" + (number + 1), x + 2, y + 9, 1);
-        g.fillRect(x - 2, y + 8, 3, 4);
-        g.fillRect(x - 2, y + 22, 3, 4);
-        g.fillRect(x + BOARD_SOCKET_W, y + 15, 3, 4);
+        GamePanel.pixelText(g, "G" + (number + 1), x + 2, y + 8, 1);
+        g.fillRect(x - 2, y + 6, 3, 3);
+        g.fillRect(x - 2, y + 17, 3, 3);
+        g.fillRect(x + BOARD_SOCKET_W, y + 11, 3, 3);
         if (gate == null) {
             g.setColor(hovered ? YELLOW : DIM);
-            GamePanel.pixelText(g, "+", x + 17, y + 25, 1);
+            GamePanel.pixelText(g, "+", x + 15, y + 18, 1);
         } else {
             g.setColor(powered ? CYAN : INK);
-            CircuitComponents.drawGate(g, x + 3, y + 6, gate, powered);
+            CircuitComponents.drawGate(g, x + 2, y + 3, gate, powered);
         }
     }
 
     private void drawSwitch(Graphics2D g, int x, int y, String name, boolean on, boolean hooked) {
-        boolean hovered = isHovered(x, y, 64, 20);
+        boolean hovered = isHovered(x, y, 52, 16);
         g.setColor(hovered ? new Color(36, 61, 56) : new Color(12, 25, 28));
-        g.fillRect(x - 2, y - 1, 62, 20);
+        g.fillRect(x - 2, y - 1, 52, 16);
         g.setColor(hooked ? new Color(143, 190, 128) : hovered ? YELLOW : INK);
-        GamePanel.pixelText(g, name, x, y + 14, 1);
-        g.drawRect(x + 14, y, 23, 18);
+        GamePanel.pixelText(g, name, x, y + 11, 1);
+        g.drawRect(x + 12, y, 20, 14);
         g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : DIM);
-        g.fillRect(on ? x + 27 : x + 17, y + 4, 7, 10);
+        g.fillRect(on ? x + 23 : x + 14, y + 3, 6, 8);
         g.setColor(hooked ? new Color(143, 190, 128) : on ? CYAN : hovered ? YELLOW : DIM);
-        GamePanel.pixelText(g, on ? "1" : "0", x + 43, y + 14, 1);
+        GamePanel.pixelText(g, on ? "1" : "0", x + 36, y + 11, 1);
     }
 
     private void drawWire(Graphics2D g, int x1, int y1, int x2, int y2, boolean on) {

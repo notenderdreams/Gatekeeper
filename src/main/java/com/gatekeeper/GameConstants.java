@@ -13,8 +13,8 @@ final class GameConstants {
     static final int TITLE_MENU_GAP = 20;
     static final int TITLE_COPY_CENTER_X = 348;
     static final int DEV_OPTION_COUNT = 8;
-    static final int BOARD_SOCKET_W = 40;
-    static final int BOARD_SOCKET_H = 34;
+    static final int BOARD_SOCKET_W = 26;
+    static final int BOARD_SOCKET_H = 18;
     static final int BEDROOM_PLAYER_HEIGHT = 68;
     static final int INDOOR_PLAYER_HEIGHT = 54;
     static final int STREET_PLAYER_HEIGHT = 36;
