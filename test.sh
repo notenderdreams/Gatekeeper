@@ -15,6 +15,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GateType.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/Facing.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameScene.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameConstants.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveManager.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitRecipe.java \

@@ -71,6 +71,8 @@ public final class CircuitModelTest {
         save.notebookPage = 2;
         save.autoTesterAttached = true;
         save.catPresent = true;
+        save.catX = 45;
+        save.catY = 75;
         save.catAlwaysAppears = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
@@ -86,6 +88,7 @@ public final class CircuitModelTest {
         require(loaded.notebookPage == 2, "loaded notebook page should be 2");
         require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
         require(loaded.catPresent, "loaded catPresent should be true");
+        require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");
         require(loaded.catAlwaysAppears, "loaded catAlwaysAppears should be true");
 
         SaveManager.deleteSave();
@@ -99,6 +102,16 @@ public final class CircuitModelTest {
             if (rng.nextInt(5) == 0) catHits++;
         }
         require(catHits > 1700 && catHits < 2300, "1/5 spawn chance should yield ~2000 hits out of 10000 trials, got " + catHits);
+
+        // Verify calibrated cat spawn ranges: [2,96]@77, [184,406]@152, [594,652]@152
+        for (int t = 0; t < 1000; t++) {
+            int[] zone = GameConstants.CAT_SPAWN_RANGES[rng.nextInt(GameConstants.CAT_SPAWN_RANGES.length)];
+            int rx = zone[0] + rng.nextInt(zone[1] - zone[0] + 1);
+            int ry = zone[2];
+            require(rx >= zone[0] && rx <= zone[1], "spawn X out of bounds: " + rx);
+            require(ry == 77 || ry == 152, "spawn Y invalid: " + ry);
+            if (ry == 77) require(rx >= 2 && rx <= 96, "roof spawn X out of bounds: " + rx);
+        }
 
         System.out.println("CircuitModelTest: all checks passed");
     }

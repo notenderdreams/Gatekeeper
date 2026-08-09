@@ -33,6 +33,8 @@ final class WorldRenderer {
     private Set<Integer> keys;
     private float uiScale;
     private boolean catPresent;
+    private int catX = STREET_CAT_X;
+    private int catY = 152;
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
                   BufferedImage shopBackground, BufferedImage alexSprites,
@@ -52,7 +54,8 @@ final class WorldRenderer {
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
                 boolean playerMoving, Facing facing, int walkDistance,
-                Set<Integer> keys, float uiScale, boolean catPresent) {
+                Set<Integer> keys, float uiScale, boolean catPresent,
+                int catX, int catY) {
         this.chapter = chapter;
         this.playerX = playerX;
         this.playerY = playerY;
@@ -64,6 +67,8 @@ final class WorldRenderer {
         this.keys = keys;
         this.uiScale = uiScale;
         this.catPresent = catPresent;
+        this.catX = catX;
+        this.catY = catY;
     }
 
     void drawBedroom(Graphics2D g) {
@@ -237,7 +242,7 @@ final class WorldRenderer {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
-        } else if (catPresent && Math.abs(playerX - STREET_CAT_X) < 38) {
+        } else if (catPresent && Math.abs(playerX - catX) < 38) {
             prompt(g, "E  PET CAT");
         }
 
@@ -602,8 +607,8 @@ final class WorldRenderer {
     }
 
     private void drawCat(Graphics2D g, int cameraX) {
-        int catWorldX = STREET_CAT_X;
-        int catWorldY = 152;
+        int catWorldX = catX;
+        int catWorldY = catY;
         int screenX = catWorldX - cameraX;
         if (screenX + 40 < 0 || screenX - 40 > W) return;
 

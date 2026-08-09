@@ -11,6 +11,8 @@ public final class SaveData {
     public int notebookPage;
     public boolean autoTesterAttached;
     public boolean catPresent;
+    public int catX = GameConstants.STREET_CAT_X;
+    public int catY = 152;
     public boolean catAlwaysAppears;
     public boolean instantStart;
 

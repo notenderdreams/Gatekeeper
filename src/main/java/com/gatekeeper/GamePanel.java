@@ -60,6 +60,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final SoundManager sound = new SoundManager();
     private final Random random = new Random();
     private boolean catPresent;
+    private int catX = STREET_CAT_X;
+    private int catY = 152;
     private GameScene scene = GameScene.TITLE;
     private GameScene returnScene = GameScene.BEDROOM;
     private String line;
@@ -154,7 +156,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         g.fillRect(0, 0, W, H);
 
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving,
-            facing, walkDistance, keys, uiScale, catPresent);
+            facing, walkDistance, keys, uiScale, catPresent, catX, catY);
         switch (scene) {
             case TITLE -> MenuRenderer.drawTitle(g, bedroomBackground, ticks,
                 mouseX, mouseY, titleSelection);
@@ -261,6 +263,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void rollCatSpawn() {
         catPresent = catAlwaysAppears || random.nextInt(5) == 0;
+        if (catPresent) {
+            int[] zone = CAT_SPAWN_RANGES[random.nextInt(CAT_SPAWN_RANGES.length)];
+            catX = zone[0] + random.nextInt(zone[1] - zone[0] + 1);
+            catY = zone[2];
+        }
     }
 
     private void interact() {
@@ -296,7 +303,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
-            } else if (catPresent && Math.abs(playerX - STREET_CAT_X) < 38) {
+            } else if (catPresent && Math.abs(playerX - catX) < 38) {
                 say("CAT|Meow.");
                 playSound("ui-confirm");
             }
@@ -1059,7 +1066,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 System.out.println("[DEV MENU] Instant Start -> " + (instantStart ? "ENABLED" : "DISABLED"));
             } else if (devSelection == 3) {
                 catAlwaysAppears = !catAlwaysAppears;
-                if (catAlwaysAppears) catPresent = true;
+                if (catAlwaysAppears && !catPresent) rollCatSpawn();
                 playSound("ui-confirm");
                 saveCurrentProgress();
                 System.out.println("[DEV MENU] Cat Always Appears -> " + (catAlwaysAppears ? "ENABLED" : "DISABLED"));
@@ -1234,6 +1241,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             data.notebookPage = notebookPage;
             data.autoTesterAttached = autoTester.isAttached();
             data.catPresent = catPresent;
+            data.catX = catX;
+            data.catY = catY;
         }
         SaveManager.saveGame(data);
     }
@@ -1252,6 +1261,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.instantStart = data.instantStart;
         this.catAlwaysAppears = data.catAlwaysAppears;
         this.catPresent = data.catPresent || data.catAlwaysAppears;
+        this.catX = data.catX;
+        this.catY = data.catY;
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

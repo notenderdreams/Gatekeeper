@@ -21,6 +21,11 @@ final class GameConstants {
     static final int STREET_WORLD_WIDTH = 922;
     static final int STREET_HOME_X = 93;
     static final int STREET_CAT_X = 605;
+    static final int[][] CAT_SPAWN_RANGES = {
+        { 2, 96, 77 },
+        { 184, 406, 152 },
+        { 594, 652, 152 }
+    };
     static final int STREET_SHOP_X = 870;
     static final int STREET_GROUND_Y = 196;
     static final int PIXEL_FONT_BASE_SIZE = 14;
