@@ -890,13 +890,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         int available = chapter >= 3 ? 5 : 3;
         if (!rightClick) {
-            if (inside(x, y, 410, 20, 56, 20)) {
+            if (inside(x, y, 420, 15, 44, 14) || inside(x, y, 410, 15, 56, 20)) {
                 scene = returnScene;
                 playSound("ui-close");
                 return;
             }
             for (int i = 0; i < available; i++) {
-                if (inside(x, y, 126 + i * 52, 31, 46, 16)) selectRecipe(i);
+                if (inside(x, y, 126 + i * 52, 15, 46, 14)) {
+                    selectRecipe(i);
+                    return;
+                }
             }
             if (inside(x, y, 24, 83, 52, 16)) toggleInputA();
             if (inside(x, y, 24, 116, 52, 16)) toggleInputB();
