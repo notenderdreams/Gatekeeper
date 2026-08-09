@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+import static com.gatekeeper.GameAssets.buildCellBounds;
 import static com.gatekeeper.GameAssets.buildFrameBounds;
 import static com.gatekeeper.GameAssets.loadBackground;
 import static com.gatekeeper.GameAssets.loadPixelFont;
@@ -39,6 +40,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
+    private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final BufferedImage notebookCoverImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
@@ -48,6 +50,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         "/assets/Book/Sprites/UI_TravelBook_BookPageRight01a.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
+    private final Rectangle[] catFrameBounds = buildCellBounds(catSprites, 15, 1);
     private final Set<Integer> keys = new HashSet<>();
     private final Queue<String> dialogue = new ArrayDeque<>();
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
@@ -92,8 +95,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
-        bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites,
-        alexFrameBounds, miraFrameBounds);
+        bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites, catSprites,
+        alexFrameBounds, miraFrameBounds, catFrameBounds);
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;

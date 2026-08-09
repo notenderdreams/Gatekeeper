@@ -102,4 +102,18 @@ final class GameAssets {
         }
         return frames;
     }
+
+    static Rectangle[] buildCellBounds(BufferedImage sheet, int columns, int rows) {
+        if (sheet == null) return new Rectangle[0];
+        Rectangle[] frames = new Rectangle[columns * rows];
+        int cellWidth = sheet.getWidth() / columns;
+        int cellHeight = sheet.getHeight() / rows;
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                frames[row * columns + column] = new Rectangle(
+                    column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+            }
+        }
+        return frames;
+    }
 }

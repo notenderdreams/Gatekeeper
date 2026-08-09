@@ -18,8 +18,10 @@ final class WorldRenderer {
     private final BufferedImage shopBackground;
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
+    private final BufferedImage catSprites;
     private final Rectangle[] alexFrameBounds;
     private final Rectangle[] miraFrameBounds;
+    private final Rectangle[] catFrameBounds;
     private int chapter;
     private int playerX;
     private int playerY;
@@ -33,15 +35,18 @@ final class WorldRenderer {
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
                   BufferedImage shopBackground, BufferedImage alexSprites,
-                  BufferedImage miraSprites, Rectangle[] alexFrameBounds,
-                  Rectangle[] miraFrameBounds) {
+                  BufferedImage miraSprites, BufferedImage catSprites,
+                  Rectangle[] alexFrameBounds, Rectangle[] miraFrameBounds,
+                  Rectangle[] catFrameBounds) {
         this.bedroomBackground = bedroomBackground;
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
         this.alexSprites = alexSprites;
         this.miraSprites = miraSprites;
+        this.catSprites = catSprites;
         this.alexFrameBounds = alexFrameBounds;
         this.miraFrameBounds = miraFrameBounds;
+        this.catFrameBounds = catFrameBounds;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
@@ -221,6 +226,7 @@ final class WorldRenderer {
         }
 
         EnvironmentArt.drawWorldVignette(g);
+        drawCat(g, cameraX);
         drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, STREET_PLAYER_HEIGHT);
         drawHud(g, "LANTERN STREET");
         if (Math.abs(playerX - STREET_HOME_X) < 38) {
@@ -589,6 +595,29 @@ final class WorldRenderer {
         g.fillRect(x - 2, y + 1, 4, 4);
     }
 
+    private void drawCat(Graphics2D g, int cameraX) {
+        int catWorldX = 354;
+        int catWorldY = 152;
+        int screenX = catWorldX - cameraX;
+        if (screenX + 40 < 0 || screenX - 40 > W) return;
+
+        if (catSprites != null && catFrameBounds != null && catFrameBounds.length > 0) {
+            int frameIndex = (int) ((ticks / 10) % catFrameBounds.length);
+            Rectangle frame = catFrameBounds[frameIndex];
+            int height = 18;
+            int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
+
+            g.setColor(new Color(3, 5, 8, 90));
+            g.fillOval(screenX - width / 2, catWorldY - 2, width, 4);
+
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g.drawImage(catSprites, screenX - width / 2, catWorldY - height,
+                screenX - width / 2 + width, catWorldY,
+                frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
+        }
+    }
+
     private void drawMaskedShopkeeper(Graphics2D g, int x, int groundY, int counterFrontY) {
         Shape previousClip = g.getClip();
         g.clipRect(0, 0, W, counterFrontY);
@@ -621,4 +650,3 @@ final class WorldRenderer {
         g.fillRect(x + 1, y + 6, 3, 2);
     }
 }
-

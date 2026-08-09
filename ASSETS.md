@@ -48,6 +48,8 @@ locally and validated before integration.
   Columns are front, left, right and back; rows are idle and two walk phases.
 - `src/main/resources/assets/characters/mira-sprites.png`: a 3-column × 2-row sheet.
   The first row contains idle variations and the second contains talking gestures.
+- `src/main/resources/assets/characters/cat_spritesheet.png`: a 15-column × 1-row sheet (480×32).
+  Contains 15 animation frames for the street scene cat.
 
 Prompt summary: original, consistent, full-body hand-painted pixel characters matching
 the corresponding generated room reference, with fixed scale and ground line across
