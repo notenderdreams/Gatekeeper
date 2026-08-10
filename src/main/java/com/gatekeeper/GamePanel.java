@@ -37,7 +37,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     static final Font PIXEL_FONT = loadPixelFont();
 
     private final BufferedImage bedroomBackground = loadBackground("/assets/alex-bedroom.png");
-    private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long.png");
+    // private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long.png");
+    private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long-cc.jpg");
     private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
