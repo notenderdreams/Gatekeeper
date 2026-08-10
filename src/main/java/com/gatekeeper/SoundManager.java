@@ -185,7 +185,8 @@ public final class SoundManager {
         sounds.put("SETTINGS", Arrays.asList("ui-back.wav", "ui-select.wav", "ui-click.wav"));
         sounds.put("DEV", Arrays.asList("ui-open.wav", "ui-back.wav", "ui-select.wav",
             "ui-confirm.wav", "ui-click.wav"));
-        sounds.put("BEDROOM", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
+        sounds.put("INTRO", Arrays.asList("knock.wav", "ui-open.wav"));
+        sounds.put("BEDROOM", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav", "knock.wav"));
         sounds.put("STREET", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav",
             "cat/cat1.wav", "cat/cat2.wav", "cat/cat3.wav"));
         sounds.put("SHOP", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));

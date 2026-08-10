@@ -92,6 +92,7 @@ audio map is implemented.
 - `audio/ambience/road-ambience.mp3`: the user-provided Lantern Street ambience.
 - `audio/ambience/road-ambience.wav`: its Java-compatible runtime conversion, layered
   only while Alex is on Lantern Street.
+- `audio/door knock.wav`: user-provided door knock sound, copied to `audio/game/knock.wav` for intro sequence playback.
 
 All four packs are from Kenney and include their license files. The source pages list
 the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,
