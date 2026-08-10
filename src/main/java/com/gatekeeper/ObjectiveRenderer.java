@@ -11,30 +11,37 @@ final class ObjectiveRenderer {
 
     static void draw(Graphics2D g, int chapter, boolean boxRetrieved, boolean boxOpened,
                      boolean workbenchInstalled, boolean[] crafted,
-                     String completedObjective) {
+                     String completedObjective, boolean taskbarOnRight) {
         boolean complete = completedObjective != null;
         if (!complete && chapter == 2 && (!crafted[0] || !crafted[1] || !crafted[2])) {
             drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"NAND", "NOR", "XOR"},
-                new boolean[]{crafted[0], crafted[1], crafted[2]});
+                new boolean[]{crafted[0], crafted[1], crafted[2]}, taskbarOnRight);
             return;
         }
         if (!complete && chapter == 3 && (!crafted[3] || !crafted[4])) {
             drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"XNOR", "IMPLY"},
-                new boolean[]{crafted[3], crafted[4]});
+                new boolean[]{crafted[3], crafted[4]}, taskbarOnRight);
             return;
         }
         String objective = complete ? completedObjective : currentObjective(chapter,
             boxRetrieved, boxOpened, workbenchInstalled, crafted);
         if (objective == null) return;
 
-        int x = 9;
+        int labelWidth = GamePanel.pixelTextWidth(g, objective, 1);
+        int totalWidth = 14 + labelWidth;
+        int x = taskbarOnRight ? (W - totalWidth - 9) : 9;
         int baselineY = 38;
         drawCheckboxLine(g, objective, x, baselineY, complete);
     }
 
     private static void drawBuildObjectives(Graphics2D g, String heading, String[] labels,
-                                            boolean[] completed) {
-        int x = 9;
+                                            boolean[] completed, boolean taskbarOnRight) {
+        int maxWidth = GamePanel.pixelTextWidth(g, heading, 1);
+        for (String label : labels) {
+            int width = 22 + GamePanel.pixelTextWidth(g, label, 1);
+            if (width > maxWidth) maxWidth = width;
+        }
+        int x = taskbarOnRight ? (W - maxWidth - 9) : 9;
         int baselineY = 38;
         g.setColor(new Color(0, 0, 0, 190));
         GamePanel.pixelText(g, heading, x + 1, baselineY + 1, 1);

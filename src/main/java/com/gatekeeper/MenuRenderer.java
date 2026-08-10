@@ -85,22 +85,24 @@ final class MenuRenderer {
     }
 
     static void drawSettings(Graphics2D g, long ticks, int mouseX, int mouseY,
-                             int selection, SoundManager sound, float uiScale) {
+                             int selection, SoundManager sound, float uiScale,
+                             boolean taskbarOnRight) {
         g.setColor(new Color(1, 3, 7));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
         drawStars(g, ticks);
         g.setColor(INK);
-        GamePanel.pixelTextScaled(g, "SETTINGS", 198, 56, 2, 0.85f);
+        GamePanel.pixelTextScaled(g, "SETTINGS", 198, 52, 2, 0.85f);
         g.setColor(new Color(105, 116, 117));
-        GamePanel.pixelTextScaled(g, "AUDIO", 227, 76, 1, 0.85f);
-        drawVolumeRow(g, 92, "MASTER", sound.masterVolume(), 0, selection);
-        drawVolumeRow(g, 121, "MUSIC", sound.musicVolume(), 1, selection);
-        drawVolumeRow(g, 150, "FX", sound.fxVolume(), 2, selection);
-        drawVolumeRow(g, 179, "UI SIZE", uiScale, 3, selection);
-        boolean hovered = GamePanel.inside(mouseX, mouseY, 170, 207, 140, 20);
+        GamePanel.pixelTextScaled(g, "AUDIO", 227, 72, 1, 0.85f);
+        drawVolumeRow(g, 86, "MASTER", sound.masterVolume(), 0, selection);
+        drawVolumeRow(g, 114, "MUSIC", sound.musicVolume(), 1, selection);
+        drawVolumeRow(g, 142, "FX", sound.fxVolume(), 2, selection);
+        drawVolumeRow(g, 170, "UI SIZE", uiScale, 3, selection);
+        drawChoiceRow(g, 198, "TASKBAR", taskbarOnRight ? "RIGHT" : "LEFT", 4, selection);
+        boolean hovered = GamePanel.inside(mouseX, mouseY, 170, 226, 140, 20);
         g.setColor(hovered ? new Color(143, 190, 128) : DIM);
-        GamePanel.pixelTextScaled(g, "< BACK", 219, 221, 1, 0.85f);
+        GamePanel.pixelTextScaled(g, "< BACK", 219, 238, 1, 0.85f);
     }
 
     static void drawDeveloper(Graphics2D g, int mouseX, int mouseY, int section, int selection,
@@ -380,6 +382,16 @@ final class MenuRenderer {
         }
         g.setColor(DIM);
         GamePanel.pixelTextScaled(g, Math.round(volume * 100.0f) + "%", 347, y + 12, 1, 0.85f);
+    }
+
+    private static void drawChoiceRow(Graphics2D g, int y, String label, String value,
+                                      int row, int selection) {
+        boolean selected = selection == row;
+        g.setColor(selected ? new Color(143, 190, 128) : INK);
+        GamePanel.pixelTextScaled(g, selected ? "> " + label : "  " + label,
+            132, y + 12, 1, 0.85f);
+        g.setColor(selected ? new Color(143, 190, 128) : CYAN);
+        GamePanel.pixelTextScaled(g, "< " + value + " >", 240, y + 12, 1, 0.85f);
     }
 
     private static void drawPauseChoice(Graphics2D g, int mouseX, int mouseY, int current,

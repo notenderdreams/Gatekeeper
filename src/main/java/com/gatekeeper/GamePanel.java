@@ -97,6 +97,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int chapter;
     private int titleSelection;
     private int settingsSelection;
+    private boolean taskbarOnRight = false;
     private int devSection = 0;
     private int devSelection;
     private int soundSceneSelection;
@@ -174,6 +175,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             SaveData data = SaveManager.loadGame();
             if (data != null) {
                 instantStart = data.instantStart;
+                taskbarOnRight = data.taskbarOnRight;
                 ccBedroomBackground = data.ccBedroomBackground;
                 ccStreetBackground = data.ccStreetBackground;
                 starCount = data.starCount;
@@ -225,7 +227,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 mouseX, mouseY, titleSelection);
             case CONTROLS -> MenuRenderer.drawControls(g, getBedroomBackground(), mouseX, mouseY);
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
-                settingsSelection, sound, uiScale);
+                settingsSelection, sound, uiScale, taskbarOnRight);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
                 devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, sound, soundSceneSelection);
             case INTRO -> {
@@ -243,7 +245,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
-                crafted, completedObjective);
+                crafted, completedObjective, taskbarOnRight);
         }
         if (dialogueVisible()) {
             DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
@@ -832,11 +834,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
-                settingsSelection = (settingsSelection + direction + 4) % 4;
+                settingsSelection = (settingsSelection + direction + 5) % 5;
                 playSound("ui-select");
             } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                 || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
-                adjustSelectedVolume((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
+                if (settingsSelection == 4) {
+                    taskbarOnRight = !taskbarOnRight;
+                    saveCurrentProgress();
+                    playSound("ui-click");
+                } else {
+                    adjustSelectedVolume((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
+                }
             }
             return;
         } else if (scene == GameScene.END && key == KeyEvent.VK_ENTER) {
@@ -959,16 +967,21 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.SETTINGS) {
-            if (inside(x, y, 170, 207, 140, 20)) {
+            if (inside(x, y, 170, 226, 140, 20)) {
                 leaveSettings();
                 playSound("ui-back");
             } else {
-                for (int row = 0; row < 4; row++) {
-                    int rowY = 92 + row * 29;
+                for (int row = 0; row < 5; row++) {
+                    int rowY = 86 + row * 28;
                     if (inside(x, y, 115, rowY, 265, 20)) {
                         settingsSelection = row;
-                        float volume = (float) clamp((x - 223) / 107.0f, 0.0f, 1.0f);
-                        setSelectedVolume(volume);
+                        if (row == 4) {
+                            taskbarOnRight = !taskbarOnRight;
+                            saveCurrentProgress();
+                        } else {
+                            float volume = (float) clamp((x - 223) / 107.0f, 0.0f, 1.0f);
+                            setSelectedVolume(volume);
+                        }
                         playSound("ui-click");
                     }
                 }
@@ -1472,6 +1485,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         SaveData data = SaveManager.hasSave() ? SaveManager.loadGame() : null;
         if (data == null) data = new SaveData();
         data.instantStart = instantStart;
+        data.taskbarOnRight = taskbarOnRight;
         data.catAlwaysAppears = catAlwaysAppears;
         data.ccBedroomBackground = ccBedroomBackground;
         data.ccStreetBackground = ccStreetBackground;
@@ -1510,6 +1524,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         this.notebookPage = data.notebookPage;
         this.instantStart = data.instantStart;
+        this.taskbarOnRight = data.taskbarOnRight;
         this.catAlwaysAppears = data.catAlwaysAppears;
         this.catPresent = data.catPresent || data.catAlwaysAppears;
         this.catX = data.catX;

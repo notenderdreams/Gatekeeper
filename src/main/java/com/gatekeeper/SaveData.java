@@ -21,6 +21,7 @@ public final class SaveData {
     public boolean boxOpened = false;
     public boolean workbenchInstalled = false;
     public int starCount = 25;
+    public boolean taskbarOnRight = false;
 
     public SaveData() {
         this.chapter = 0;
