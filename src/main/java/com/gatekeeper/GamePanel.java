@@ -60,6 +60,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
     private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
     private final BufferedImage boxImage = loadRawImage("/assets/box.png");
+    private final BufferedImage letterImage = loadRawImage("/assets/letter.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
@@ -255,7 +256,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (dialogueVisible()) {
             DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
-                notebookItemImage, workbenchItemImage);
+                notebookItemImage, workbenchItemImage, boxImage, letterImage);
         }
         if (exitPrompt) MenuRenderer.drawPause(g, mouseX, mouseY, exitPromptSelection);
         g.dispose();
@@ -468,17 +469,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
             } else if (!boxRetrieved && Math.abs(playerX - STREET_BOX_X) < 38) {
-                completedObjective = "FIND THE REASON FOR THE KNOCK";
-                boxRetrieved = true;
-                if (chapter == 0) chapter = 1;
-                updateBedroomBackground();
-                say("ALEX|A mystery box placed on Lantern Street... with a sealed envelope on top.",
-                    "ALEX|I'll bring it back to my workshop.");
-                playSound("door-open");
-                scene = GameScene.BEDROOM;
-                setPlayerPosition(210, 157);
-                facing = Facing.DOWN;
-                saveCurrentProgress();
+                say("ALEX|A mystery package left on Lantern Street... with a letter attached.",
+                    LETTER_ITEM_CARD,
+                    "@ENTER_BEDROOM_WITH_BOX");
             } else if (catPresent && Math.abs(playerX - catX) < 38) {
                 int catSound = random.nextInt(3) + 1;
                 sound.play(AUDIO_ROOT + "cat/cat" + catSound + ".wav", scene.name(), 1.0f);
@@ -670,6 +663,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             line = null;
             completedObjective = null;
             scene = GameScene.END;
+        } else if ("@ENTER_BEDROOM_WITH_BOX".equals(next)) {
+            line = null;
+            completedObjective = null;
+            boxRetrieved = true;
+            if (chapter == 0) chapter = 1;
+            updateBedroomBackground();
+            playSound("door-open");
+            scene = GameScene.BEDROOM;
+            setPlayerPosition(210, 157);
+            facing = Facing.DOWN;
+            saveCurrentProgress();
+            say("ALEX|Now let me open the box and see what's inside.");
         } else {
             line = next;
             if (next == null) completedObjective = null;
@@ -680,7 +685,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private static boolean isItemCard(String value) {
         return LOGICLENS_ITEM_CARD.equals(value) || NOTEBOOK_ITEM_CARD.equals(value)
-            || WORKBENCH_ITEM_CARD.equals(value);
+            || WORKBENCH_ITEM_CARD.equals(value) || LETTER_ITEM_CARD.equals(value);
     }
 
     private boolean dialogueLineComplete() {
