@@ -186,7 +186,8 @@ public final class SoundManager {
         sounds.put("DEV", Arrays.asList("ui-open.wav", "ui-back.wav", "ui-select.wav",
             "ui-confirm.wav", "ui-click.wav"));
         sounds.put("BEDROOM", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
-        sounds.put("STREET", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
+        sounds.put("STREET", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav",
+            "cat/cat1.wav", "cat/cat2.wav", "cat/cat3.wav"));
         sounds.put("SHOP", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
         sounds.put("BOARD", Arrays.asList("ui-open.wav", "ui-close.wav", "ui-select.wav", "ui-error.wav",
             "ui-confirm.wav", "ui-click.wav", "gate-place.wav", "switch.wav", "success.wav", "failure.wav"));
@@ -246,6 +247,7 @@ public final class SoundManager {
             clip.open(stream);
             return clip;
         } catch (Exception error) {
+            System.err.println("Failed to load sound resource [" + resourcePath + "]: " + error);
             return null;
         }
     }
