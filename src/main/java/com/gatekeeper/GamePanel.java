@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
@@ -34,6 +35,9 @@ import static com.gatekeeper.GameConstants.*;
 @SuppressWarnings("serial")
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
     private static final int INTRO_DIALOGUE_TICK = 2 * 60;
+    private static final Polygon BOX_COLLISION = new Polygon(
+        new int[] {272, 310, 333, 338, 271},
+        new int[] {136, 145, 124, 89, 84}, 5);
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
@@ -299,6 +303,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void updateGame() {
         ticks++;
+        sound.loop(MUSIC_LOOP);
         sound.updateMusic();
         sound.updateCrossfade();
         if (scene == GameScene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
@@ -700,8 +705,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (x < maxX) return true;
         }
 
-        // Calibrated Box physical collision footprint: { 310, 141 }, { 331, 116 }, { 271, 84 }, { 272, 131 }
-        if (boxRetrieved && !boxOpened && x >= 271 && x <= 331 && y >= 84 && y <= 141) {
+        // Calibrated box physical collision footprint: {272,136}, {310,145}, {333,124}, {338,89}, {271,84}
+        // Test the character's foot-width, not just its center point, against the calibrated outline.
+        if (boxRetrieved && !boxOpened && BOX_COLLISION.intersects(x - 6, y, 12, 10)) {
             return true;
         }
 
