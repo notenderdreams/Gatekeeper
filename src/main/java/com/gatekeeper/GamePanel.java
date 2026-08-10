@@ -33,8 +33,7 @@ import static com.gatekeeper.GameConstants.*;
 
 @SuppressWarnings("serial")
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
-    private static final int INTRO_KNOCK_INTERVAL_TICKS = 2 * 60;
-    private static final int INTRO_DIALOGUE_TICK = 2 * INTRO_KNOCK_INTERVAL_TICKS;
+    private static final int INTRO_DIALOGUE_TICK = 2 * 60;
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
@@ -276,19 +275,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             dialogue.clear();
             line = null;
             say("*knock knock*");
-        } else if (introStage == 1 && introTimer >= INTRO_KNOCK_INTERVAL_TICKS) {
+        } else if (introStage == 1 && introTimer >= INTRO_DIALOGUE_TICK) {
             introStage = 2;
-            playSound("knock");
-            dialogue.clear();
-            line = null;
-            say("*knock knock*");
-        } else if (introStage == 2 && introTimer >= INTRO_DIALOGUE_TICK) {
-            introStage = 3;
             dialogue.clear();
             line = null;
             say("ALEX|Who's knocking at the door in the middle of the night? I should check.");
-        } else if (introStage == 3 && line == null && dialogue.isEmpty()) {
-            introStage = 4;
+        } else if (introStage == 2 && line == null && dialogue.isEmpty()) {
+            introStage = 3;
             scene = GameScene.BEDROOM;
             setPlayerPosition(210, 157);
             facing = Facing.DOWN;
