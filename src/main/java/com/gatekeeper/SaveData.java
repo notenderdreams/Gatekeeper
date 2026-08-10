@@ -19,6 +19,7 @@ public final class SaveData {
     public boolean ccStreetBackground = true;
     public boolean boxRetrieved = false;
     public boolean boxOpened = false;
+    public boolean workbenchInstalled = false;
     public int starCount = 25;
 
     public SaveData() {

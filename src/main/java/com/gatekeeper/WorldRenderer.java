@@ -22,6 +22,7 @@ final class WorldRenderer {
     private BufferedImage bedroomBackground;
     private BufferedImage streetBackground;
     private final BufferedImage shopBackground;
+    private final BufferedImage installedWorkbenchImage;
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
     private final BufferedImage catSprites;
@@ -55,11 +56,13 @@ final class WorldRenderer {
     private float playerShadowStrength = 1.0f;
     private boolean boxRetrieved = false;
     private boolean boxOpened = false;
+    private boolean workbenchInstalled = false;
     private final Starfield starfield = new Starfield();
     private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
-                  BufferedImage shopBackground, BufferedImage alexSprites,
+                  BufferedImage shopBackground, BufferedImage installedWorkbenchImage,
+                  BufferedImage alexSprites,
                   BufferedImage miraSprites, BufferedImage catSprites,
                   BufferedImage boxImage,
                   Rectangle[] alexFrameBounds, Rectangle[] miraFrameBounds,
@@ -71,6 +74,7 @@ final class WorldRenderer {
         this.bedroomBackground = bedroomBackground;
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
+        this.installedWorkbenchImage = installedWorkbenchImage;
         this.alexSprites = alexSprites;
         this.miraSprites = miraSprites;
         this.catSprites = catSprites;
@@ -98,6 +102,10 @@ final class WorldRenderer {
 
     void setBoxOpened(boolean boxOpened) {
         this.boxOpened = boxOpened;
+    }
+
+    void setWorkbenchInstalled(boolean workbenchInstalled) {
+        this.workbenchInstalled = workbenchInstalled;
     }
 
     void setStreetBackground(BufferedImage streetBackground) {
@@ -131,12 +139,18 @@ final class WorldRenderer {
     void drawBedroom(Graphics2D g) {
         if (bedroomBackground != null) {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
+            if (workbenchInstalled && installedWorkbenchImage != null) {
+                g.drawImage(installedWorkbenchImage, 0, 0, W, H, null);
+            }
             EnvironmentArt.drawBedroomLampFlicker(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
             if (boxRetrieved && !boxOpened && near(299, 132)) prompt(g, "E  OPEN THE BOX");
-            else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
+            else if (near(205, 126) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
+            else if (near(205, 126) && workbenchInstalled) {
+                prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
+            }
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
 
             if (showCollisions) {
@@ -241,7 +255,10 @@ final class WorldRenderer {
         drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
         if (boxRetrieved && !boxOpened && near(299, 128)) prompt(g, "E  OPEN THE BOX");
-        else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
+        else if (near(93, 91) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
+        else if (near(93, 91) && workbenchInstalled) {
+            prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
+        }
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
 
         if (showCollisions) {

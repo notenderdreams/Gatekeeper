@@ -74,6 +74,7 @@ public final class CircuitModelTest {
         save.catX = 45;
         save.catY = 75;
         save.catAlwaysAppears = true;
+        save.workbenchInstalled = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -90,6 +91,7 @@ public final class CircuitModelTest {
         require(loaded.catPresent, "loaded catPresent should be true");
         require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");
         require(loaded.catAlwaysAppears, "loaded catAlwaysAppears should be true");
+        require(loaded.workbenchInstalled, "loaded workbenchInstalled should be true");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");

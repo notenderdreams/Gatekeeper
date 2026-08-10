@@ -45,6 +45,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean ccBedroomBackground = true;
     private boolean boxRetrieved = false;
     private boolean boxOpened = false;
+    private boolean workbenchInstalled = false;
     private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
     private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
     private boolean ccStreetBackground = true;
@@ -57,6 +58,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
+    private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
     private final BufferedImage notebookCoverImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage(
@@ -129,7 +131,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomNoBoxImage != null ? bedroomNoBoxImage : (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal),
-        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground, alexSprites, miraSprites, catSprites, boxImage,
+        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground,
+        installedWorkbenchImage, alexSprites, miraSprites, catSprites, boxImage,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
         erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
@@ -156,6 +159,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         worldRenderer.setBedroomBackground(bg);
         worldRenderer.setBoxRetrieved(boxRetrieved);
         worldRenderer.setBoxOpened(boxOpened);
+        worldRenderer.setWorkbenchInstalled(workbenchInstalled);
     }
 
     public GamePanel() {
@@ -249,6 +253,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         chapter = 0;
         boxRetrieved = false;
         boxOpened = false;
+        workbenchInstalled = false;
         updateBedroomBackground();
         scene = GameScene.INTRO;
         introTimer = 0;
@@ -416,8 +421,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     "ALEX|After that? Just rows of zeroes and ones.");
                 saveCurrentProgress();
             } else if (near(205, 126)) {
-                if (chapter >= 2) openBoard();
-                else say("ALEX|An old pegboard. Maybe I can build something on it.");
+                if (boxOpened && !workbenchInstalled) {
+                    workbenchInstalled = true;
+                    worldRenderer.setWorkbenchInstalled(true);
+                    playSound("gate-place");
+                    say("ALEX|There. The workbench fits perfectly on the desk.",
+                        chapter >= 2
+                            ? "ALEX|Mira's circuit plans should work here."
+                            : "ALEX|Now I just need to find out what these gates are for.");
+                    saveCurrentProgress();
+                } else if (workbenchInstalled && chapter >= 2) {
+                    openBoard();
+                } else if (workbenchInstalled) {
+                    say("ALEX|The workbench is ready. I need to learn what to build first.");
+                }
             } else if (near(407, 132)) {
                 scene = GameScene.STREET;
                 rollCatSpawn();
@@ -1310,6 +1327,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
+        workbenchInstalled = false;
         circuit.selectRecipe(recipes.get(0));
         switch (preset) {
             case 0 -> {
@@ -1319,23 +1337,30 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 chapter = 1;
                 boxRetrieved = true;
                 boxOpened = true;
+                workbenchInstalled = true;
                 updateBedroomBackground();
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
             case 2 -> {
                 chapter = 1;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.STREET;
                 rollCatSpawn();
                 setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
             }
             case 3 -> {
                 chapter = 1;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 4 -> {
                 chapter = 2;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
@@ -1344,6 +1369,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             case 5 -> {
                 chapter = 3;
+                workbenchInstalled = true;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
@@ -1352,6 +1378,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             case 6 -> {
                 chapter = 3;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 Arrays.fill(crafted, true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
@@ -1362,6 +1390,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 scene = GameScene.END;
             }
         }
+        worldRenderer.setWorkbenchInstalled(workbenchInstalled);
         facing = Facing.DOWN;
         playSound("ui-confirm");
         saveCurrentProgress();
@@ -1439,6 +1468,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.ccStreetBackground = ccStreetBackground;
         data.boxRetrieved = boxRetrieved;
         data.boxOpened = boxOpened;
+        data.workbenchInstalled = workbenchInstalled;
         data.starCount = starCount;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
@@ -1479,6 +1509,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.ccStreetBackground = data.ccStreetBackground;
         this.boxRetrieved = data.boxRetrieved;
         this.boxOpened = data.boxOpened;
+        this.workbenchInstalled = data.workbenchInstalled;
         this.starCount = data.starCount;
         updateBedroomBackground();
         this.worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
