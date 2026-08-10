@@ -111,21 +111,27 @@ final class EnvironmentArt {
 
         // Irregular value noise gives the bulb a small electrical shimmer and a slower
         // brightness drift. Some time blocks also contain a short, smoothly recovered dip.
-        float shimmer = smoothNoise(ticks, 3, 0x51A7) * 0.055f;
-        float drift = smoothNoise(ticks, 17, 0x2D91) * 0.045f;
-        long block = Math.floorDiv(ticks, 53L);
-        float blockPosition = Math.floorMod(ticks, 53L) / 52.0f;
-        float dipChance = unitNoise(block, 0x7F43);
-        float dipEnvelope = dipChance < 0.30f
-            ? (float) Math.pow(Math.sin(Math.PI * blockPosition), 12.0) * 0.22f
-            : 0.0f;
-        float opacity = Math.max(0.64f, Math.min(1.0f, 0.93f + shimmer + drift - dipEnvelope));
+        float opacity = Math.max(0.64f, Math.min(1.0f,
+            0.93f * lampFlickerMultiplier(ticks, 0x51A7)));
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
 
         // User-calibrated outline: source (197,45)-(210,48), spreading through
         // (165,77), (198,92), and an expanded right edge at (230,85).
         g.drawImage(BEDROOM_LAMP_CONE, 160, 40, null);
         g.setComposite(oldComposite);
+    }
+
+    private static float lampFlickerMultiplier(long ticks, int seed) {
+        float shimmer = smoothNoise(ticks, 3, seed) * 0.055f;
+        float drift = smoothNoise(ticks, 17, seed ^ 0x7B29) * 0.045f;
+        long shiftedTicks = ticks + Math.floorMod(seed, 53);
+        long block = Math.floorDiv(shiftedTicks, 53L);
+        float blockPosition = Math.floorMod(shiftedTicks, 53L) / 52.0f;
+        float dipChance = unitNoise(block, seed ^ 0x2E17);
+        float dipEnvelope = dipChance < 0.30f
+            ? (float) Math.pow(Math.sin(Math.PI * blockPosition), 12.0) * 0.22f
+            : 0.0f;
+        return Math.max(0.66f, Math.min(1.08f, 1.0f + shimmer + drift - dipEnvelope));
     }
 
     private static float smoothNoise(long ticks, int interval, int seed) {
@@ -151,11 +157,8 @@ final class EnvironmentArt {
         // 1. Light #1 (World X: 30, Y: 157) - Far Left Glow (Independent frequency & phase)
         int light1X = 30 - cameraX;
         if (light1X + 90 >= 0 && light1X - 90 <= W) {
-            double f1 = Math.sin(ticks * 0.08 + 1.4) * 0.065 + Math.cos(ticks * 0.23 + 0.7) * 0.035;
-            double m1 = ((ticks + 3) % 13 == 0) ? -0.05 : 0.0;
-            float alphaMult1 = (float) Math.max(0.74, Math.min(1.24, 1.0 + f1 + m1));
-            float alpha = Math.min(1.0f, 0.31f * alphaMult1);
-            int size = (int) (112 + f1 * 11);
+            float alpha = Math.min(1.0f, 0.31f * lampFlickerMultiplier(ticks, 0x1421));
+            int size = 112;
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
             g.drawImage(AMBER_GLOW, light1X - size / 2, 157 - size / 2, size, size, null);
         }
@@ -163,11 +166,8 @@ final class EnvironmentArt {
         // 2. Light #2 (World X: 109, Y: 151) - Left Lamp Glow (Independent frequency & phase)
         int light2X = 109 - cameraX;
         if (light2X + 90 >= 0 && light2X - 90 <= W) {
-            double f2 = Math.sin(ticks * 0.11 + 4.2) * 0.06 + Math.cos(ticks * 0.17 + 2.1) * 0.045;
-            double m2 = ((ticks + 7) % 19 == 0) ? 0.06 : 0.0;
-            float alphaMult2 = (float) Math.max(0.76, Math.min(1.25, 1.0 + f2 + m2));
-            float alpha = Math.min(1.0f, 0.37f * alphaMult2);
-            int size = (int) (130 + f2 * 13);
+            float alpha = Math.min(1.0f, 0.37f * lampFlickerMultiplier(ticks, 0x35A9));
+            int size = 130;
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
             g.drawImage(AMBER_GLOW, light2X - size / 2, 151 - size / 2, size, size, null);
         }
@@ -175,11 +175,8 @@ final class EnvironmentArt {
         // 3. Light #3 (World X: 521, Y: 113) - Center Lamp Glow (Independent frequency & phase)
         int light3X = 521 - cameraX;
         if (light3X + 90 >= 0 && light3X - 90 <= W) {
-            double f3 = Math.sin(ticks * 0.06 + 2.8) * 0.075 + Math.cos(ticks * 0.29 + 5.3) * 0.03;
-            double m3 = ((ticks + 11) % 17 == 0) ? -0.065 : 0.0;
-            float alphaMult3 = (float) Math.max(0.72, Math.min(1.26, 1.0 + f3 + m3));
-            float alpha = Math.min(1.0f, 0.34f * alphaMult3);
-            int size = (int) (130 + f3 * 13);
+            float alpha = Math.min(1.0f, 0.34f * lampFlickerMultiplier(ticks, 0x58D3));
+            int size = 130;
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
             g.drawImage(AMBER_GLOW, light3X - size / 2, 113 - size / 2, size, size, null);
         }
@@ -187,11 +184,8 @@ final class EnvironmentArt {
         // 4. Light #4 (World X: 904, Y: 156) - Mira's Shop Cyan Entrance Glow (Independent frequency & phase)
         int light4X = 904 - cameraX;
         if (light4X + 90 >= 0 && light4X - 90 <= W) {
-            double f4 = Math.sin(ticks * 0.13 + 5.1) * 0.052 + Math.cos(ticks * 0.19 + 3.4) * 0.052;
-            double m4 = ((ticks + 5) % 23 == 0) ? 0.045 : 0.0;
-            float alphaMult4 = (float) Math.max(0.76, Math.min(1.24, 1.0 + f4 + m4));
-            float alpha = Math.min(1.0f, 0.39f * alphaMult4);
-            int size = (int) (135 + f4 * 12);
+            float alpha = Math.min(1.0f, 0.39f * lampFlickerMultiplier(ticks, 0x71C5));
+            int size = 135;
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
             g.drawImage(CYAN_GLOW, light4X - size / 2, 156 - size / 2, size, size, null);
         }
