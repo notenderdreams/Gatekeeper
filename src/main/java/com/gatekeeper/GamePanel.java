@@ -17,9 +17,11 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
@@ -733,6 +735,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
                 playSound("ui-back");
+            } else if (key == KeyEvent.VK_P) {
+                dumpDevState();
             } else if (key == KeyEvent.VK_TAB) {
                 devFocusRight = !devFocusRight;
                 playSound("ui-select");
@@ -799,7 +803,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 repaint();
                 return;
             } else if (key == KeyEvent.VK_P) {
-                worldRenderer.dumpCalibratedPoints();
+                worldRenderer.dumpCalibratedPoints(scene.name().toLowerCase());
                 return;
             }
         }
@@ -859,7 +863,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if (scene == GameScene.STREET && (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_C || key == KeyEvent.VK_P)) {
             if (key == KeyEvent.VK_BACK_SPACE) worldRenderer.undoCalibratedPoint();
             else if (key == KeyEvent.VK_C) worldRenderer.clearCalibratedPoints();
-            else if (key == KeyEvent.VK_P) worldRenderer.dumpCalibratedPoints();
+            else if (key == KeyEvent.VK_P) worldRenderer.dumpCalibratedPoints("street");
             repaint();
         } else if ((scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)
             && (key == KeyEvent.VK_E || key == KeyEvent.VK_ENTER)) {
@@ -1275,23 +1279,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if (devSelection == 0) {
                 calibratorEnabled = !calibratorEnabled;
                 playSound("ui-confirm");
-                System.out.println("[DEV MENU] Light Calibrator -> " + (calibratorEnabled ? "ENABLED" : "DISABLED"));
             } else if (devSelection == 1) {
                 showCollisions = !showCollisions;
                 worldRenderer.setShowCollisions(showCollisions);
                 playSound("ui-confirm");
-                System.out.println("[DEV MENU] Show Collisions -> " + (showCollisions ? "ENABLED" : "DISABLED"));
             } else if (devSelection == 2) {
                 instantStart = !instantStart;
                 playSound("ui-confirm");
                 saveCurrentProgress();
-                System.out.println("[DEV MENU] Instant Start -> " + (instantStart ? "ENABLED" : "DISABLED"));
             } else if (devSelection == 3) {
                 catAlwaysAppears = !catAlwaysAppears;
                 if (catAlwaysAppears && !catPresent) rollCatSpawn();
                 playSound("ui-confirm");
                 saveCurrentProgress();
-                System.out.println("[DEV MENU] Cat Always Appears -> " + (catAlwaysAppears ? "ENABLED" : "DISABLED"));
             } else if (devSelection == 4) {
                 int[] counts = {0, 25, 50, 75, 100, 150, 200};
                 int idx = 0;
@@ -1302,7 +1302,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-                System.out.println("[DEV MENU] Star Count -> " + starCount);
             }
         } else if (devSection == 3) {
             if (devSelection == 0) {
@@ -1310,15 +1309,84 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-                System.out.println("[DEV MENU] Bedroom Background CC -> " + (ccBedroomBackground ? "CC" : "NORMAL"));
             } else if (devSelection == 1) {
                 ccStreetBackground = !ccStreetBackground;
                 worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-                System.out.println("[DEV MENU] Street Background CC -> " + (ccStreetBackground ? "CC" : "NORMAL"));
             }
         }
+    }
+
+    private void dumpDevState() {
+        List<String> modified = new ArrayList<>();
+        if (calibratorEnabled) {
+            modified.add("    \"light_calibrator\": \"ENABLED\"");
+        }
+        if (showCollisions) {
+            modified.add("    \"show_collisions\": \"ENABLED\"");
+        }
+        if (instantStart) {
+            modified.add("    \"instant_start\": \"ENABLED\"");
+        }
+        if (catAlwaysAppears) {
+            modified.add("    \"cat_always_appears\": \"ENABLED\"");
+        }
+        if (starCount != 0) {
+            modified.add("    \"star_count\": " + starCount);
+        }
+        if (ccBedroomBackground) {
+            modified.add("    \"bedroom_background_cc\": \"CC\"");
+        }
+        if (ccStreetBackground) {
+            modified.add("    \"street_background_cc\": \"CC\"");
+        }
+
+        Map<String, Map<String, Float>> modifiedSounds = sound.modifiedSceneVolumes();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"scene\": \"dev_menu\",\n");
+        sb.append("  \"modified_settings\": {");
+        if (modified.isEmpty()) {
+            sb.append("},\n");
+        } else {
+            sb.append("\n");
+            for (int i = 0; i < modified.size(); i++) {
+                sb.append(modified.get(i));
+                if (i < modified.size() - 1) {
+                    sb.append(",");
+                }
+                sb.append("\n");
+            }
+            sb.append("  },\n");
+        }
+
+        sb.append("  \"modified_sound_volumes\": {");
+        if (modifiedSounds.isEmpty()) {
+            sb.append("}\n}");
+        } else {
+            sb.append("\n");
+            int sceneIdx = 0;
+            int totalScenes = modifiedSounds.size();
+            for (Map.Entry<String, Map<String, Float>> sceneEntry : modifiedSounds.entrySet()) {
+                sb.append("    \"").append(sceneEntry.getKey()).append("\": {\n");
+                int soundIdx = 0;
+                int totalSounds = sceneEntry.getValue().size();
+                for (Map.Entry<String, Float> soundEntry : sceneEntry.getValue().entrySet()) {
+                    sb.append(String.format(java.util.Locale.US, "      \"%s\": %.2f", soundEntry.getKey(), soundEntry.getValue()));
+                    if (soundIdx < totalSounds - 1) sb.append(",");
+                    sb.append("\n");
+                    soundIdx++;
+                }
+                sb.append("    }");
+                if (sceneIdx < totalScenes - 1) sb.append(",");
+                sb.append("\n");
+                sceneIdx++;
+            }
+            sb.append("  }\n}");
+        }
+        DevLog.log(sb.toString());
     }
 
     private int devOptionCount() {

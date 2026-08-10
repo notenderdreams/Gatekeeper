@@ -396,33 +396,40 @@ final class WorldRenderer {
 
     void addCalibratedPoint(int worldX, int worldY) {
         calibratedPoints.add(new CalibratedPoint(worldX, worldY, calibratedPoints.size() + 1));
-        dumpCalibratedPoints();
     }
 
     void undoCalibratedPoint() {
         if (!calibratedPoints.isEmpty()) {
             calibratedPoints.remove(calibratedPoints.size() - 1);
-            dumpCalibratedPoints();
         }
     }
 
     void clearCalibratedPoints() {
         calibratedPoints.clear();
-        System.out.println("[POSITION MARKER] Cleared all marked points.");
     }
 
-    void dumpCalibratedPoints() {
-        System.out.println("\n==================== POSITION CALIBRATION DUMP ====================");
-        System.out.println("// Total points marked: " + calibratedPoints.size());
-        System.out.println("static final int[][] CALIBRATED_POINTS = {");
-        for (int i = 0; i < calibratedPoints.size(); i++) {
-            CalibratedPoint p = calibratedPoints.get(i);
-            System.out.print("    { " + p.worldX + ", " + p.worldY + " }");
-            if (i < calibratedPoints.size() - 1) System.out.print(",");
-            System.out.println(" // Point #" + p.index);
+    void dumpCalibratedPoints(String sceneName) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        sb.append("  \"scene\": \"").append(sceneName != null ? sceneName : "unknown").append("\",\n");
+        sb.append("  \"points\": [");
+        if (calibratedPoints.isEmpty()) {
+            sb.append("]\n}");
+        } else {
+            sb.append("\n");
+            for (int i = 0; i < calibratedPoints.size(); i++) {
+                CalibratedPoint p = calibratedPoints.get(i);
+                sb.append("    { \"index\": ").append(p.index)
+                  .append(", \"x\": ").append(p.worldX)
+                  .append(", \"y\": ").append(p.worldY).append(" }");
+                if (i < calibratedPoints.size() - 1) {
+                    sb.append(",");
+                }
+                sb.append("\n");
+            }
+            sb.append("  ]\n}");
         }
-        System.out.println("};");
-        System.out.println("===================================================================\n");
+        DevLog.log(sb.toString());
     }
 
     private void drawCalibratedPoints(Graphics2D g, int cameraX) {

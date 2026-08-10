@@ -261,6 +261,24 @@ public final class SoundManager {
             .put(resourcePath, clampVolume(volume));
     }
 
+    public Map<String, Map<String, Float>> modifiedSceneVolumes() {
+        Map<String, Map<String, Float>> modified = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, Float>> sceneEntry : sceneVolumes.entrySet()) {
+            Map<String, Float> modifiedSounds = new LinkedHashMap<>();
+            for (Map.Entry<String, Float> soundEntry : sceneEntry.getValue().entrySet()) {
+                if (Math.abs(soundEntry.getValue() - 1.0f) > 0.001f) {
+                    String path = soundEntry.getKey();
+                    String fileName = path.substring(path.lastIndexOf('/') + 1);
+                    modifiedSounds.put(fileName, soundEntry.getValue());
+                }
+            }
+            if (!modifiedSounds.isEmpty()) {
+                modified.put(sceneEntry.getKey(), modifiedSounds);
+            }
+        }
+        return modified;
+    }
+
     public void setMasterVolume(float volume) {
         masterVolume = clampVolume(volume);
         refreshVolumes();
