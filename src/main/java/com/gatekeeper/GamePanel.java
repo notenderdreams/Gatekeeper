@@ -55,6 +55,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
     private final BufferedImage boxImage = loadRawImage("/assets/box.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
+    private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
+    private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
     private final BufferedImage notebookCoverImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage(
@@ -236,7 +238,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case END -> notebookRenderer.drawEnding(g);
         }
         if (dialogueVisible()) {
-            DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage);
+            DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
+                notebookItemImage, workbenchItemImage);
         }
         if (exitPrompt) MenuRenderer.drawPause(g, mouseX, mouseY, exitPromptSelection);
         g.dispose();
@@ -406,7 +409,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 if (chapter == 0) chapter = 1;
                 updateBedroomBackground();
                 playSound("ui-open");
-                say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
+                say(NOTEBOOK_ITEM_CARD,
+                    WORKBENCH_ITEM_CARD,
+                    "ALEX|A box full of tiny black pieces... AND, OR, NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
                 saveCurrentProgress();
@@ -635,13 +640,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else {
             line = next;
             lineAge = 0;
-            playSound(LOGICLENS_ITEM_CARD.equals(next) ? "success" : "ui-click");
+            playSound(isItemCard(next) ? "success" : "ui-click");
         }
+    }
+
+    private static boolean isItemCard(String value) {
+        return LOGICLENS_ITEM_CARD.equals(value) || NOTEBOOK_ITEM_CARD.equals(value)
+            || WORKBENCH_ITEM_CARD.equals(value);
     }
 
     private boolean dialogueLineComplete() {
         if (line == null) return true;
-        if (LOGICLENS_ITEM_CARD.equals(line)) return true;
+        if (isItemCard(line)) return true;
         int separator = line.indexOf('|');
         String words = separator >= 0 ? line.substring(separator + 1) : line;
         return lineAge / 2 + 1 >= words.length();

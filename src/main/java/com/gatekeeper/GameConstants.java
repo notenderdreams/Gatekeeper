@@ -34,6 +34,8 @@ final class GameConstants {
 
     static final String AUDIO_ROOT = "/assets/audio/game/";
     static final String LOGICLENS_ITEM_CARD = "@ITEM_LOGICLENS";
+    static final String NOTEBOOK_ITEM_CARD = "@ITEM_NOTEBOOK";
+    static final String WORKBENCH_ITEM_CARD = "@ITEM_WORKBENCH";
     static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
     static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
 

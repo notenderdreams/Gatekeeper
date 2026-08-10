@@ -14,9 +14,24 @@ final class DialogueRenderer {
     private DialogueRenderer() {}
 
     static void draw(Graphics2D g, String line, int lineAge, long ticks, float uiScale,
-                     BufferedImage logicLensImage) {
+                     BufferedImage logicLensImage, BufferedImage notebookImage,
+                     BufferedImage workbenchImage) {
         if (LOGICLENS_ITEM_CARD.equals(line)) {
-            drawLogicLensReceived(g, ticks, logicLensImage);
+            drawItemReceived(g, ticks, logicLensImage, "MIRA GAVE YOU", "LOGICLENS",
+                "AUTOMATIC TESTING TOOL", "TESTS ALL INPUT ROWS", "IN A SINGLE RUN.",
+                "ADDED TO WORKBENCH");
+            return;
+        }
+        if (NOTEBOOK_ITEM_CARD.equals(line)) {
+            drawItemReceived(g, ticks, notebookImage, "YOU FOUND A", "NOTEBOOK",
+                "CIRCUIT REFERENCE", "HOLDS DIAGRAMS AND", "TRUTH TABLES.",
+                "PRESS N TO OPEN");
+            return;
+        }
+        if (WORKBENCH_ITEM_CARD.equals(line)) {
+            drawItemReceived(g, ticks, workbenchImage, "YOU FOUND A", "WORKBENCH",
+                "LOGIC CIRCUIT BUILDER", "PLACE GATES AND TEST", "YOUR CIRCUITS.",
+                "READY TO USE");
             return;
         }
         int boxWidth = W;
@@ -61,8 +76,10 @@ final class DialogueRenderer {
         GamePanel.pixelText(g, action, x + metrics.stringWidth(key) + gap, 242, 1);
     }
 
-    private static void drawLogicLensReceived(Graphics2D g, long ticks,
-                                               BufferedImage logicLensImage) {
+    private static void drawItemReceived(Graphics2D g, long ticks, BufferedImage itemImage,
+                                         String heading, String itemName, String subtitle,
+                                         String descriptionOne, String descriptionTwo,
+                                         String footer) {
         g.setColor(new Color(0, 0, 0, 196));
         g.fillRect(0, 0, W, H);
         int x = 74, y = 34, width = 332, height = 202;
@@ -79,7 +96,7 @@ final class DialogueRenderer {
         g.fillRect(x - 2, y + 10, 4, 12);
         g.fillRect(x + width - 1, y + height - 22, 4, 12);
         g.setColor(new Color(204, 180, 135));
-        GamePanel.drawCenteredPixelText(g, "MIRA GAVE YOU", W / 2, y + 25, 1);
+        GamePanel.drawCenteredPixelText(g, heading, W / 2, y + 25, 1);
         g.setColor(new Color(48, 67, 68));
         g.fillRect(x + 18, y + 34, width - 36, 1);
         g.setColor(new Color(143, 190, 128));
@@ -90,25 +107,25 @@ final class DialogueRenderer {
         g.drawRect(x + 18, y + 48, 116, 105);
         g.setColor(new Color(37, 32, 27));
         g.fillRect(x + 24, y + 146, 104, 2);
-        if (logicLensImage != null) g.drawImage(logicLensImage, x + 20, y + 51, 112, 100, null);
+        if (itemImage != null) g.drawImage(itemImage, x + 20, y + 51, 112, 100, null);
         int copyX = x + 154;
         g.setColor(new Color(0, 0, 0, 190));
-        GamePanel.pixelText(g, "LOGICLENS", copyX + 2, y + 72, 2);
+        GamePanel.pixelText(g, itemName, copyX + 2, y + 72, 2);
         g.setColor(INK);
-        GamePanel.pixelText(g, "LOGICLENS", copyX, y + 70, 2);
+        GamePanel.pixelText(g, itemName, copyX, y + 70, 2);
         g.setColor(new Color(143, 190, 128));
-        GamePanel.pixelText(g, "AUTOMATIC TESTING TOOL", copyX, y + 91, 1);
+        GamePanel.pixelText(g, subtitle, copyX, y + 91, 1);
         g.setColor(new Color(54, 62, 65));
         g.fillRect(copyX, y + 100, 150, 1);
         g.setColor(new Color(183, 185, 180));
-        GamePanel.pixelText(g, "TESTS ALL INPUT ROWS", copyX, y + 119, 1);
-        GamePanel.pixelText(g, "IN A SINGLE RUN.", copyX, y + 135, 1);
+        GamePanel.pixelText(g, descriptionOne, copyX, y + 119, 1);
+        GamePanel.pixelText(g, descriptionTwo, copyX, y + 135, 1);
         g.setColor(new Color(45, 39, 29));
         g.fillRect(copyX, y + 145, 153, 23);
         g.setColor(new Color(152, 95, 47));
         g.drawRect(copyX, y + 145, 153, 23);
         g.setColor(new Color(204, 180, 135));
-        GamePanel.pixelText(g, "ADDED TO WORKBENCH", copyX + 12, y + 161, 1);
+        GamePanel.drawCenteredPixelText(g, footer, copyX + 76, y + 161, 1);
         g.setColor(new Color(48, 67, 68));
         g.fillRect(x + 18, y + 177, width - 36, 1);
         g.setColor((ticks / 28) % 2 == 0 ? INK : new Color(120, 125, 123));
