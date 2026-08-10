@@ -53,6 +53,7 @@ final class WorldRenderer {
     private int catY = 152;
     private int starCount = 25;
     private float playerShadowStrength = 1.0f;
+    private boolean boxRetrieved = false;
     private final Starfield starfield = new Starfield();
     private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
@@ -90,6 +91,10 @@ final class WorldRenderer {
         this.bedroomBackground = bedroomBackground;
     }
 
+    void setBoxRetrieved(boolean boxRetrieved) {
+        this.boxRetrieved = boxRetrieved;
+    }
+
     void setStreetBackground(BufferedImage streetBackground) {
         this.streetBackground = streetBackground;
     }
@@ -123,10 +128,9 @@ final class WorldRenderer {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
             EnvironmentArt.drawBedroomLampFlicker(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
-            if (chapter == 0) EnvironmentArt.drawInteractionGlow(g, 299, 132, YELLOW, ticks);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
-            if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
+            if (boxRetrieved && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
 
@@ -197,23 +201,18 @@ final class WorldRenderer {
         g.fillRect(73, 132, 37, 8);
         g.fillRect(88, 140, 7, 26);
 
-        // The box receives a subtle warm glow before it is opened.
-        if (chapter == 0) {
-            g.setColor(new Color(250, 204, 21, 32));
-            g.fillRect(263, 99, 72, 58);
-            g.setColor(new Color(250, 204, 21, 45));
-            g.fillRect(269, 105, 60, 46);
+        if (boxRetrieved) {
+            g.setColor(new Color(126, 82, 46));
+            g.fillRect(275, 112, 49, 32);
+            g.setColor(new Color(169, 111, 57));
+            g.fillRect(278, 115, 43, 7);
+            g.setColor(INK);
+            g.drawRect(275, 112, 49, 32);
+            g.drawLine(275, 122, 324, 122);
+            g.drawLine(299, 112, 299, 144);
+            g.setColor(YELLOW);
+            g.fillRect(296, 119, 7, 6);
         }
-        g.setColor(new Color(126, 82, 46));
-        g.fillRect(275, 112, 49, 32);
-        g.setColor(new Color(169, 111, 57));
-        g.fillRect(278, 115, 43, 7);
-        g.setColor(INK);
-        g.drawRect(275, 112, 49, 32);
-        g.drawLine(275, 122, 324, 122);
-        g.drawLine(299, 112, 299, 144);
-        g.setColor(YELLOW);
-        g.fillRect(296, 119, 7, 6);
 
         // Notes on the wall and the shop door.
         g.setColor(new Color(208, 198, 169));
@@ -236,7 +235,7 @@ final class WorldRenderer {
 
         drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
-        if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
+        if (boxRetrieved && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
 
@@ -283,7 +282,9 @@ final class WorldRenderer {
         }
 
         EnvironmentArt.drawWorldVignette(g);
-        drawStreetBox(g, cameraX);
+        if (!boxRetrieved) {
+            drawStreetBox(g, cameraX);
+        }
         if (catPresent) {
             drawCat(g, cameraX);
         }
@@ -293,7 +294,7 @@ final class WorldRenderer {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
-        } else if (Math.abs(playerX - STREET_BOX_X) < 38) {
+        } else if (!boxRetrieved && Math.abs(playerX - STREET_BOX_X) < 38) {
             prompt(g, "E  EXAMINE BOX");
         } else if (catPresent && Math.abs(playerX - catX) < 38) {
             prompt(g, "E  PET CAT");
@@ -492,11 +493,13 @@ final class WorldRenderer {
                 GamePanel.pixelText(g, "SHOP ENTRANCE", shopScreenX - 34, 185, 1);
             }
 
-            int boxScreenX = STREET_BOX_X - cameraX;
-            if (boxScreenX >= -50 && boxScreenX <= W + 50) {
-                g.setColor(new Color(255, 230, 50, 200));
-                g.drawRect(boxScreenX - 28, STREET_BOX_Y - 35, 56, 35);
-                GamePanel.pixelText(g, "MYSTERY BOX", boxScreenX - 28, STREET_BOX_Y - 39, 1);
+            if (!boxRetrieved) {
+                int boxScreenX = STREET_BOX_X - cameraX;
+                if (boxScreenX >= -50 && boxScreenX <= W + 50) {
+                    g.setColor(new Color(255, 230, 50, 200));
+                    g.drawRect(boxScreenX - 28, STREET_BOX_Y - 35, 56, 35);
+                    GamePanel.pixelText(g, "MYSTERY BOX", boxScreenX - 28, STREET_BOX_Y - 39, 1);
+                }
             }
 
             int playerScreenX = px - cameraX;
