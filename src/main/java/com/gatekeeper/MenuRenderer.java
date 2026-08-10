@@ -106,7 +106,7 @@ final class MenuRenderer {
     static void drawDeveloper(Graphics2D g, int mouseX, int mouseY, int section, int selection,
                                boolean focusRight, boolean calibratorEnabled, boolean showCollisions,
                                boolean instantStart, boolean catAlwaysAppears, boolean ccBedroomBackground,
-                               boolean ccStreetBackground, SoundManager sound, int soundSceneSelection) {
+                               boolean ccStreetBackground, int starCount, SoundManager sound, int soundSceneSelection) {
         g.setColor(new Color(2, 5, 8));
         g.fillRect(0, 0, W, H);
         drawBorder(g);
@@ -227,9 +227,10 @@ final class MenuRenderer {
                 "GLOBAL POSITION MARKER: " + (calibratorEnabled ? "ON" : "OFF"),
                 "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF"),
                 "INSTANT START: " + (instantStart ? "ON" : "OFF"),
-                "CAT ALWAYS APPEARS: " + (catAlwaysAppears ? "ON" : "OFF")
+                "CAT ALWAYS APPEARS: " + (catAlwaysAppears ? "ON" : "OFF"),
+                "STREET STARS: " + starCount
             };
-            boolean[] activeState = {calibratorEnabled, showCollisions, instantStart, catAlwaysAppears};
+            boolean[] activeState = {calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, starCount > 0};
 
             for (int i = 0; i < tools.length; i++) {
                 int y = 58 + i * 26;

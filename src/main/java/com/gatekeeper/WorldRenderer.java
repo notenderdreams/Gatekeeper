@@ -44,6 +44,8 @@ final class WorldRenderer {
     private boolean catPresent;
     private int catX = STREET_CAT_X;
     private int catY = 152;
+    private int starCount = 25;
+    private final Starfield starfield = new Starfield();
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
                   BufferedImage shopBackground, BufferedImage alexSprites,
@@ -79,6 +81,10 @@ final class WorldRenderer {
 
     void setStreetBackground(BufferedImage streetBackground) {
         this.streetBackground = streetBackground;
+    }
+
+    void setStarCount(int starCount) {
+        this.starCount = starCount;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
@@ -245,6 +251,8 @@ final class WorldRenderer {
             g.setColor(CYAN);
             g.fillRect(420, 78, 38, 68);
         }
+
+        starfield.draw(g, cameraX, ticks, starCount);
 
         // Subtle flickering street lamp and entrance light halos
         EnvironmentArt.drawStreetLampFlicker(g, cameraX, ticks);

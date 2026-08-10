@@ -17,6 +17,7 @@ public final class SaveData {
     public boolean instantStart;
     public boolean ccBedroomBackground = true;
     public boolean ccStreetBackground = true;
+    public int starCount = 25;
 
     public SaveData() {
         this.chapter = 0;
