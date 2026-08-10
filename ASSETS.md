@@ -69,6 +69,14 @@ converted to an alpha PNG, and downsampled with nearest-neighbor filtering for t
 game's low-resolution reward screen. No text, logo, watermark, holograms, or futuristic
 controls.
 
+## Mystery Box asset
+
+Saved as `src/main/resources/assets/box.png`.
+
+Hand-painted mystery box object featuring an envelope on top and circuit diagram markings.
+Positioned on Lantern Street at `{ 175, 193 }`.
+
+
 ## Audio starter library
 
 Downloaded under `src/main/resources/assets/audio/kenney/` for the upcoming Java audio

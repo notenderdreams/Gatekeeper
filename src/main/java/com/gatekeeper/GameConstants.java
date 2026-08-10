@@ -20,6 +20,8 @@ final class GameConstants {
     static final int STREET_PLAYER_HEIGHT = 36;
     static final int STREET_WORLD_WIDTH = 922;
     static final int STREET_HOME_X = 93;
+    static final int STREET_BOX_X = 175;
+    static final int STREET_BOX_Y = 206;
     static final int STREET_CAT_X = 605;
     static final int[][] CAT_SPAWN_RANGES = {
         { 2, 96, 77 },

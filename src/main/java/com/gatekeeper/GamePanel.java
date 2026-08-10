@@ -47,6 +47,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
     private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
+    private final BufferedImage boxImage = loadRawImage("/assets/box.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final BufferedImage notebookCoverImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
@@ -120,7 +121,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal,
-        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground, alexSprites, miraSprites, catSprites,
+        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground, alexSprites, miraSprites, catSprites, boxImage,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
         erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
@@ -347,6 +348,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
+            } else if (Math.abs(playerX - STREET_BOX_X) < 38) {
+                say("ALEX|A mystery box placed on Lantern Street... it has a sealed envelope on top.");
             } else if (catPresent && Math.abs(playerX - catX) < 38) {
                 int catSound = random.nextInt(3) + 1;
                 sound.play(AUDIO_ROOT + "cat/cat" + catSound + ".wav", scene.name(), 1.0f);
