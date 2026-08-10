@@ -280,28 +280,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         notebookPage = 0;
         autoTester.reset();
         circuit.selectRecipe(recipes.get(0));
+        playSound("knock");
+        say("*knock knock*",
+            "ALEX|Who's knocking at the door in the middle of the night? I should check.",
+            "@START_BEDROOM");
     }
 
     private void updateIntroCutscene() {
         introTimer++;
-        if (introStage == 0 && introTimer >= 1) {
-            introStage = 1;
-            playSound("knock");
-            dialogue.clear();
-            line = null;
-            say("*knock knock*");
-        } else if (introStage == 1 && introTimer >= INTRO_DIALOGUE_TICK) {
-            introStage = 2;
-            dialogue.clear();
-            line = null;
-            say("ALEX|Who's knocking at the door in the middle of the night? I should check.");
-        } else if (introStage == 2 && line == null && dialogue.isEmpty()) {
-            introStage = 3;
-            scene = GameScene.BEDROOM;
-            setPlayerPosition(210, 157);
-            facing = Facing.DOWN;
-            saveCurrentProgress();
-        }
     }
 
     private void updateGame() {
@@ -663,6 +649,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             line = null;
             completedObjective = null;
             scene = GameScene.END;
+        } else if ("@START_BEDROOM".equals(next)) {
+            line = null;
+            completedObjective = null;
+            scene = GameScene.BEDROOM;
+            setPlayerPosition(210, 157);
+            facing = Facing.DOWN;
+            saveCurrentProgress();
         } else if ("@ENTER_BEDROOM_WITH_BOX".equals(next)) {
             line = null;
             completedObjective = null;
