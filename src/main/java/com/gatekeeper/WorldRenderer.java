@@ -13,8 +13,8 @@ import java.util.Set;
 import static com.gatekeeper.GameConstants.*;
 
 final class WorldRenderer {
-    private final BufferedImage bedroomBackground;
-    private final BufferedImage streetBackground;
+    private BufferedImage bedroomBackground;
+    private BufferedImage streetBackground;
     private final BufferedImage shopBackground;
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
@@ -71,6 +71,14 @@ final class WorldRenderer {
         this.erisWalkBounds = erisWalkBounds;
         this.erisInteractBounds = erisInteractBounds;
         this.erisRunBounds = erisRunBounds;
+    }
+
+    void setBedroomBackground(BufferedImage bedroomBackground) {
+        this.bedroomBackground = bedroomBackground;
+    }
+
+    void setStreetBackground(BufferedImage streetBackground) {
+        this.streetBackground = streetBackground;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,

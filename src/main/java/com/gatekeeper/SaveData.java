@@ -15,6 +15,8 @@ public final class SaveData {
     public int catY = 152;
     public boolean catAlwaysAppears;
     public boolean instantStart;
+    public boolean ccBedroomBackground = true;
+    public boolean ccStreetBackground = true;
 
     public SaveData() {
         this.chapter = 0;

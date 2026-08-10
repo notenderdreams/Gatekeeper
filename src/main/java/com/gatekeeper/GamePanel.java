@@ -36,9 +36,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
-    private final BufferedImage bedroomBackground = loadBackground("/assets/alex-bedroom.png");
-    // private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long.png");
-    private final BufferedImage streetBackground = loadStreetBackground("/assets/night-street-long-cc.jpg");
+    private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/alex-bedroom.png");
+    private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/alex-bedroom-cc.jpg");
+    private boolean ccBedroomBackground = true;
+    private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
+    private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
+    private boolean ccStreetBackground = true;
     private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
@@ -115,7 +118,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
-        bedroomBackground, streetBackground, shopBackground, alexSprites, miraSprites, catSprites,
+        ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal,
+        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground, alexSprites, miraSprites, catSprites,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
         erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
@@ -135,6 +139,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             SaveData data = SaveManager.loadGame();
             if (data != null) {
                 instantStart = data.instantStart;
+                ccBedroomBackground = data.ccBedroomBackground;
+                ccStreetBackground = data.ccStreetBackground;
+                worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+                worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
                 if (instantStart) {
                     loadSavedProgress();
                 }
@@ -174,13 +182,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving, playerRunning,
             facing, walkDistance, keys, uiScale, catPresent, catX, catY);
         switch (scene) {
-            case TITLE -> MenuRenderer.drawTitle(g, bedroomBackground, ticks,
+            case TITLE -> MenuRenderer.drawTitle(g, ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal, ticks,
                 mouseX, mouseY, titleSelection);
-            case CONTROLS -> MenuRenderer.drawControls(g, bedroomBackground, mouseX, mouseY);
+            case CONTROLS -> MenuRenderer.drawControls(g, ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal, mouseX, mouseY);
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, sound, soundSceneSelection);
+                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, sound, soundSceneSelection);
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -593,7 +601,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
                 if (!devFocusRight) {
-                    devSection = (devSection + direction + 3) % 3;
+                    devSection = (devSection + direction + 4) % 4;
                     devSelection = 0;
                 } else {
                     int max = devOptionCount();
@@ -834,7 +842,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.DEV) {
-            String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS"};
+            String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS", "COLOR CORRECT"};
             for (int i = 0; i < sections.length; i++) {
                 int sy = 58 + i * 28;
                 if (inside(x, y, 25, sy, 118, 22)) {
@@ -866,6 +874,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 2) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 58 + i * 26;
+                    if (inside(x, y, 160, oy, 285, 22)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        activateDevSelection();
+                        return;
+                    }
+                }
+            } else if (devSection == 3) {
                 for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(x, y, 160, oy, 285, 22)) {
@@ -956,7 +974,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int prevSelection = devSelection;
             boolean prevFocus = devFocusRight;
 
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 4; i++) {
                 int sy = 58 + i * 28;
                 if (inside(mouseX, mouseY, 25, sy, 118, 22)) {
                     devSection = i;
@@ -984,6 +1002,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 2) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 58 + i * 26;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        break;
+                    }
+                }
+            } else if (devSection == 3) {
                 for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
@@ -1107,6 +1134,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 saveCurrentProgress();
                 System.out.println("[DEV MENU] Cat Always Appears -> " + (catAlwaysAppears ? "ENABLED" : "DISABLED"));
             }
+        } else if (devSection == 3) {
+            if (devSelection == 0) {
+                ccBedroomBackground = !ccBedroomBackground;
+                worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+                playSound("ui-confirm");
+                saveCurrentProgress();
+                System.out.println("[DEV MENU] Bedroom Background CC -> " + (ccBedroomBackground ? "CC" : "NORMAL"));
+            } else if (devSelection == 1) {
+                ccStreetBackground = !ccStreetBackground;
+                worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
+                playSound("ui-confirm");
+                saveCurrentProgress();
+                System.out.println("[DEV MENU] Street Background CC -> " + (ccStreetBackground ? "CC" : "NORMAL"));
+            }
         }
     }
 
@@ -1116,7 +1157,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        return 4;
+        if (devSection == 2) return 4;
+        if (devSection == 3) return 2;
+        return 0;
     }
 
     private void adjustSelectedDevSound(int direction) {
@@ -1265,6 +1308,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (data == null) data = new SaveData();
         data.instantStart = instantStart;
         data.catAlwaysAppears = catAlwaysAppears;
+        data.ccBedroomBackground = ccBedroomBackground;
+        data.ccStreetBackground = ccStreetBackground;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV) {
@@ -1299,6 +1344,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.catPresent = data.catPresent || data.catAlwaysAppears;
         this.catX = data.catX;
         this.catY = data.catY;
+        this.ccBedroomBackground = data.ccBedroomBackground;
+        this.ccStreetBackground = data.ccStreetBackground;
+        this.worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        this.worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

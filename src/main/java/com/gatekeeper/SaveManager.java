@@ -40,7 +40,9 @@ public final class SaveManager {
             json.append("  \"catX\": ").append(data.catX).append(",\n");
             json.append("  \"catY\": ").append(data.catY).append(",\n");
             json.append("  \"catAlwaysAppears\": ").append(data.catAlwaysAppears).append(",\n");
-            json.append("  \"instantStart\": ").append(data.instantStart).append("\n");
+            json.append("  \"instantStart\": ").append(data.instantStart).append(",\n");
+            json.append("  \"ccBedroomBackground\": ").append(data.ccBedroomBackground).append(",\n");
+            json.append("  \"ccStreetBackground\": ").append(data.ccStreetBackground).append("\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -70,6 +72,8 @@ public final class SaveManager {
             data.catY = parseInt(content, "catY", 152);
             data.catAlwaysAppears = parseBoolean(content, "catAlwaysAppears", false);
             data.instantStart = parseBoolean(content, "instantStart", false);
+            data.ccBedroomBackground = parseBoolean(content, "ccBedroomBackground", true);
+            data.ccStreetBackground = parseBoolean(content, "ccStreetBackground", true);
 
             return data;
         } catch (Exception e) {
