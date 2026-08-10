@@ -44,6 +44,7 @@ public final class SaveManager {
             json.append("  \"ccBedroomBackground\": ").append(data.ccBedroomBackground).append(",\n");
             json.append("  \"ccStreetBackground\": ").append(data.ccStreetBackground).append(",\n");
             json.append("  \"boxRetrieved\": ").append(data.boxRetrieved).append(",\n");
+            json.append("  \"boxOpened\": ").append(data.boxOpened).append(",\n");
             json.append("  \"starCount\": ").append(data.starCount).append("\n");
             json.append("}\n");
 
@@ -77,6 +78,7 @@ public final class SaveManager {
             data.ccBedroomBackground = parseBoolean(content, "ccBedroomBackground", true);
             data.ccStreetBackground = parseBoolean(content, "ccStreetBackground", true);
             data.boxRetrieved = parseBoolean(content, "boxRetrieved", false);
+            data.boxOpened = parseBoolean(content, "boxOpened", false);
             data.starCount = parseInt(content, "starCount", 25);
 
             return data;

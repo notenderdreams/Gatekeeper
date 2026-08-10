@@ -42,6 +42,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage bedroomClosedBoxImage = loadBackground("/assets/bedroom(closed-box).jpg");
     private boolean ccBedroomBackground = true;
     private boolean boxRetrieved = false;
+    private boolean boxOpened = false;
     private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
     private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
     private boolean ccStreetBackground = true;
@@ -133,8 +134,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private long ticks;
 
     private BufferedImage getBedroomBackground() {
-        BufferedImage bg = boxRetrieved ? bedroomClosedBoxImage : bedroomNoBoxImage;
-        if (bg != null) return bg;
+        if (!boxRetrieved) {
+            return bedroomNoBoxImage != null ? bedroomNoBoxImage :
+                (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        }
+        if (!boxOpened) {
+            return bedroomClosedBoxImage != null ? bedroomClosedBoxImage :
+                (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        }
         return ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal;
     }
 
@@ -142,6 +149,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         BufferedImage bg = getBedroomBackground();
         worldRenderer.setBedroomBackground(bg);
         worldRenderer.setBoxRetrieved(boxRetrieved);
+        worldRenderer.setBoxOpened(boxOpened);
     }
 
     public GamePanel() {
@@ -334,8 +342,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void interact() {
         if (scene == GameScene.BEDROOM) {
-            if (boxRetrieved && near(299, 132)) {
+            if (boxRetrieved && !boxOpened && near(299, 132)) {
+                boxOpened = true;
                 if (chapter == 0) chapter = 1;
+                updateBedroomBackground();
                 playSound("ui-open");
                 say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
@@ -1245,6 +1255,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case 0 -> {
                 chapter = 0;
                 boxRetrieved = false;
+                boxOpened = false;
                 updateBedroomBackground();
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(210, 157);
@@ -1252,6 +1263,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case 1 -> {
                 chapter = 1;
                 boxRetrieved = true;
+                boxOpened = true;
                 updateBedroomBackground();
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
@@ -1371,6 +1383,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.ccBedroomBackground = ccBedroomBackground;
         data.ccStreetBackground = ccStreetBackground;
         data.boxRetrieved = boxRetrieved;
+        data.boxOpened = boxOpened;
         data.starCount = starCount;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
@@ -1409,6 +1422,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.ccBedroomBackground = data.ccBedroomBackground;
         this.ccStreetBackground = data.ccStreetBackground;
         this.boxRetrieved = data.boxRetrieved;
+        this.boxOpened = data.boxOpened;
         this.starCount = data.starCount;
         updateBedroomBackground();
         this.worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);

@@ -54,6 +54,7 @@ final class WorldRenderer {
     private int starCount = 25;
     private float playerShadowStrength = 1.0f;
     private boolean boxRetrieved = false;
+    private boolean boxOpened = false;
     private final Starfield starfield = new Starfield();
     private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
@@ -95,6 +96,10 @@ final class WorldRenderer {
         this.boxRetrieved = boxRetrieved;
     }
 
+    void setBoxOpened(boolean boxOpened) {
+        this.boxOpened = boxOpened;
+    }
+
     void setStreetBackground(BufferedImage streetBackground) {
         this.streetBackground = streetBackground;
     }
@@ -130,7 +135,7 @@ final class WorldRenderer {
             EnvironmentArt.drawWorldVignette(g);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
-            if (boxRetrieved && near(299, 132)) prompt(g, "E  OPEN THE BOX");
+            if (boxRetrieved && !boxOpened && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
 
@@ -235,7 +240,7 @@ final class WorldRenderer {
 
         drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
-        if (boxRetrieved && near(299, 128)) prompt(g, "E  OPEN THE BOX");
+        if (boxRetrieved && !boxOpened && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
 
