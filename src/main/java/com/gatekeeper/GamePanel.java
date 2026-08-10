@@ -92,6 +92,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private GameScene scene = GameScene.TITLE;
     private GameScene returnScene = GameScene.BEDROOM;
     private String line;
+    private String completedObjective;
     private int lineAge;
     private int chapter;
     private int titleSelection;
@@ -240,6 +241,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
         }
+        if (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP) {
+            ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
+                crafted, completedObjective);
+        }
         if (dialogueVisible()) {
             DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
                 notebookItemImage, workbenchItemImage);
@@ -259,6 +264,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         introStage = 0;
         dialogue.clear();
         line = null;
+        completedObjective = null;
         keys.clear();
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
@@ -403,6 +409,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void interact() {
         if (scene == GameScene.BEDROOM) {
             if (boxRetrieved && !boxOpened && near(299, 132)) {
+                completedObjective = "OPEN THE MYSTERY BOX";
                 boxOpened = true;
                 if (chapter == 0) chapter = 1;
                 updateBedroomBackground();
@@ -415,6 +422,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 saveCurrentProgress();
             } else if (near(205, 126)) {
                 if (boxOpened && !workbenchInstalled) {
+                    completedObjective = "INSTALL THE WORKBENCH";
                     workbenchInstalled = true;
                     worldRenderer.setWorkbenchInstalled(true);
                     playSound("gate-place");
@@ -450,6 +458,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 facing = Facing.RIGHT;
                 saveCurrentProgress();
             } else if (!boxRetrieved && Math.abs(playerX - STREET_BOX_X) < 38) {
+                completedObjective = "FIND THE REASON FOR THE KNOCK";
                 boxRetrieved = true;
                 if (chapter == 0) chapter = 1;
                 updateBedroomBackground();
@@ -485,6 +494,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (chapter == 0) {
             say("MIRA|Hey, kid. Bring me something interesting.");
         } else if (chapter == 1) {
+            completedObjective = "ASK MIRA ABOUT THE GATES";
             chapter = 2;
             say("MIRA|Logic gates! AND, OR, and NOT are the alphabet.",
                 "MIRA|Build me a NAND, a NOR, and an XOR.",
@@ -493,6 +503,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Exactly. A circuit must keep every one.");
             saveCurrentProgress();
         } else if (chapter == 2 && basicComplete()) {
+            completedObjective = "RETURN TO MIRA";
             chapter = 3;
             say("MIRA|Clean work. You tested every possible input.",
                 "MIRA|Take this LogicLens. It checks every row at once.",
@@ -502,6 +513,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if (chapter == 2) {
             say("MIRA|I still need NAND, NOR, and XOR. Your board is at home.");
         } else if (chapter == 3 && advancedComplete()) {
+            completedObjective = "RETURN TO MIRA";
             chapter = 4;
             say("MIRA|Five devices, and every promise kept.",
                 "MIRA|You don't just connect gates, Alex. You understand them.",
@@ -646,9 +658,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         String next = dialogue.poll();
         if ("@END".equals(next)) {
             line = null;
+            completedObjective = null;
             scene = GameScene.END;
         } else {
             line = next;
+            if (next == null) completedObjective = null;
             lineAge = 0;
             playSound(isItemCard(next) ? "success" : "ui-click");
         }
@@ -1315,6 +1329,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private void loadDevPreset(int preset) {
         dialogue.clear();
         line = null;
+        completedObjective = null;
         exitPrompt = false;
         autoTester.reset();
         Arrays.fill(crafted, false);
@@ -1440,6 +1455,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         dialogue.clear();
         line = null;
+        completedObjective = null;
         chapter = 0;
         autoTester.reset();
         selectedRecipe = 0;
@@ -1514,6 +1530,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.circuit.selectRecipe(recipes.get(0));
         this.dialogue.clear();
         this.line = null;
+        this.completedObjective = null;
         this.exitPrompt = false;
         return true;
     }
