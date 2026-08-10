@@ -110,6 +110,7 @@ final class WorldRenderer {
     void drawBedroom(Graphics2D g) {
         if (bedroomBackground != null) {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
+            EnvironmentArt.drawBedroomLampFlicker(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
             if (chapter == 0) EnvironmentArt.drawInteractionGlow(g, 299, 132, YELLOW, ticks);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);

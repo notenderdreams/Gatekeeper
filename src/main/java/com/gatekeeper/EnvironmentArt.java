@@ -4,6 +4,7 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -16,6 +17,7 @@ final class EnvironmentArt {
         new Color(255, 239, 178, 180), new Color(250, 180, 40), 160);
     private static final BufferedImage CYAN_GLOW = createRadialLightTexture(
         new Color(218, 253, 255, 190), new Color(54, 211, 224), 160);
+    private static final BufferedImage BEDROOM_LAMP_CONE = createBedroomLampConeTexture();
 
     private EnvironmentArt() {}
 
@@ -43,6 +45,52 @@ final class EnvironmentArt {
         return image;
     }
 
+    private static BufferedImage createBedroomLampConeTexture() {
+        int width = 76;
+        int height = 58;
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Polygon cone = new Polygon(
+            new int[] {37, 5, 38, 70, 50},
+            new int[] {5, 37, 52, 45, 8},
+            5
+        );
+        int[] pointX = {37, 5, 38, 70, 50};
+        int[] pointY = {5, 37, 52, 45, 8};
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (!cone.contains(x + 0.5, y + 0.5)) continue;
+
+                float progress = Math.max(0.0f, Math.min(1.0f, (y - 5.0f) / 47.0f));
+                float distanceFade = 1.0f - 0.74f * progress;
+                float edgeDistance = Float.MAX_VALUE;
+                for (int i = 0; i < pointX.length; i++) {
+                    int next = (i + 1) % pointX.length;
+                    edgeDistance = Math.min(edgeDistance,
+                        distanceToSegment(x + 0.5f, y + 0.5f,
+                            pointX[i], pointY[i], pointX[next], pointY[next]));
+                }
+                float edgeFade = Math.min(1.0f, edgeDistance / 3.5f);
+                edgeFade = edgeFade * edgeFade * (3.0f - 2.0f * edgeFade);
+                int alpha = Math.round(168.0f * distanceFade * edgeFade);
+                image.setRGB(x, y, new Color(255, 205, 92, alpha).getRGB());
+            }
+        }
+        return image;
+    }
+
+    private static float distanceToSegment(float px, float py, float x1, float y1,
+                                           float x2, float y2) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float lengthSquared = dx * dx + dy * dy;
+        float position = lengthSquared == 0.0f ? 0.0f
+            : Math.max(0.0f, Math.min(1.0f, ((px - x1) * dx + (py - y1) * dy) / lengthSquared));
+        float nearestX = x1 + position * dx;
+        float nearestY = y1 + position * dy;
+        return (float) Math.hypot(px - nearestX, py - nearestY);
+    }
+
     static void drawWorldVignette(Graphics2D g) {
         g.setColor(new Color(0, 0, 0, 42));
         g.fillRect(0, 20, 9, H - 20);
@@ -56,6 +104,45 @@ final class EnvironmentArt {
         g.fillOval(x - 25 - pulse, y - 12 - pulse, 50 + pulse * 2, 25 + pulse * 2);
         g.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 150));
         g.drawOval(x - 20 - pulse, y - 9 - pulse, 40 + pulse * 2, 19 + pulse * 2);
+    }
+
+    static void drawBedroomLampFlicker(Graphics2D g, long ticks) {
+        Composite oldComposite = g.getComposite();
+
+        // Irregular value noise gives the bulb a small electrical shimmer and a slower
+        // brightness drift. Some time blocks also contain a short, smoothly recovered dip.
+        float shimmer = smoothNoise(ticks, 3, 0x51A7) * 0.055f;
+        float drift = smoothNoise(ticks, 17, 0x2D91) * 0.045f;
+        long block = Math.floorDiv(ticks, 53L);
+        float blockPosition = Math.floorMod(ticks, 53L) / 52.0f;
+        float dipChance = unitNoise(block, 0x7F43);
+        float dipEnvelope = dipChance < 0.30f
+            ? (float) Math.pow(Math.sin(Math.PI * blockPosition), 12.0) * 0.22f
+            : 0.0f;
+        float opacity = Math.max(0.64f, Math.min(1.0f, 0.93f + shimmer + drift - dipEnvelope));
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity));
+
+        // User-calibrated outline: source (197,45)-(210,48), spreading through
+        // (165,77), (198,92), and an expanded right edge at (230,85).
+        g.drawImage(BEDROOM_LAMP_CONE, 160, 40, null);
+        g.setComposite(oldComposite);
+    }
+
+    private static float smoothNoise(long ticks, int interval, int seed) {
+        long sample = Math.floorDiv(ticks, interval);
+        float position = Math.floorMod(ticks, interval) / (float) interval;
+        position = position * position * (3.0f - 2.0f * position);
+        float current = unitNoise(sample, seed) * 2.0f - 1.0f;
+        float next = unitNoise(sample + 1, seed) * 2.0f - 1.0f;
+        return current + (next - current) * position;
+    }
+
+    private static float unitNoise(long value, int seed) {
+        long mixed = value + seed;
+        mixed = (mixed ^ (mixed >>> 30)) * 0xbf58476d1ce4e5b9L;
+        mixed = (mixed ^ (mixed >>> 27)) * 0x94d049bb133111ebL;
+        mixed ^= mixed >>> 31;
+        return (mixed & 0xFFFFFFL) / (float) 0xFFFFFFL;
     }
 
     static void drawStreetLampFlicker(Graphics2D g, int cameraX, long ticks) {
