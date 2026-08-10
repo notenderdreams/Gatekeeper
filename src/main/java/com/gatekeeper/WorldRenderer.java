@@ -1,10 +1,16 @@
 package com.gatekeeper;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Paint;
+import java.awt.RadialGradientPaint;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +22,11 @@ final class WorldRenderer {
     private BufferedImage bedroomBackground;
     private BufferedImage streetBackground;
     private final BufferedImage shopBackground;
+    private final BufferedImage installedWorkbenchImage;
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
     private final BufferedImage catSprites;
+    private final BufferedImage boxImage;
     private final BufferedImage erisIdleSprites;
     private final BufferedImage erisWalkSprites;
     private final BufferedImage erisInteractSprites;
@@ -45,11 +53,18 @@ final class WorldRenderer {
     private int catX = STREET_CAT_X;
     private int catY = 152;
     private int starCount = 25;
+    private float playerShadowStrength = 1.0f;
+    private boolean boxRetrieved = false;
+    private boolean boxOpened = false;
+    private boolean workbenchInstalled = false;
     private final Starfield starfield = new Starfield();
+    private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
-                  BufferedImage shopBackground, BufferedImage alexSprites,
+                  BufferedImage shopBackground, BufferedImage installedWorkbenchImage,
+                  BufferedImage alexSprites,
                   BufferedImage miraSprites, BufferedImage catSprites,
+                  BufferedImage boxImage,
                   Rectangle[] alexFrameBounds, Rectangle[] miraFrameBounds,
                   Rectangle[] catFrameBounds,
                   BufferedImage erisIdleSprites, BufferedImage erisWalkSprites,
@@ -59,9 +74,11 @@ final class WorldRenderer {
         this.bedroomBackground = bedroomBackground;
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
+        this.installedWorkbenchImage = installedWorkbenchImage;
         this.alexSprites = alexSprites;
         this.miraSprites = miraSprites;
         this.catSprites = catSprites;
+        this.boxImage = boxImage;
         this.alexFrameBounds = alexFrameBounds;
         this.miraFrameBounds = miraFrameBounds;
         this.catFrameBounds = catFrameBounds;
@@ -77,6 +94,18 @@ final class WorldRenderer {
 
     void setBedroomBackground(BufferedImage bedroomBackground) {
         this.bedroomBackground = bedroomBackground;
+    }
+
+    void setBoxRetrieved(boolean boxRetrieved) {
+        this.boxRetrieved = boxRetrieved;
+    }
+
+    void setBoxOpened(boolean boxOpened) {
+        this.boxOpened = boxOpened;
+    }
+
+    void setWorkbenchInstalled(boolean workbenchInstalled) {
+        this.workbenchInstalled = workbenchInstalled;
     }
 
     void setStreetBackground(BufferedImage streetBackground) {
@@ -110,13 +139,18 @@ final class WorldRenderer {
     void drawBedroom(Graphics2D g) {
         if (bedroomBackground != null) {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
+            if (workbenchInstalled && installedWorkbenchImage != null) {
+                g.drawImage(installedWorkbenchImage, 0, 0, W, H, null);
+            }
             EnvironmentArt.drawBedroomLampFlicker(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
-            if (chapter == 0) EnvironmentArt.drawInteractionGlow(g, 299, 132, YELLOW, ticks);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
             drawHud(g, "ALEX'S ROOM");
-            if (chapter == 0 && near(299, 132)) prompt(g, "E  OPEN THE BOX");
-            else if (near(205, 126)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
+            if (boxRetrieved && !boxOpened && near(299, 132)) prompt(g, "E  OPEN THE BOX");
+            else if (near(205, 126) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
+            else if (near(205, 126) && workbenchInstalled) {
+                prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
+            }
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
 
             if (showCollisions) {
@@ -186,23 +220,18 @@ final class WorldRenderer {
         g.fillRect(73, 132, 37, 8);
         g.fillRect(88, 140, 7, 26);
 
-        // The box receives a subtle warm glow before it is opened.
-        if (chapter == 0) {
-            g.setColor(new Color(250, 204, 21, 32));
-            g.fillRect(263, 99, 72, 58);
-            g.setColor(new Color(250, 204, 21, 45));
-            g.fillRect(269, 105, 60, 46);
+        if (boxRetrieved) {
+            g.setColor(new Color(126, 82, 46));
+            g.fillRect(275, 112, 49, 32);
+            g.setColor(new Color(169, 111, 57));
+            g.fillRect(278, 115, 43, 7);
+            g.setColor(INK);
+            g.drawRect(275, 112, 49, 32);
+            g.drawLine(275, 122, 324, 122);
+            g.drawLine(299, 112, 299, 144);
+            g.setColor(YELLOW);
+            g.fillRect(296, 119, 7, 6);
         }
-        g.setColor(new Color(126, 82, 46));
-        g.fillRect(275, 112, 49, 32);
-        g.setColor(new Color(169, 111, 57));
-        g.fillRect(278, 115, 43, 7);
-        g.setColor(INK);
-        g.drawRect(275, 112, 49, 32);
-        g.drawLine(275, 122, 324, 122);
-        g.drawLine(299, 112, 299, 144);
-        g.setColor(YELLOW);
-        g.fillRect(296, 119, 7, 6);
 
         // Notes on the wall and the shop door.
         g.setColor(new Color(208, 198, 169));
@@ -225,8 +254,11 @@ final class WorldRenderer {
 
         drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
         drawHud(g, "ALEX'S ROOM");
-        if (chapter == 0 && near(299, 128)) prompt(g, "E  OPEN THE BOX");
-        else if (near(93, 91)) prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT DESK");
+        if (boxRetrieved && !boxOpened && near(299, 128)) prompt(g, "E  OPEN THE BOX");
+        else if (near(93, 91) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
+        else if (near(93, 91) && workbenchInstalled) {
+            prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
+        }
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
 
         if (showCollisions) {
@@ -272,15 +304,20 @@ final class WorldRenderer {
         }
 
         EnvironmentArt.drawWorldVignette(g);
+        if (!boxRetrieved) {
+            drawStreetBox(g, cameraX);
+        }
         if (catPresent) {
             drawCat(g, cameraX);
         }
-        drawPlayer(g, playerX - cameraX, STREET_GROUND_Y, STREET_PLAYER_HEIGHT);
+        drawStreetPlayer(g, playerX - cameraX);
         drawHud(g, "LANTERN STREET");
         if (Math.abs(playerX - STREET_HOME_X) < 38) {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
             prompt(g, "E  ENTER MIRA'S SHOP");
+        } else if (!boxRetrieved && Math.abs(playerX - STREET_BOX_X) < 38) {
+            prompt(g, "E  EXAMINE BOX");
         } else if (catPresent && Math.abs(playerX - catX) < 38) {
             prompt(g, "E  PET CAT");
         }
@@ -289,6 +326,59 @@ final class WorldRenderer {
             drawCollisionOverlay(g, GameScene.STREET, playerX, playerY, cameraX);
         }
         drawCalibratedPoints(g, cameraX);
+    }
+
+    private void drawStreetPlayer(Graphics2D g, int screenX) {
+        Graphics2D layerGraphics = streetPlayerLayer.createGraphics();
+        layerGraphics.setComposite(AlphaComposite.Clear);
+        layerGraphics.fillRect(0, 0, W, H);
+        layerGraphics.setComposite(AlphaComposite.SrcOver);
+        float proximity = streetLightProximity();
+        playerShadowStrength = 1.0f - proximity * 0.65f;
+        drawPlayer(layerGraphics, screenX, STREET_GROUND_Y, STREET_PLAYER_HEIGHT);
+        playerShadowStrength = 1.0f;
+
+        // Cool night tint affects only the character layer, not the street behind it.
+        layerGraphics.setComposite(AlphaComposite.SrcAtop);
+        int darkness = Math.round(128.0f - proximity * 40.0f);
+        layerGraphics.setColor(new Color(5, 12, 24, darkness));
+        layerGraphics.fillRect(0, 0, W, H);
+        applyStreetLightTint(layerGraphics);
+        layerGraphics.dispose();
+        g.drawImage(streetPlayerLayer, 0, 0, null);
+    }
+
+    private void applyStreetLightTint(Graphics2D g) {
+        float amber = Math.max(
+            Math.max(lightInfluence(playerX, 30, 145), lightInfluence(playerX, 109, 155)),
+            lightInfluence(playerX, 521, 165));
+        float cyan = lightInfluence(playerX, 904, 175);
+
+        if (amber > 0.0f) {
+            g.setColor(new Color(255, 205, 92, Math.round(amber * 32.0f)));
+            g.fillRect(0, 0, W, H);
+        }
+        if (cyan > 0.0f) {
+            g.setColor(new Color(112, 230, 240, Math.round(cyan * 38.0f)));
+            g.fillRect(0, 0, W, H);
+        }
+        float brightness = Math.max(amber, cyan);
+        if (brightness > 0.0f) {
+            g.setColor(new Color(255, 250, 235, Math.round(brightness * 96.0f)));
+            g.fillRect(0, 0, W, H);
+        }
+    }
+
+    private float streetLightProximity() {
+        float amber = Math.max(
+            Math.max(lightInfluence(playerX, 30, 145), lightInfluence(playerX, 109, 155)),
+            lightInfluence(playerX, 521, 165));
+        return Math.max(amber, lightInfluence(playerX, 904, 175));
+    }
+
+    private static float lightInfluence(int position, int source, int radius) {
+        float influence = 1.0f - Math.min(1.0f, Math.abs(position - source) / (float) radius);
+        return influence * influence * (3.0f - 2.0f * influence);
     }
 
     static final class CalibratedPoint {
@@ -423,6 +513,15 @@ final class WorldRenderer {
                 g.setColor(new Color(255, 230, 50, 200));
                 g.drawRect(shopScreenX - 38, 160, 76, 50);
                 GamePanel.pixelText(g, "SHOP ENTRANCE", shopScreenX - 34, 185, 1);
+            }
+
+            if (!boxRetrieved) {
+                int boxScreenX = STREET_BOX_X - cameraX;
+                if (boxScreenX >= -50 && boxScreenX <= W + 50) {
+                    g.setColor(new Color(255, 230, 50, 200));
+                    g.drawRect(boxScreenX - 28, STREET_BOX_Y - 35, 56, 35);
+                    GamePanel.pixelText(g, "MYSTERY BOX", boxScreenX - 28, STREET_BOX_Y - 39, 1);
+                }
             }
 
             int playerScreenX = px - cameraX;
@@ -604,7 +703,7 @@ final class WorldRenderer {
             int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
             int feetY = y + 5;
 
-            g.setColor(new Color(3, 5, 8, 105));
+            g.setColor(new Color(3, 5, 8, scaledShadowAlpha(105)));
             int shadowWidth = (int) (width * 0.7f);
             g.fillOval(x - shadowWidth / 2, feetY - 3, shadowWidth, 5);
 
@@ -636,7 +735,7 @@ final class WorldRenderer {
             int height = spriteHeight;
             int width = Math.max(12, Math.round(height * frame.width / (float) frame.height));
             int feetY = y + 5;
-            g.setColor(new Color(3, 5, 8, 105));
+            g.setColor(new Color(3, 5, 8, scaledShadowAlpha(105)));
             int shadowWidth = row == 0 ? 20 : 17;
             g.fillOval(x - shadowWidth / 2, feetY - 3, shadowWidth, row == 0 ? 6 : 5);
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -649,7 +748,7 @@ final class WorldRenderer {
             return;
         }
         boolean walking = line == null && (!keys.isEmpty()) && (ticks / 8) % 2 == 0;
-        g.setColor(new Color(7, 8, 12, 90));
+        g.setColor(new Color(7, 8, 12, scaledShadowAlpha(90)));
         g.fillOval(x - 10, y + 6, 20, 6);
         g.setColor(new Color(218, 164, 124));
         g.fillRect(x - 6, y - 19, 12, 10);
@@ -668,6 +767,10 @@ final class WorldRenderer {
         g.fillRect(x + (walking ? 3 : 2), y + 3, 4, 8);
         g.setColor(RED);
         drawHeart(g, x - 2, y - 6);
+    }
+
+    private int scaledShadowAlpha(int baseAlpha) {
+        return Math.round(baseAlpha * playerShadowStrength);
     }
 
     private void drawShopkeeper(Graphics2D g, int x, int y) {
@@ -730,6 +833,55 @@ final class WorldRenderer {
             g.drawImage(catSprites, screenX - width / 2, catWorldY - height,
                 screenX - width / 2 + width, catWorldY,
                 frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
+        }
+    }
+
+    private void drawStreetBox(Graphics2D g, int cameraX) {
+        int screenX = STREET_BOX_X - cameraX;
+        int screenY = STREET_BOX_Y;
+        int width = 56;
+        int height = 35;
+        if (screenX + width < 0 || screenX - width > W) return;
+
+        // Soft environmental drop shadow anchored at the base contact line (screenY + 2)
+        float shadowCenterX = screenX;
+        float shadowCenterY = screenY + 2;
+        float radiusX = width * 0.65f;
+        float radiusY = 7.5f;
+
+        Point2D center = new Point2D.Float(0, 0);
+        float[] fractions = { 0.0f, 0.30f, 0.65f, 1.0f };
+        Color[] colors = {
+            new Color(2, 4, 8, 220),   // deep dark core contact shadow at base
+            new Color(3, 5, 10, 150),  // mid ground shadow
+            new Color(4, 7, 12, 60),   // soft ambient falloff edge
+            new Color(4, 7, 12, 0)     // fully transparent boundary
+        };
+
+        Paint oldPaint = g.getPaint();
+        AffineTransform oldTransform = g.getTransform();
+        Object oldAntialias = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.translate(shadowCenterX, shadowCenterY);
+        g.scale(1.0, (double) radiusY / radiusX);
+        g.setPaint(new RadialGradientPaint(center, radiusX, fractions, colors));
+        g.fill(new Ellipse2D.Float(-radiusX, -radiusX, radiusX * 2, radiusX * 2));
+
+        g.setTransform(oldTransform);
+        g.setPaint(oldPaint);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+            oldAntialias != null ? oldAntialias : RenderingHints.VALUE_ANTIALIAS_OFF);
+
+        if (boxImage != null) {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g.drawImage(boxImage, screenX - width / 2, screenY - height, width, height, null);
+        } else {
+            g.setColor(new Color(126, 82, 46));
+            g.fillRect(screenX - width / 2, screenY - height, width, height);
+            g.setColor(INK);
+            g.drawRect(screenX - width / 2, screenY - height, width, height);
         }
     }
 

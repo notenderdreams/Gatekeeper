@@ -69,6 +69,14 @@ converted to an alpha PNG, and downsampled with nearest-neighbor filtering for t
 game's low-resolution reward screen. No text, logo, watermark, holograms, or futuristic
 controls.
 
+## Mystery Box asset
+
+Saved as `src/main/resources/assets/box.png`.
+
+Hand-painted mystery box object featuring an envelope on top and circuit diagram markings.
+Positioned on Lantern Street at `{ 175, 193 }`.
+
+
 ## Audio starter library
 
 Downloaded under `src/main/resources/assets/audio/kenney/` for the upcoming Java audio
@@ -84,6 +92,7 @@ audio map is implemented.
 - `audio/ambience/road-ambience.mp3`: the user-provided Lantern Street ambience.
 - `audio/ambience/road-ambience.wav`: its Java-compatible runtime conversion, layered
   only while Alex is on Lantern Street.
+- `audio/door knock.wav`: user-provided door knock sound, copied to `audio/game/knock.wav` for intro sequence playback.
 
 All four packs are from Kenney and include their license files. The source pages list
 the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,

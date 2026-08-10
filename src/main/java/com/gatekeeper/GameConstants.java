@@ -20,6 +20,8 @@ final class GameConstants {
     static final int STREET_PLAYER_HEIGHT = 36;
     static final int STREET_WORLD_WIDTH = 922;
     static final int STREET_HOME_X = 93;
+    static final int STREET_BOX_X = 175;
+    static final int STREET_BOX_Y = 206;
     static final int STREET_CAT_X = 605;
     static final int[][] CAT_SPAWN_RANGES = {
         { 2, 96, 77 },
@@ -32,6 +34,8 @@ final class GameConstants {
 
     static final String AUDIO_ROOT = "/assets/audio/game/";
     static final String LOGICLENS_ITEM_CARD = "@ITEM_LOGICLENS";
+    static final String NOTEBOOK_ITEM_CARD = "@ITEM_NOTEBOOK";
+    static final String WORKBENCH_ITEM_CARD = "@ITEM_WORKBENCH";
     static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
     static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
 

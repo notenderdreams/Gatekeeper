@@ -33,12 +33,18 @@ import static com.gatekeeper.GameConstants.*;
 
 @SuppressWarnings("serial")
 public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
+    private static final int INTRO_DIALOGUE_TICK = 2 * 60;
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
     private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/alex-bedroom.png");
     private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/alex-bedroom-cc.jpg");
+    private final BufferedImage bedroomNoBoxImage = loadBackground("/assets/bedroom(no-box).jpg");
+    private final BufferedImage bedroomClosedBoxImage = loadBackground("/assets/bedroom(closed-box).jpg");
     private boolean ccBedroomBackground = true;
+    private boolean boxRetrieved = false;
+    private boolean boxOpened = false;
+    private boolean workbenchInstalled = false;
     private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
     private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
     private boolean ccStreetBackground = true;
@@ -47,7 +53,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
     private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
+    private final BufferedImage boxImage = loadRawImage("/assets/box.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
+    private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
+    private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
+    private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
     private final BufferedImage notebookCoverImage = loadRawImage(
         "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage(
@@ -119,14 +129,37 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
-        ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal,
-        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground, alexSprites, miraSprites, catSprites,
+        bedroomNoBoxImage != null ? bedroomNoBoxImage : (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal),
+        ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground,
+        installedWorkbenchImage, alexSprites, miraSprites, catSprites, boxImage,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
         erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
     private int mouseX = -1;
     private int mouseY = -1;
     private long ticks;
+    private int introTimer = 0;
+    private int introStage = 0;
+
+    private BufferedImage getBedroomBackground() {
+        if (!boxRetrieved) {
+            return bedroomNoBoxImage != null ? bedroomNoBoxImage :
+                (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        }
+        if (!boxOpened) {
+            return bedroomClosedBoxImage != null ? bedroomClosedBoxImage :
+                (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        }
+        return ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal;
+    }
+
+    private void updateBedroomBackground() {
+        BufferedImage bg = getBedroomBackground();
+        worldRenderer.setBedroomBackground(bg);
+        worldRenderer.setBoxRetrieved(boxRetrieved);
+        worldRenderer.setBoxOpened(boxOpened);
+        worldRenderer.setWorkbenchInstalled(workbenchInstalled);
+    }
 
     public GamePanel() {
         setPreferredSize(new Dimension(1280, 720));
@@ -143,13 +176,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 ccBedroomBackground = data.ccBedroomBackground;
                 ccStreetBackground = data.ccStreetBackground;
                 starCount = data.starCount;
-                worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
                 worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
                 worldRenderer.setStarCount(starCount);
+                updateBedroomBackground();
                 if (instantStart) {
                     loadSavedProgress();
                 }
             }
+        } else {
+            updateBedroomBackground();
         }
 
         Timer timer = new Timer(1000 / 60, event -> updateGame());
@@ -185,13 +220,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving, playerRunning,
             facing, walkDistance, keys, uiScale, catPresent, catX, catY);
         switch (scene) {
-            case TITLE -> MenuRenderer.drawTitle(g, ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal, ticks,
+            case TITLE -> MenuRenderer.drawTitle(g, getBedroomBackground(), ticks,
                 mouseX, mouseY, titleSelection);
-            case CONTROLS -> MenuRenderer.drawControls(g, ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal, mouseX, mouseY);
+            case CONTROLS -> MenuRenderer.drawControls(g, getBedroomBackground(), mouseX, mouseY);
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
                 devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, sound, soundSceneSelection);
+            case INTRO -> {
+                g.setColor(Color.BLACK);
+                g.fillRect(0, 0, W, H);
+            }
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
@@ -202,10 +241,52 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case END -> notebookRenderer.drawEnding(g);
         }
         if (dialogueVisible()) {
-            DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage);
+            DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
+                notebookItemImage, workbenchItemImage);
         }
         if (exitPrompt) MenuRenderer.drawPause(g, mouseX, mouseY, exitPromptSelection);
         g.dispose();
+    }
+
+    private void startIntroCutscene() {
+        chapter = 0;
+        boxRetrieved = false;
+        boxOpened = false;
+        workbenchInstalled = false;
+        updateBedroomBackground();
+        scene = GameScene.INTRO;
+        introTimer = 0;
+        introStage = 0;
+        dialogue.clear();
+        line = null;
+        keys.clear();
+        Arrays.fill(crafted, false);
+        selectedRecipe = 0;
+        notebookPage = 0;
+        autoTester.reset();
+        circuit.selectRecipe(recipes.get(0));
+    }
+
+    private void updateIntroCutscene() {
+        introTimer++;
+        if (introStage == 0 && introTimer >= 1) {
+            introStage = 1;
+            playSound("knock");
+            dialogue.clear();
+            line = null;
+            say("*knock knock*");
+        } else if (introStage == 1 && introTimer >= INTRO_DIALOGUE_TICK) {
+            introStage = 2;
+            dialogue.clear();
+            line = null;
+            say("ALEX|Who's knocking at the door in the middle of the night? I should check.");
+        } else if (introStage == 2 && line == null && dialogue.isEmpty()) {
+            introStage = 3;
+            scene = GameScene.BEDROOM;
+            setPlayerPosition(210, 157);
+            facing = Facing.DOWN;
+            saveCurrentProgress();
+        }
     }
 
     private void updateGame() {
@@ -215,6 +296,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
         else sound.stopAmbient();
         if (dialogueVisible()) lineAge++;
+        if (scene == GameScene.INTRO) {
+            updateIntroCutscene();
+            repaint();
+            return;
+        }
         if (scene == GameScene.BOARD && autoTester.isRunning()) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null
@@ -316,16 +402,32 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void interact() {
         if (scene == GameScene.BEDROOM) {
-            if (chapter == 0 && near(299, 132)) {
-                chapter = 1;
+            if (boxRetrieved && !boxOpened && near(299, 132)) {
+                boxOpened = true;
+                if (chapter == 0) chapter = 1;
+                updateBedroomBackground();
                 playSound("ui-open");
-                say("ALEX|A box full of tiny black pieces... AND, OR, NOT.",
+                say(NOTEBOOK_ITEM_CARD,
+                    WORKBENCH_ITEM_CARD,
+                    "ALEX|A box full of tiny black pieces... AND, OR, NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
                 saveCurrentProgress();
             } else if (near(205, 126)) {
-                if (chapter >= 2) openBoard();
-                else say("ALEX|An old pegboard. Maybe I can build something on it.");
+                if (boxOpened && !workbenchInstalled) {
+                    workbenchInstalled = true;
+                    worldRenderer.setWorkbenchInstalled(true);
+                    playSound("gate-place");
+                    say("ALEX|There. The workbench fits perfectly on the desk.",
+                        chapter >= 2
+                            ? "ALEX|Mira's circuit plans should work here."
+                            : "ALEX|Now I just need to find out what these gates are for.");
+                    saveCurrentProgress();
+                } else if (workbenchInstalled && chapter >= 2) {
+                    openBoard();
+                } else if (workbenchInstalled) {
+                    say("ALEX|The workbench is ready. I need to learn what to build first.");
+                }
             } else if (near(407, 132)) {
                 scene = GameScene.STREET;
                 rollCatSpawn();
@@ -346,6 +448,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("door-open");
                 setPlayerPosition(55, 174);
                 facing = Facing.RIGHT;
+                saveCurrentProgress();
+            } else if (!boxRetrieved && Math.abs(playerX - STREET_BOX_X) < 38) {
+                boxRetrieved = true;
+                if (chapter == 0) chapter = 1;
+                updateBedroomBackground();
+                say("ALEX|A mystery box placed on Lantern Street... with a sealed envelope on top.",
+                    "ALEX|I'll bring it back to my workshop.");
+                playSound("door-open");
+                scene = GameScene.BEDROOM;
+                setPlayerPosition(210, 157);
+                facing = Facing.DOWN;
                 saveCurrentProgress();
             } else if (catPresent && Math.abs(playerX - catX) < 38) {
                 int catSound = random.nextInt(3) + 1;
@@ -537,13 +650,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else {
             line = next;
             lineAge = 0;
-            playSound(LOGICLENS_ITEM_CARD.equals(next) ? "success" : "ui-click");
+            playSound(isItemCard(next) ? "success" : "ui-click");
         }
+    }
+
+    private static boolean isItemCard(String value) {
+        return LOGICLENS_ITEM_CARD.equals(value) || NOTEBOOK_ITEM_CARD.equals(value)
+            || WORKBENCH_ITEM_CARD.equals(value);
     }
 
     private boolean dialogueLineComplete() {
         if (line == null) return true;
-        if (LOGICLENS_ITEM_CARD.equals(line)) return true;
+        if (isItemCard(line)) return true;
         int separator = line.indexOf('|');
         String words = separator >= 0 ? line.substring(separator + 1) : line;
         return lineAge / 2 + 1 >= words.length();
@@ -551,14 +669,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private boolean dialogueVisible() {
         return line != null && !exitPrompt
-            && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP);
+            && (scene == GameScene.INTRO || scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP);
     }
 
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
     private boolean advancedComplete() { return crafted[3] && crafted[4]; }
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
 
-    private static boolean bedroomBlocked(double x, double y) {
+    private boolean bedroomBlocked(double x, double y) {
         // Perspective-angled bed/desk footprint calibrated by user points: {97,92}, {148,131}, {58,206}, {1,142}
         if (y < 206 && y >= 110) {
             if (y < 131 && x < 148) return true;
@@ -567,7 +685,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         // Calibrated Box physical collision footprint: { 310, 141 }, { 331, 116 }, { 271, 84 }, { 272, 131 }
-        if (x >= 271 && x <= 331 && y >= 84 && y <= 141) {
+        if (boxRetrieved && !boxOpened && x >= 271 && x <= 331 && y >= 84 && y <= 141) {
             return true;
         }
 
@@ -1079,6 +1197,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         if (action == 0) {
             if (loadSavedProgress()) {
+                if (scene == GameScene.TITLE || scene == GameScene.INTRO) {
+                    scene = GameScene.BEDROOM;
+                }
                 playSound("ui-confirm");
             } else {
                 playSound("ui-error");
@@ -1087,19 +1208,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (action == 1) {
             playSound("ui-confirm");
-            chapter = 0;
-            scene = GameScene.BEDROOM;
-            setPlayerPosition(210, 157);
-            facing = Facing.DOWN;
-            Arrays.fill(crafted, false);
-            selectedRecipe = 0;
-            notebookPage = 0;
-            autoTester.reset();
-            circuit.selectRecipe(recipes.get(0));
-            dialogue.clear();
-            line = null;
-            say("ALEX|It started with a box I wasn't supposed to find.");
-            saveCurrentProgress();
+            startIntroCutscene();
             return;
         }
         if (action == 2) {
@@ -1211,31 +1320,40 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
+        workbenchInstalled = false;
         circuit.selectRecipe(recipes.get(0));
         switch (preset) {
             case 0 -> {
-                chapter = 0;
-                scene = GameScene.BEDROOM;
-                setPlayerPosition(210, 157);
+                startIntroCutscene();
             }
             case 1 -> {
                 chapter = 1;
+                boxRetrieved = true;
+                boxOpened = true;
+                workbenchInstalled = true;
+                updateBedroomBackground();
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
             case 2 -> {
                 chapter = 1;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.STREET;
                 rollCatSpawn();
                 setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
             }
             case 3 -> {
                 chapter = 1;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 4 -> {
                 chapter = 2;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
@@ -1244,6 +1362,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             case 5 -> {
                 chapter = 3;
+                workbenchInstalled = true;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
@@ -1252,6 +1371,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             case 6 -> {
                 chapter = 3;
+                workbenchInstalled = true;
+                worldRenderer.setWorkbenchInstalled(true);
                 Arrays.fill(crafted, true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
@@ -1262,6 +1383,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 scene = GameScene.END;
             }
         }
+        worldRenderer.setWorkbenchInstalled(workbenchInstalled);
         facing = Facing.DOWN;
         playSound("ui-confirm");
         saveCurrentProgress();
@@ -1337,10 +1459,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.catAlwaysAppears = catAlwaysAppears;
         data.ccBedroomBackground = ccBedroomBackground;
         data.ccStreetBackground = ccStreetBackground;
+        data.boxRetrieved = boxRetrieved;
+        data.boxOpened = boxOpened;
+        data.workbenchInstalled = workbenchInstalled;
         data.starCount = starCount;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
-            && scene != GameScene.SETTINGS && scene != GameScene.DEV) {
+            && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
             data.chapter = chapter;
             data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
             data.playerX = playerX;
@@ -1360,7 +1485,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         SaveData data = SaveManager.loadGame();
         if (data == null) return false;
         this.chapter = data.chapter;
-        this.scene = data.scene != null ? data.scene : GameScene.BEDROOM;
+        this.scene = (data.scene != null && data.scene != GameScene.TITLE && data.scene != GameScene.INTRO
+            && data.scene != GameScene.CONTROLS && data.scene != GameScene.SETTINGS && data.scene != GameScene.DEV) ? data.scene : GameScene.BEDROOM;
         setPlayerPosition(data.playerX, data.playerY);
         this.facing = data.facing != null ? data.facing : Facing.DOWN;
         if (data.crafted != null && data.crafted.length == crafted.length) {
@@ -1374,8 +1500,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.catY = data.catY;
         this.ccBedroomBackground = data.ccBedroomBackground;
         this.ccStreetBackground = data.ccStreetBackground;
+        this.boxRetrieved = data.boxRetrieved;
+        this.boxOpened = data.boxOpened;
+        this.workbenchInstalled = data.workbenchInstalled;
         this.starCount = data.starCount;
-        this.worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
+        updateBedroomBackground();
         this.worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
         this.worldRenderer.setStarCount(starCount);
         this.autoTester.reset();
