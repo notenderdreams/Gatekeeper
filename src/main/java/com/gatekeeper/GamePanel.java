@@ -303,6 +303,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void updateGame() {
         ticks++;
+        sound.setMusicMuted(scene == GameScene.DEV);
         sound.loop(MUSIC_LOOP);
         sound.updateMusic();
         sound.updateCrossfade();
@@ -1341,6 +1342,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             String resourcePath = AUDIO_ROOT + file;
             sound.setSceneVolume(sceneName, resourcePath,
                 sound.sceneVolume(sceneName, resourcePath) + direction * 0.1f);
+            sound.preview(resourcePath, sceneName);
         }
         playSound("ui-click");
     }
