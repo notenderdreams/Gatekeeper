@@ -251,9 +251,16 @@ public final class SoundManager {
         return sounds == null ? new String[0] : sounds.toArray(new String[0]);
     }
 
+    private static float defaultSoundVolume(String resourcePath) {
+        if (resourcePath == null) return 1.0f;
+        if (resourcePath.endsWith("ui-open.wav")) return 0.30f;
+        if (resourcePath.endsWith("ui-confirm.wav")) return 0.50f;
+        return 1.0f;
+    }
+
     public float sceneVolume(String sceneName, String resourcePath) {
         return sceneVolumes.computeIfAbsent(sceneName, ignored -> new HashMap<>())
-            .getOrDefault(resourcePath, 1.0f);
+            .getOrDefault(resourcePath, defaultSoundVolume(resourcePath));
     }
 
     public void setSceneVolume(String sceneName, String resourcePath, float volume) {
@@ -266,14 +273,16 @@ public final class SoundManager {
         for (Map.Entry<String, Map<String, Float>> sceneEntry : sceneVolumes.entrySet()) {
             Map<String, Float> modifiedSounds = new LinkedHashMap<>();
             for (Map.Entry<String, Float> soundEntry : sceneEntry.getValue().entrySet()) {
-                if (Math.abs(soundEntry.getValue() - 1.0f) > 0.001f) {
-                    String path = soundEntry.getKey();
+                String path = soundEntry.getKey();
+                float defaultVol = defaultSoundVolume(path);
+                if (Math.abs(soundEntry.getValue() - defaultVol) > 0.001f) {
                     String fileName = path.substring(path.lastIndexOf('/') + 1);
                     modifiedSounds.put(fileName, soundEntry.getValue());
                 }
             }
             if (!modifiedSounds.isEmpty()) {
-                modified.put(sceneEntry.getKey(), modifiedSounds);
+                String sceneKey = sceneEntry.getKey() != null ? sceneEntry.getKey().toUpperCase() : "UNKNOWN";
+                modified.put(sceneKey, modifiedSounds);
             }
         }
         return modified;
