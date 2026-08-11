@@ -1,37 +1,111 @@
 package com.gatekeeper;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Graphics2D;
+import java.util.Objects;
 
 import static com.gatekeeper.GameConstants.*;
 
-/** Draws only the player's current story objective while exploring. */
+/** Draws only the player's current story objective while exploring with fade-in and fade-out animations. */
 final class ObjectiveRenderer {
+    private static String currentKey = null;
+    private static String fadingOutKey = null;
+    private static float alpha = 0.0f;
+    private static final float FADE_SPEED = 0.08f;
+
     private ObjectiveRenderer() {}
+
+    static void reset() {
+        currentKey = null;
+        fadingOutKey = null;
+        alpha = 0.0f;
+    }
 
     static void draw(Graphics2D g, int chapter, boolean boxRetrieved, boolean boxOpened,
                      boolean workbenchInstalled, boolean[] crafted,
                      String completedObjective, boolean taskbarOnRight) {
-        boolean complete = completedObjective != null;
-        if (!complete && chapter == 2 && (!crafted[0] || !crafted[1] || !crafted[2])) {
-            drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"NAND", "NOR", "XOR"},
-                new boolean[]{crafted[0], crafted[1], crafted[2]}, taskbarOnRight);
-            return;
-        }
-        if (!complete && chapter == 3 && (!crafted[3] || !crafted[4])) {
-            drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"XNOR", "IMPLY"},
-                new boolean[]{crafted[3], crafted[4]}, taskbarOnRight);
-            return;
-        }
-        String objective = complete ? completedObjective : currentObjective(chapter,
-            boxRetrieved, boxOpened, workbenchInstalled, crafted);
-        if (objective == null) return;
+        String targetKey = buildKey(chapter, boxRetrieved, boxOpened, workbenchInstalled, crafted, completedObjective);
 
-        int labelWidth = GamePanel.pixelTextWidth(g, objective, 1);
-        int totalWidth = 14 + labelWidth;
-        int x = taskbarOnRight ? (W - totalWidth - 9) : 9;
-        int baselineY = 38;
-        drawCheckboxLine(g, objective, x, baselineY, complete);
+        if (fadingOutKey != null) {
+            alpha -= FADE_SPEED;
+            if (alpha <= 0.0f) {
+                alpha = 0.0f;
+                fadingOutKey = null;
+                currentKey = targetKey;
+            }
+        } else if (!Objects.equals(targetKey, currentKey)) {
+            if (currentKey != null) {
+                fadingOutKey = currentKey;
+            } else {
+                currentKey = targetKey;
+                alpha = 0.0f;
+            }
+        } else {
+            if (currentKey != null && alpha < 1.0f) {
+                alpha += FADE_SPEED;
+                if (alpha > 1.0f) alpha = 1.0f;
+            }
+        }
+
+        String activeRenderKey = fadingOutKey != null ? fadingOutKey : currentKey;
+        if (activeRenderKey == null || alpha <= 0.001f) return;
+
+        Composite originalComposite = g.getComposite();
+        float renderAlpha = Math.max(0.0f, Math.min(1.0f, alpha));
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, renderAlpha));
+
+        renderKey(g, activeRenderKey, taskbarOnRight);
+
+        g.setComposite(originalComposite);
+    }
+
+    private static String buildKey(int chapter, boolean boxRetrieved, boolean boxOpened,
+                                  boolean workbenchInstalled, boolean[] crafted,
+                                  String completedObjective) {
+        if (completedObjective != null) {
+            return "COMPLETE:" + completedObjective;
+        }
+        if (chapter == 2 && (!crafted[0] || !crafted[1] || !crafted[2])) {
+            return "BUILD_CH2:" + crafted[0] + "_" + crafted[1] + "_" + crafted[2];
+        }
+        if (chapter == 3 && (!crafted[3] || !crafted[4])) {
+            return "BUILD_CH3:" + crafted[3] + "_" + crafted[4];
+        }
+        String obj = currentObjective(chapter, boxRetrieved, boxOpened, workbenchInstalled, crafted);
+        return obj != null ? "ACTIVE:" + obj : null;
+    }
+
+    private static void renderKey(Graphics2D g, String key, boolean taskbarOnRight) {
+        if (key.startsWith("COMPLETE:")) {
+            String label = key.substring(9);
+            int labelWidth = GamePanel.pixelTextWidth(g, label, 1);
+            int totalWidth = 14 + labelWidth;
+            int x = taskbarOnRight ? (W - totalWidth - 9) : 9;
+            drawCheckboxLine(g, label, x, 38, true);
+        } else if (key.startsWith("ACTIVE:")) {
+            String label = key.substring(7);
+            int labelWidth = GamePanel.pixelTextWidth(g, label, 1);
+            int totalWidth = 14 + labelWidth;
+            int x = taskbarOnRight ? (W - totalWidth - 9) : 9;
+            drawCheckboxLine(g, label, x, 38, false);
+        } else if (key.startsWith("BUILD_CH2:")) {
+            String[] parts = key.substring(10).split("_");
+            boolean[] c = new boolean[]{
+                Boolean.parseBoolean(parts[0]),
+                Boolean.parseBoolean(parts[1]),
+                Boolean.parseBoolean(parts[2])
+            };
+            drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"NAND", "NOR", "XOR"}, c, taskbarOnRight);
+        } else if (key.startsWith("BUILD_CH3:")) {
+            String[] parts = key.substring(10).split("_");
+            boolean[] c = new boolean[]{
+                Boolean.parseBoolean(parts[0]),
+                Boolean.parseBoolean(parts[1])
+            };
+            drawBuildObjectives(g, "BUILD MIRA'S CIRCUITS", new String[]{"XNOR", "IMPLY"}, c, taskbarOnRight);
+        }
     }
 
     private static void drawBuildObjectives(Graphics2D g, String heading, String[] labels,

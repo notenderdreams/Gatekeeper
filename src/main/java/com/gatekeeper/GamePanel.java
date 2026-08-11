@@ -1417,6 +1417,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         completedObjective = null;
+        ObjectiveRenderer.reset();
         exitPrompt = false;
         autoTester.reset();
         Arrays.fill(crafted, false);
@@ -1543,6 +1544,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         dialogue.clear();
         line = null;
         completedObjective = null;
+        ObjectiveRenderer.reset();
         chapter = 0;
         autoTester.reset();
         selectedRecipe = 0;
