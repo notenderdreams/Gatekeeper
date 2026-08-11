@@ -47,6 +47,7 @@ public final class SaveManager {
             json.append("  \"boxOpened\": ").append(data.boxOpened).append(",\n");
             json.append("  \"workbenchInstalled\": ").append(data.workbenchInstalled).append(",\n");
             json.append("  \"starCount\": ").append(data.starCount).append(",\n");
+            json.append("  \"mothCount\": ").append(data.mothCount).append(",\n");
             json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append("\n");
             json.append("}\n");
 
@@ -83,6 +84,7 @@ public final class SaveManager {
             data.boxOpened = parseBoolean(content, "boxOpened", false);
             data.workbenchInstalled = parseBoolean(content, "workbenchInstalled", data.chapter >= 2);
             data.starCount = parseInt(content, "starCount", 25);
+            data.mothCount = parseInt(content, "mothCount", 3);
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
 
             return data;

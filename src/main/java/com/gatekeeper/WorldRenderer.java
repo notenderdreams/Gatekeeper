@@ -54,6 +54,7 @@ final class WorldRenderer {
     private int catX = STREET_CAT_X;
     private int catY = 152;
     private int starCount = 25;
+    private int mothCount = 3;
     private float playerShadowStrength = 1.0f;
     private boolean boxRetrieved = false;
     private boolean boxOpened = false;
@@ -115,6 +116,10 @@ final class WorldRenderer {
 
     void setStarCount(int starCount) {
         this.starCount = starCount;
+    }
+
+    void setMothCount(int mothCount) {
+        this.mothCount = mothCount;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
@@ -290,6 +295,7 @@ final class WorldRenderer {
 
         // Subtle flickering street lamp and entrance light halos
         EnvironmentArt.drawStreetLampFlicker(g, cameraX, ticks);
+        EnvironmentArt.drawLamppostMoths(g, cameraX, ticks, mothCount);
 
         // 1x1 red tower beacon pixel at left tower (354, 93)
         int bX = 354 - cameraX;

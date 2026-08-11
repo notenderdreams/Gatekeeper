@@ -56,6 +56,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage streetBackgroundWithBox = loadStreetBackground("/assets/backgrounds/street-box.jpg");
     private boolean ccStreetBackground = true;
     private int starCount = 25;
+    private int mothCount = 3;
     private final BufferedImage shopBackground = loadBackground("/assets/backgrounds/shop-normal.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
@@ -188,7 +189,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 ccBedroomBackground = data.ccBedroomBackground;
                 ccStreetBackground = data.ccStreetBackground;
                 starCount = data.starCount;
+                mothCount = data.mothCount;
                 worldRenderer.setStarCount(starCount);
+                worldRenderer.setMothCount(mothCount);
                 updateBedroomBackground();
                 updateStreetBackground();
                 if (instantStart) {
@@ -239,7 +242,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale, taskbarOnRight);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, sound, soundSceneSelection);
+                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound, soundSceneSelection);
             case INTRO -> {
                 g.setColor(Color.BLACK);
                 g.fillRect(0, 0, W, H);
@@ -753,6 +756,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -25 : 25;
                 starCount = clamp(starCount + step, 0, 200);
                 worldRenderer.setStarCount(starCount);
+                playSound("ui-click");
+                saveCurrentProgress();
+            } else if (devSection == 2 && devSelection == 5 && devFocusRight
+                && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
+                    || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
+                int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1;
+                mothCount = clamp(mothCount + step, 0, 50);
+                worldRenderer.setMothCount(mothCount);
                 playSound("ui-click");
                 saveCurrentProgress();
             } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
@@ -1305,6 +1316,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-confirm");
                 saveCurrentProgress();
+            } else if (devSelection == 5) {
+                int[] counts = {0, 1, 2, 3, 5, 8, 12, 15, 20};
+                int idx = 0;
+                for (int i = 0; i < counts.length; i++) {
+                    if (mothCount == counts[i]) { idx = i; break; }
+                }
+                mothCount = counts[(idx + 1) % counts.length];
+                worldRenderer.setMothCount(mothCount);
+                playSound("ui-confirm");
+                saveCurrentProgress();
             }
         } else if (devSection == 3) {
             if (devSelection == 0) {
@@ -1337,6 +1358,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (starCount != 0) {
             modified.add("    \"star_count\": " + starCount);
+        }
+        if (mothCount != 3) {
+            modified.add("    \"moth_count\": " + mothCount);
         }
         if (ccBedroomBackground) {
             modified.add("    \"bedroom_background_cc\": \"CC\"");
@@ -1398,7 +1422,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        if (devSection == 2) return 5;
+        if (devSection == 2) return 6;
         if (devSection == 3) return 2;
         return 0;
     }
@@ -1579,6 +1603,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.boxOpened = boxOpened;
         data.workbenchInstalled = workbenchInstalled;
         data.starCount = starCount;
+        data.mothCount = mothCount;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
@@ -1621,9 +1646,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.boxOpened = data.boxOpened;
         this.workbenchInstalled = data.workbenchInstalled;
         this.starCount = data.starCount;
+        this.mothCount = data.mothCount;
         updateBedroomBackground();
         updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);
+        this.worldRenderer.setMothCount(mothCount);
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

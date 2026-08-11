@@ -193,6 +193,44 @@ final class EnvironmentArt {
         g.setComposite(oldComp);
     }
 
+    static void drawLamppostMoths(Graphics2D g, int cameraX, long ticks, int mothCount) {
+        if (mothCount <= 0) return;
+        int lampX = 521 - cameraX;
+        int lampY = 113;
+
+        if (lampX + 50 < 0 || lampX - 50 > W) return;
+
+        Composite oldComp = g.getComposite();
+
+        for (int i = 0; i < mothCount; i++) {
+            float speed = 0.08f + (i % 5) * 0.03f;
+            float phase = i * 2.3f;
+            double t = ticks * speed + phase;
+
+            int offsetX = (int) (Math.sin(t * 1.3) * (11 + (i % 4) * 3) + Math.cos(t * 2.7) * (5 + (i % 3) * 2));
+            int offsetY = (int) (Math.cos(t * 1.1) * (8 + (i % 3) * 2) + Math.sin(t * 3.1) * (4 + (i % 2) * 2) + 4);
+
+            int mothX = lampX + offsetX;
+            int mothY = lampY + offsetY;
+
+            boolean wingUp = (ticks + i * 7) % 4 < 2;
+
+            g.setColor(new Color(250, 240, 210, 230));
+            g.fillRect(mothX, mothY, 1, 1);
+
+            g.setColor(new Color(255, 250, 225, wingUp ? 210 : 120));
+            if (wingUp) {
+                g.fillRect(mothX - 1, mothY - 1, 1, 1);
+                g.fillRect(mothX + 1, mothY - 1, 1, 1);
+            } else {
+                g.fillRect(mothX - 1, mothY, 1, 1);
+                g.fillRect(mothX + 1, mothY, 1, 1);
+            }
+        }
+
+        g.setComposite(oldComp);
+    }
+
     static void drawShopLights(Graphics2D g, long ticks) {
         Composite oldComp = g.getComposite();
 

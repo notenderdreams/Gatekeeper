@@ -75,6 +75,8 @@ public final class CircuitModelTest {
         save.catY = 75;
         save.catAlwaysAppears = true;
         save.workbenchInstalled = true;
+        save.starCount = 75;
+        save.mothCount = 8;
         save.taskbarOnRight = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
@@ -93,6 +95,8 @@ public final class CircuitModelTest {
         require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");
         require(loaded.catAlwaysAppears, "loaded catAlwaysAppears should be true");
         require(loaded.workbenchInstalled, "loaded workbenchInstalled should be true");
+        require(loaded.starCount == 75, "loaded starCount should match");
+        require(loaded.mothCount == 8, "loaded mothCount should match");
         require(loaded.taskbarOnRight, "loaded taskbarOnRight should be true");
 
         SaveManager.deleteSave();
