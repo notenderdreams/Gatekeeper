@@ -59,6 +59,7 @@ final class WorldRenderer {
     private boolean boxRetrieved = false;
     private boolean boxOpened = false;
     private boolean workbenchInstalled = false;
+    private boolean disableHud = false;
     private final Starfield starfield = new Starfield();
     private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
@@ -120,6 +121,10 @@ final class WorldRenderer {
 
     void setMothCount(int mothCount) {
         this.mothCount = mothCount;
+    }
+
+    void setDisableHud(boolean disableHud) {
+        this.disableHud = disableHud;
     }
 
     void update(int chapter, int playerX, int playerY, long ticks, String line,
@@ -677,6 +682,7 @@ final class WorldRenderer {
     }
 
     private void drawHud(Graphics2D g, String location) {
+        if (disableHud) return;
         g.setColor(VOID);
         g.fillRect(0, 0, W, 20);
         g.setColor(INK);
@@ -891,6 +897,7 @@ final class WorldRenderer {
     }
 
     private void prompt(Graphics2D g, String text) {
+        if (disableHud) return;
         DialogueRenderer.drawPrompt(g, text, uiScale);
     }
 

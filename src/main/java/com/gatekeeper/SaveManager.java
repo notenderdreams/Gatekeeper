@@ -48,7 +48,8 @@ public final class SaveManager {
             json.append("  \"workbenchInstalled\": ").append(data.workbenchInstalled).append(",\n");
             json.append("  \"starCount\": ").append(data.starCount).append(",\n");
             json.append("  \"mothCount\": ").append(data.mothCount).append(",\n");
-            json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append("\n");
+            json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append(",\n");
+            json.append("  \"disableHud\": ").append(data.disableHud).append("\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -86,6 +87,7 @@ public final class SaveManager {
             data.starCount = parseInt(content, "starCount", 25);
             data.mothCount = parseInt(content, "mothCount", 3);
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
+            data.disableHud = parseBoolean(content, "disableHud", false);
 
             return data;
         } catch (Exception e) {

@@ -23,6 +23,7 @@ public final class SaveData {
     public int starCount = 25;
     public int mothCount = 3;
     public boolean taskbarOnRight = false;
+    public boolean disableHud = false;
 
     public SaveData() {
         this.chapter = 0;

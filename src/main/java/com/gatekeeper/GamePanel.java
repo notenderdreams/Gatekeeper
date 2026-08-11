@@ -112,6 +112,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean devFocusRight = true;
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
+    private boolean disableHud = false;
     private boolean instantStart = false;
     private boolean catAlwaysAppears = false;
     private GameScene devReturnScene = GameScene.TITLE;
@@ -196,8 +197,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 ccStreetBackground = data.ccStreetBackground;
                 starCount = data.starCount;
                 mothCount = data.mothCount;
+                disableHud = data.disableHud;
                 worldRenderer.setStarCount(starCount);
                 worldRenderer.setMothCount(mothCount);
+                worldRenderer.setDisableHud(disableHud);
                 updateBedroomBackground();
                 updateStreetBackground();
                 if (instantStart) {
@@ -248,7 +251,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale, taskbarOnRight);
             case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound, soundSceneSelection);
+                devFocusRight, calibratorEnabled, showCollisions, disableHud, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound, soundSceneSelection);
             case INTRO -> {
                 g.setColor(Color.BLACK);
                 g.fillRect(0, 0, W, H);
@@ -262,11 +265,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
         }
-        if (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP) {
+        if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
                 crafted, completedObjective, taskbarOnRight);
         }
-        if (dialogueVisible()) {
+        if (!disableHud && dialogueVisible()) {
             DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
                 notebookItemImage, workbenchItemImage, boxImage, letterImage);
         }
@@ -772,7 +775,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 adjustSelectedDevSound((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
-            } else if (devSection == 2 && devSelection == 4 && devFocusRight
+            } else if (devSection == 2 && devSelection == 5 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -25 : 25;
@@ -780,7 +783,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-click");
                 saveCurrentProgress();
-            } else if (devSection == 2 && devSelection == 5 && devFocusRight
+            } else if (devSection == 2 && devSelection == 6 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1;
@@ -1320,15 +1323,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setShowCollisions(showCollisions);
                 playSound("ui-confirm");
             } else if (devSelection == 2) {
-                instantStart = !instantStart;
+                disableHud = !disableHud;
+                worldRenderer.setDisableHud(disableHud);
                 playSound("ui-confirm");
                 saveCurrentProgress();
             } else if (devSelection == 3) {
+                instantStart = !instantStart;
+                playSound("ui-confirm");
+                saveCurrentProgress();
+            } else if (devSelection == 4) {
                 catAlwaysAppears = !catAlwaysAppears;
                 if (catAlwaysAppears && !catPresent) rollCatSpawn();
                 playSound("ui-confirm");
                 saveCurrentProgress();
-            } else if (devSelection == 4) {
+            } else if (devSelection == 5) {
                 int[] counts = {0, 25, 50, 75, 100, 150, 200};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -1338,7 +1346,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-            } else if (devSelection == 5) {
+            } else if (devSelection == 6) {
                 int[] counts = {0, 1, 2, 3, 5, 8, 12, 15, 20};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -1371,6 +1379,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (showCollisions) {
             modified.add("    \"show_collisions\": \"ENABLED\"");
+        }
+        if (disableHud) {
+            modified.add("    \"disable_hud\": \"ENABLED\"");
         }
         if (instantStart) {
             modified.add("    \"instant_start\": \"ENABLED\"");
@@ -1444,7 +1455,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        if (devSection == 2) return 6;
+        if (devSection == 2) return 7;
         if (devSection == 3) return 2;
         return 0;
     }
@@ -1626,6 +1637,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.workbenchInstalled = workbenchInstalled;
         data.starCount = starCount;
         data.mothCount = mothCount;
+        data.disableHud = disableHud;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
@@ -1669,10 +1681,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.workbenchInstalled = data.workbenchInstalled;
         this.starCount = data.starCount;
         this.mothCount = data.mothCount;
+        this.disableHud = data.disableHud;
         updateBedroomBackground();
         updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);
         this.worldRenderer.setMothCount(mothCount);
+        this.worldRenderer.setDisableHud(disableHud);
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();

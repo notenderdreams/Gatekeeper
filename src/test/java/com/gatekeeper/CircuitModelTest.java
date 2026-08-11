@@ -78,6 +78,7 @@ public final class CircuitModelTest {
         save.starCount = 75;
         save.mothCount = 8;
         save.taskbarOnRight = true;
+        save.disableHud = true;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -98,6 +99,7 @@ public final class CircuitModelTest {
         require(loaded.starCount == 75, "loaded starCount should match");
         require(loaded.mothCount == 8, "loaded mothCount should match");
         require(loaded.taskbarOnRight, "loaded taskbarOnRight should be true");
+        require(loaded.disableHud, "loaded disableHud should be true");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");
