@@ -728,7 +728,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         // Calibrated box physical collision footprint: {272,136}, {310,145}, {333,124}, {338,89}, {271,84}
         // Test the character's foot-width, not just its center point, against the calibrated outline.
-        if (boxRetrieved && !boxOpened && BOX_COLLISION.intersects(x - 6, y, 12, 10)) {
+        if (boxRetrieved && BOX_COLLISION.intersects(x - 6, y, 12, 10)) {
             return true;
         }
 
@@ -1067,8 +1067,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             if (devSection == 0) {
                 for (int i = 0; i < DEV_OPTION_COUNT; i++) {
-                    int oy = 56 + i * 24;
-                    if (inside(x, y, 160, oy, 285, 20)) {
+                    int oy = 54 + i * 22;
+                    if (inside(x, y, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
                         activateDevSelection();
@@ -1198,8 +1198,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
             if (devSection == 0) {
                 for (int i = 0; i < DEV_OPTION_COUNT; i++) {
-                    int oy = 56 + i * 24;
-                    if (inside(mouseX, mouseY, 160, oy, 285, 20)) {
+                    int oy = 54 + i * 22;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
                         break;
@@ -1487,69 +1487,72 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
-        workbenchInstalled = false;
         circuit.selectRecipe(recipes.get(0));
+
+        if (preset == 0) {
+            boxRetrieved = false;
+            boxOpened = false;
+            workbenchInstalled = false;
+            startIntroCutscene();
+        } else {
+            boxRetrieved = true;
+            boxOpened = true;
+            workbenchInstalled = true;
+        }
+
         switch (preset) {
-            case 0 -> {
-                startIntroCutscene();
-            }
+            case 0 -> {}
             case 1 -> {
                 chapter = 1;
-                boxRetrieved = true;
-                boxOpened = true;
-                workbenchInstalled = true;
-                updateBedroomBackground();
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
             case 2 -> {
                 chapter = 1;
-                workbenchInstalled = true;
-                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.STREET;
                 rollCatSpawn();
                 setPlayerPosition(STREET_HOME_X + 30, STREET_GROUND_Y);
             }
             case 3 -> {
                 chapter = 1;
-                workbenchInstalled = true;
-                worldRenderer.setWorkbenchInstalled(true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
             case 4 -> {
                 chapter = 2;
-                workbenchInstalled = true;
-                worldRenderer.setWorkbenchInstalled(true);
+                scene = GameScene.BEDROOM;
+                setPlayerPosition(205, 126);
+            }
+            case 5 -> {
+                chapter = 2;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
-            case 5 -> {
+            case 6 -> {
                 chapter = 3;
-                workbenchInstalled = true;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
-            case 6 -> {
+            case 7 -> {
                 chapter = 3;
-                workbenchInstalled = true;
-                worldRenderer.setWorkbenchInstalled(true);
                 Arrays.fill(crafted, true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
-            default -> {
+            case 8 -> {
                 chapter = 4;
                 Arrays.fill(crafted, true);
                 scene = GameScene.END;
             }
         }
+        worldRenderer.setBoxRetrieved(boxRetrieved);
+        worldRenderer.setBoxOpened(boxOpened);
         worldRenderer.setWorkbenchInstalled(workbenchInstalled);
         updateBedroomBackground();
         updateStreetBackground();

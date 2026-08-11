@@ -164,37 +164,37 @@ final class MenuRenderer {
         // --- RIGHT COLUMN: OPTIONS ---
         if (section == 0) { // BREAKPOINTS
             String[] options = {"FRESH BEDROOM", "BOARD PROGRESSION", "STREET",
-                "SHOP", "FIRST 3 COMPLETE", "AUTO TESTER HOME", "ADVANCED CHAPTER", "ENDING"};
+                "SHOP", "AFTER MIRA HOME", "FIRST 3 COMPLETE", "AUTO TESTER HOME", "ADVANCED CHAPTER", "ENDING"};
 
             for (int i = 0; i < options.length; i++) {
-                int y = 56 + i * 24;
+                int y = 54 + i * 22;
                 boolean isSelected = focusRight && (selection == i);
-                boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 20);
+                boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 18);
 
                 if (isSelected) {
                     g.setColor(new Color(25, 48, 42, 190));
-                    g.fillRect(160, y, 285, 20);
+                    g.fillRect(160, y, 285, 18);
                     g.setColor(new Color(55, 110, 92, 200));
-                    g.drawRect(160, y, 285, 20);
+                    g.drawRect(160, y, 285, 18);
                     g.setColor(new Color(143, 190, 128));
-                    g.fillRect(160, y, 3, 20);
-                    GamePanel.pixelText(g, ">", 170, y + 14, 1);
-                    GamePanel.pixelText(g, options[i], 183, y + 14, 1);
+                    g.fillRect(160, y, 3, 18);
+                    GamePanel.pixelText(g, ">", 170, y + 13, 1);
+                    GamePanel.pixelText(g, options[i], 183, y + 13, 1);
                 } else if (hovered) {
                     g.setColor(new Color(18, 32, 28, 160));
-                    g.fillRect(160, y, 285, 20);
+                    g.fillRect(160, y, 285, 18);
                     g.setColor(new Color(45, 75, 68, 180));
-                    g.drawRect(160, y, 285, 20);
+                    g.drawRect(160, y, 285, 18);
                     g.setColor(new Color(191, 192, 185));
-                    GamePanel.pixelText(g, ">", 170, y + 14, 1);
-                    GamePanel.pixelText(g, options[i], 183, y + 14, 1);
+                    GamePanel.pixelText(g, ">", 170, y + 13, 1);
+                    GamePanel.pixelText(g, options[i], 183, y + 13, 1);
                 } else {
                     g.setColor(new Color(8, 14, 18, 120));
-                    g.fillRect(160, y, 285, 20);
+                    g.fillRect(160, y, 285, 18);
                     g.setColor(new Color(20, 28, 32));
-                    g.drawRect(160, y, 285, 20);
+                    g.drawRect(160, y, 285, 18);
                     g.setColor(new Color(160, 168, 168));
-                    GamePanel.pixelText(g, options[i], 183, y + 14, 1);
+                    GamePanel.pixelText(g, options[i], 183, y + 13, 1);
                 }
             }
         } else if (section == 1) { // SOUNDS

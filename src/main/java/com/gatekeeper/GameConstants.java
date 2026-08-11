@@ -12,7 +12,7 @@ final class GameConstants {
     static final int TITLE_MENU_H = 18;
     static final int TITLE_MENU_GAP = 20;
     static final int TITLE_COPY_CENTER_X = 348;
-    static final int DEV_OPTION_COUNT = 8;
+    static final int DEV_OPTION_COUNT = 9;
     static final int BOARD_SOCKET_W = 26;
     static final int BOARD_SOCKET_H = 18;
     static final int BEDROOM_PLAYER_HEIGHT = 68;
@@ -20,7 +20,7 @@ final class GameConstants {
     static final int STREET_PLAYER_HEIGHT = 36;
     static final int STREET_WORLD_WIDTH = 922;
     static final int STREET_HOME_X = 93;
-    static final int STREET_BOX_X = 175;
+    static final int STREET_BOX_X = 164;
     static final int STREET_BOX_Y = 206;
     static final int STREET_CAT_X = 605;
     static final int[][] CAT_SPAWN_RANGES = {
