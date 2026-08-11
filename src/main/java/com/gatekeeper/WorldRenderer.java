@@ -312,9 +312,6 @@ final class WorldRenderer {
         }
 
         EnvironmentArt.drawWorldVignette(g);
-        if (!boxRetrieved) {
-            drawStreetBox(g, cameraX);
-        }
         if (catPresent) {
             drawCat(g, cameraX);
         }
@@ -849,55 +846,6 @@ final class WorldRenderer {
             g.drawImage(catSprites, screenX - width / 2, catWorldY - height,
                 screenX - width / 2 + width, catWorldY,
                 frame.x, frame.y, frame.x + frame.width, frame.y + frame.height, null);
-        }
-    }
-
-    private void drawStreetBox(Graphics2D g, int cameraX) {
-        int screenX = STREET_BOX_X - cameraX;
-        int screenY = STREET_BOX_Y;
-        int width = 56;
-        int height = 35;
-        if (screenX + width < 0 || screenX - width > W) return;
-
-        // Soft environmental drop shadow anchored at the base contact line (screenY + 2)
-        float shadowCenterX = screenX;
-        float shadowCenterY = screenY + 2;
-        float radiusX = width * 0.65f;
-        float radiusY = 7.5f;
-
-        Point2D center = new Point2D.Float(0, 0);
-        float[] fractions = { 0.0f, 0.30f, 0.65f, 1.0f };
-        Color[] colors = {
-            new Color(2, 4, 8, 220),   // deep dark core contact shadow at base
-            new Color(3, 5, 10, 150),  // mid ground shadow
-            new Color(4, 7, 12, 60),   // soft ambient falloff edge
-            new Color(4, 7, 12, 0)     // fully transparent boundary
-        };
-
-        Paint oldPaint = g.getPaint();
-        AffineTransform oldTransform = g.getTransform();
-        Object oldAntialias = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.translate(shadowCenterX, shadowCenterY);
-        g.scale(1.0, (double) radiusY / radiusX);
-        g.setPaint(new RadialGradientPaint(center, radiusX, fractions, colors));
-        g.fill(new Ellipse2D.Float(-radiusX, -radiusX, radiusX * 2, radiusX * 2));
-
-        g.setTransform(oldTransform);
-        g.setPaint(oldPaint);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-            oldAntialias != null ? oldAntialias : RenderingHints.VALUE_ANTIALIAS_OFF);
-
-        if (boxImage != null) {
-            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-            g.drawImage(boxImage, screenX - width / 2, screenY - height, width, height, null);
-        } else {
-            g.setColor(new Color(126, 82, 46));
-            g.fillRect(screenX - width / 2, screenY - height, width, height);
-            g.setColor(INK);
-            g.drawRect(screenX - width / 2, screenY - height, width, height);
         }
     }
 

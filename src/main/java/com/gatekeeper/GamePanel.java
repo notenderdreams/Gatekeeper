@@ -53,6 +53,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean workbenchInstalled = false;
     private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
     private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
+    private final BufferedImage streetBackgroundWithBox = loadStreetBackground("/assets/street-with-box.jpg");
     private boolean ccStreetBackground = true;
     private int starCount = 25;
     private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
@@ -170,6 +171,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         worldRenderer.setWorkbenchInstalled(workbenchInstalled);
     }
 
+    private void updateStreetBackground() {
+        if (!boxRetrieved && streetBackgroundWithBox != null) {
+            worldRenderer.setStreetBackground(streetBackgroundWithBox);
+        } else {
+            worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
+        }
+    }
+
     public GamePanel() {
         setPreferredSize(new Dimension(1280, 720));
         setFocusable(true);
@@ -186,15 +195,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 ccBedroomBackground = data.ccBedroomBackground;
                 ccStreetBackground = data.ccStreetBackground;
                 starCount = data.starCount;
-                worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
                 worldRenderer.setStarCount(starCount);
                 updateBedroomBackground();
+                updateStreetBackground();
                 if (instantStart) {
                     loadSavedProgress();
                 }
             }
         } else {
             updateBedroomBackground();
+            updateStreetBackground();
         }
 
         Timer timer = new Timer(1000 / 60, event -> updateGame());
@@ -268,6 +278,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         boxOpened = false;
         workbenchInstalled = false;
         updateBedroomBackground();
+        updateStreetBackground();
         scene = GameScene.INTRO;
         introTimer = 0;
         introStage = 0;
@@ -662,6 +673,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             boxRetrieved = true;
             if (chapter == 0) chapter = 1;
             updateBedroomBackground();
+            updateStreetBackground();
             playSound("door-open");
             scene = GameScene.BEDROOM;
             setPlayerPosition(210, 157);
@@ -1309,7 +1321,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 saveCurrentProgress();
             } else if (devSelection == 1) {
                 ccStreetBackground = !ccStreetBackground;
-                worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
+                updateStreetBackground();
                 playSound("ui-confirm");
                 saveCurrentProgress();
             }
@@ -1487,6 +1499,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
         }
         worldRenderer.setWorkbenchInstalled(workbenchInstalled);
+        updateBedroomBackground();
+        updateStreetBackground();
         facing = Facing.DOWN;
         playSound("ui-confirm");
         saveCurrentProgress();
@@ -1546,6 +1560,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         completedObjective = null;
         ObjectiveRenderer.reset();
         chapter = 0;
+        boxRetrieved = false;
+        updateBedroomBackground();
+        updateStreetBackground();
         autoTester.reset();
         selectedRecipe = 0;
         notebookPage = 0;
@@ -1612,7 +1629,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.workbenchInstalled = data.workbenchInstalled;
         this.starCount = data.starCount;
         updateBedroomBackground();
-        this.worldRenderer.setStreetBackground(ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal);
+        updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);
         this.autoTester.reset();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
