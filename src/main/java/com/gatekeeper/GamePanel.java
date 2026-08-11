@@ -40,6 +40,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static final Polygon BOX_COLLISION = new Polygon(
         new int[] {272, 310, 333, 338, 271},
         new int[] {136, 145, 124, 89, 84}, 5);
+    private static final Polygon SHOP_CRATE_COLLISION = new Polygon(
+        new int[] {477, 400, 399, 375, 356, 350, 351, 472},
+        new int[] {190, 190, 213, 216, 223, 239, 267, 265}, 8);
+    private static final Polygon SHOP_COUNTER_COLLISION = new Polygon(
+        new int[] {106, 13, 8, 105},
+        new int[] {236, 195, 260, 268}, 4);
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
@@ -360,13 +366,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             precisePlayerX = clamp(precisePlayerX, minX, maxX);
             if (sideView) precisePlayerY = STREET_GROUND_Y;
             else precisePlayerY = clamp(precisePlayerY, minY, 232);
-            if (scene == GameScene.BEDROOM) {
+            if (scene == GameScene.BEDROOM || scene == GameScene.SHOP) {
                 double targetX = precisePlayerX;
                 double targetY = precisePlayerY;
                 precisePlayerX = oldPreciseX;
                 precisePlayerY = oldPreciseY;
-                if (!bedroomBlocked(targetX, precisePlayerY)) precisePlayerX = targetX;
-                if (!bedroomBlocked(precisePlayerX, targetY)) precisePlayerY = targetY;
+                boolean blockedX = scene == GameScene.BEDROOM ? bedroomBlocked(targetX, precisePlayerY) : shopBlocked(targetX, precisePlayerY);
+                boolean blockedY = scene == GameScene.BEDROOM ? bedroomBlocked(precisePlayerX, targetY) : shopBlocked(precisePlayerX, targetY);
+                if (!blockedX) precisePlayerX = targetX;
+                if (!blockedY) precisePlayerY = targetY;
             }
             playerX = (int) Math.round(precisePlayerX);
             playerY = (int) Math.round(precisePlayerY);
@@ -720,6 +728,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return true;
         }
 
+        return false;
+    }
+
+    private boolean shopBlocked(double x, double y) {
+        // Calibrated shop crate physical collision footprint:
+        // {477,190}, {400,190}, {399,213}, {375,216}, {356,223}, {350,239}, {351,267}, {472,265}
+        if (SHOP_CRATE_COLLISION.intersects(x - 6, y, 12, 10)) {
+            return true;
+        }
+        // Calibrated shop counter/shelf physical collision footprint:
+        // {106,236}, {13,195}, {8,260}, {105,268}
+        if (SHOP_COUNTER_COLLISION.intersects(x - 6, y, 12, 10)) {
+            return true;
+        }
         return false;
     }
 

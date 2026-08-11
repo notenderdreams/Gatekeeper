@@ -553,6 +553,24 @@ final class WorldRenderer {
             g.setColor(new Color(60, 240, 120, 210));
             g.drawRect(22, 158, 430, 74);
 
+            // Blocked Shop Crate Physical Footprint (Red) — calibrated: {477,190}, {400,190}, {399,213}, {375,216}, {356,223}, {350,239}, {351,267}, {472,265}
+            int[] cratePolyX = {477, 400, 399, 375, 356, 350, 351, 472};
+            int[] cratePolyY = {190, 190, 213, 216, 223, 239, 267, 265};
+            g.setColor(new Color(240, 60, 60, 85));
+            g.fillPolygon(cratePolyX, cratePolyY, 8);
+            g.setColor(new Color(255, 90, 90, 230));
+            g.drawPolygon(cratePolyX, cratePolyY, 8);
+            GamePanel.pixelText(g, "CRATE COLLISION", 370, 225, 1);
+
+            // Blocked Shop Counter Physical Footprint (Red) — calibrated: {106,236}, {13,195}, {8,260}, {105,268}
+            int[] counterPolyX = {106, 13, 8, 105};
+            int[] counterPolyY = {236, 195, 260, 268};
+            g.setColor(new Color(240, 60, 60, 85));
+            g.fillPolygon(counterPolyX, counterPolyY, 4);
+            g.setColor(new Color(255, 90, 90, 230));
+            g.drawPolygon(counterPolyX, counterPolyY, 4);
+            GamePanel.pixelText(g, "COUNTER COLLISION", 20, 230, 1);
+
             g.setColor(new Color(255, 230, 50, 200));
             g.drawRect(13, 134, 84, 80);
             GamePanel.pixelText(g, "EXIT DOOR", 28, 174, 1);
