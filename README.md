@@ -2,7 +2,7 @@
 
 Gatekeeper is a Java 2D story and puzzle game built with Java 17 and Gradle. Featuring low-resolution retro-RPG pixel art presentation, dialogue choices, original environments, and an interactive circuit crafting board where players build logic gates (NAND, NOR, XOR, XNOR, IMPLY) from core components.
 
-![Main Menu](src/main/resources/assets/main-menu.png)
+![Main Menu](src/main/resources/assets/banner.png)
 
 ## Overview & Gameplay
 
