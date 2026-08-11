@@ -444,12 +444,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     say("ALEX|There. The workbench fits perfectly on the desk.",
                         chapter >= 2
                             ? "ALEX|Mira's circuit plans should work here."
-                            : "ALEX|Now I just need to find out what these gates are for.");
+                            : "ALEX|These logic components look like electronics... Mira down at the shop might know something about them.");
                     saveCurrentProgress();
                 } else if (workbenchInstalled && chapter >= 2) {
                     openBoard();
                 } else if (workbenchInstalled) {
-                    say("ALEX|The workbench is ready. I need to learn what to build first.");
+                    say("ALEX|The workbench is ready. I should ask Mira at the electronics shop about these gates.");
                 }
             } else if (near(407, 132)) {
                 scene = GameScene.STREET;
@@ -503,11 +503,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if (chapter == 1) {
             completedObjective = "ASK MIRA ABOUT THE GATES";
             chapter = 2;
-            say("MIRA|Logic gates! AND, OR, and NOT are the alphabet.",
-                "MIRA|Build me a NAND, a NOR, and an XOR.",
-                "MIRA|Use every switch setting. Match the notebook exactly.",
-                "ALEX|So the truth table is... a list of promises?",
-                "MIRA|Exactly. A circuit must keep every one.");
+            say("ALEX|Mira, someone left a mystery box on my doorstep with these logic gates and a notebook.",
+                "MIRA|Logic gates! AND, OR, and NOT are the alphabet of electronics.",
+                "MIRA|Bring them to life! Build me a NAND, a NOR, and an XOR on your workbench.",
+                "MIRA|Use every switch setting. Match the notebook truth tables exactly.",
+                "ALEX|So a truth table is... a list of promises the circuit has to keep?",
+                "MIRA|Exactly. A circuit must keep every single one.");
             saveCurrentProgress();
         } else if (chapter == 2 && basicComplete()) {
             completedObjective = "RETURN TO MIRA";
@@ -1131,9 +1132,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     return;
                 }
             }
-            if (inside(x, y, 24, 83, 52, 16)) toggleInputA();
-            if (inside(x, y, 24, 116, 52, 16)) toggleInputB();
-            for (int i = 0; i < 3; i++) if (inside(x, y, 20 + i * 85, 196, 70, 22)) {
+            if (inside(x, y, 24, 90, 52, 16)) toggleInputA();
+            if (inside(x, y, 24, 138, 52, 16)) toggleInputB();
+            for (int i = 0; i < 3; i++) if (inside(x, y, 18 + i * 80, 226, 74, 28)) {
                 heldGate = GateType.values()[i];
                 playSound("ui-select");
             }
@@ -1157,11 +1158,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
         }
         if (rightClick) return;
-        if (chapter >= 3 && inside(x, y, 310, 207, 150, 14)) toggleAutoTester();
-        else if (chapter >= 3 && inside(x, y, 310, 225, 72, 27)) recordOrAutoTest();
-        else if (chapter >= 3 && inside(x, y, 390, 225, 70, 27)) verify();
-        else if (chapter < 3 && inside(x, y, 310, 215, 72, 36)) recordOrAutoTest();
-        else if (chapter < 3 && inside(x, y, 390, 215, 70, 36)) verify();
+        if (inside(x, y, 277, 226, 60, 28)) {
+            if (chapter >= 3) toggleAutoTester();
+            else playSound("ui-close");
+        }
+        else if (inside(x, y, 342, 226, 58, 28)) recordOrAutoTest();
+        else if (inside(x, y, 405, 226, 58, 28)) verify();
     }
 
     @Override public void mouseReleased(MouseEvent event) {}
