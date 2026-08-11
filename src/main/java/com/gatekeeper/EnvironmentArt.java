@@ -193,6 +193,49 @@ final class EnvironmentArt {
         g.setComposite(oldComp);
     }
 
+    static void drawShopLights(Graphics2D g, long ticks) {
+        Composite oldComp = g.getComposite();
+
+        int[][] points = {
+            {184, 25, 0x1842},
+            {277, 24, 0x2774},
+            {371, 24, 0x3718},
+            {43, 61, 0x4361}
+        };
+
+        for (int[] pt : points) {
+            int px = pt[0];
+            int py = pt[1];
+            int seed = pt[2];
+
+            float flicker = lampFlickerMultiplier(ticks, seed);
+            float baseAlpha = 0.35f * flicker;
+
+            // 1. Soft Overhead Light Cone extending downwards
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.min(1.0f, 0.16f * flicker)));
+            int coneWidthTop = 16;
+            int coneWidthBottom = 90;
+            int coneHeight = 155;
+            int[] xPoints = {px - coneWidthTop / 2, px + coneWidthTop / 2, px + coneWidthBottom / 2, px - coneWidthBottom / 2};
+            int[] yPoints = {py + 4, py + 4, py + coneHeight, py + coneHeight};
+
+            g.setColor(new Color(255, 210, 110, 35));
+            g.fillPolygon(xPoints, yPoints, 4);
+
+            // Inner brighter beam core
+            int[] innerX = {px - 5, px + 5, px + 32, px - 32};
+            g.setColor(new Color(255, 230, 150, 45));
+            g.fillPolygon(innerX, yPoints, 4);
+
+            // 2. Radial Amber Glow Halo centered at lamp fixture (x, y)
+            int glowSize = 120;
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.min(1.0f, baseAlpha)));
+            g.drawImage(AMBER_GLOW, px - glowSize / 2, py - glowSize / 2 + 8, glowSize, glowSize, null);
+        }
+
+        g.setComposite(oldComp);
+    }
+
     static void drawBedroomWindow(Graphics2D g) {
         g.setColor(new Color(8, 10, 18));
         g.fillRect(160, 39, 111, 74);

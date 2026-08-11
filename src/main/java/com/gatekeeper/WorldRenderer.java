@@ -2,6 +2,7 @@ package com.gatekeeper;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.RadialGradientPaint;
@@ -290,6 +291,13 @@ final class WorldRenderer {
         // Subtle flickering street lamp and entrance light halos
         EnvironmentArt.drawStreetLampFlicker(g, cameraX, ticks);
 
+        // 1x1 red tower beacon pixel at left tower (354, 93)
+        int bX = 354 - cameraX;
+        if (bX >= 0 && bX < W && ((ticks + 65) % 150) < 60) {
+            g.setColor(new Color(255, 45, 45));
+            g.fillRect(bX, 93, 1, 1);
+        }
+
         // Small animated reflections keep the exterior from feeling like a still image.
         int shimmer = (int) ((ticks / 18) % 3);
         g.setColor(new Color(250, 204, 21, 45));
@@ -559,6 +567,7 @@ final class WorldRenderer {
     void drawShop(Graphics2D g) {
         if (shopBackground != null) {
             g.drawImage(shopBackground, 0, 0, W, H, null);
+            EnvironmentArt.drawShopLights(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
             drawMaskedShopkeeper(g, 240, 136, 102);
             drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
