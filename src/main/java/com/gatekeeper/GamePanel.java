@@ -43,43 +43,36 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
 
-    private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/alex-bedroom.png");
-    private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/alex-bedroom-cc.jpg");
-    private final BufferedImage bedroomNoBoxImage = loadBackground("/assets/bedroom(no-box).jpg");
-    private final BufferedImage bedroomClosedBoxImage = loadBackground("/assets/bedroom(closed-box).jpg");
+    private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/backgrounds/bedroom-normal.png");
+    private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/backgrounds/bedroom-cc.jpg");
+    private final BufferedImage bedroomNoBoxImage = loadBackground("/assets/backgrounds/bedroom-nobox.jpg");
+    private final BufferedImage bedroomClosedBoxImage = loadBackground("/assets/backgrounds/bedroom-closedbox.jpg");
     private boolean ccBedroomBackground = true;
     private boolean boxRetrieved = false;
     private boolean boxOpened = false;
     private boolean workbenchInstalled = false;
-    private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/night-street-long.png");
-    private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/night-street-long-cc.jpg");
-    private final BufferedImage streetBackgroundWithBox = loadStreetBackground("/assets/street-with-box.jpg");
+    private final BufferedImage streetBackgroundNormal = loadStreetBackground("/assets/backgrounds/street-normal.png");
+    private final BufferedImage streetBackgroundCc = loadStreetBackground("/assets/backgrounds/street-cc.jpg");
+    private final BufferedImage streetBackgroundWithBox = loadStreetBackground("/assets/backgrounds/street-box.jpg");
     private boolean ccStreetBackground = true;
     private int starCount = 25;
-    private final BufferedImage shopBackground = loadBackground("/assets/mira-shop.png");
+    private final BufferedImage shopBackground = loadBackground("/assets/backgrounds/shop-normal.png");
     private final BufferedImage alexSprites = loadRawImage("/assets/characters/alex-sprites.png");
     private final BufferedImage miraSprites = loadRawImage("/assets/characters/mira-sprites.png");
-    private final BufferedImage catSprites = loadRawImage("/assets/characters/cat_spritesheet.png");
-    private final BufferedImage boxImage = loadRawImage("/assets/box.png");
-    private final BufferedImage letterImage = loadRawImage("/assets/letter.png");
+    private final BufferedImage catSprites = loadRawImage("/assets/characters/cat-sprites.png");
+    private final BufferedImage boxImage = loadRawImage("/assets/items/box.png");
+    private final BufferedImage letterImage = loadRawImage("/assets/items/letter.png");
     private final BufferedImage logicLensImage = loadRawImage("/assets/items/logiclens.png");
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
     private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
-    private final BufferedImage notebookCoverImage = loadRawImage(
-        "/assets/Book/Sprites/UI_TravelBook_BookCover01a.png");
-    private final BufferedImage notebookLeftPageImage = loadRawImage(
-        "/assets/Book/Sprites/UI_TravelBook_BookPageLeft01a.png");
-    private final BufferedImage notebookRightPageImage = loadRawImage(
-        "/assets/Book/Sprites/UI_TravelBook_BookPageRight01a.png");
-    private final BufferedImage erisIdleSprites = loadRawImage(
-        "/assets/characters/MainCharacter/16x16/16x16 Idle-Sheet.png");
-    private final BufferedImage erisWalkSprites = loadRawImage(
-        "/assets/characters/MainCharacter/16x16/16x16 Walk-Sheet.png");
-    private final BufferedImage erisInteractSprites = loadRawImage(
-        "/assets/characters/MainCharacter/16x16/16x16 Interact-Sheet.png");
-    private final BufferedImage erisRunSprites = loadRawImage(
-        "/assets/characters/MainCharacter/16x16/16x16 Run-Sheet.png");
+    private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
+    private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
+    private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
+    private final BufferedImage erisIdleSprites = loadRawImage("/assets/characters/eris-idle.png");
+    private final BufferedImage erisWalkSprites = loadRawImage("/assets/characters/eris-walk.png");
+    private final BufferedImage erisInteractSprites = loadRawImage("/assets/characters/eris-interact.png");
+    private final BufferedImage erisRunSprites = loadRawImage("/assets/characters/eris-run.png");
     private final Rectangle[] alexFrameBounds = buildFrameBounds(alexSprites, 4, 3);
     private final Rectangle[] miraFrameBounds = buildFrameBounds(miraSprites, 3, 2);
     private final Rectangle[] catFrameBounds = buildCellBounds(catSprites, 15, 1);

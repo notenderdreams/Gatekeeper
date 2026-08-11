@@ -4,9 +4,9 @@ set -eu
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 TEST_BUILD_DIR="$PROJECT_DIR/out-test"
 
-test -s "$PROJECT_DIR/src/main/resources/assets/alex-bedroom.png"
-test -s "$PROJECT_DIR/src/main/resources/assets/night-street-long.png"
-test -s "$PROJECT_DIR/src/main/resources/assets/mira-shop.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/backgrounds/bedroom-normal.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/backgrounds/street-normal.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/backgrounds/shop-normal.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/characters/alex-sprites.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/characters/mira-sprites.png"
 
