@@ -119,7 +119,7 @@ final class WorkbenchRenderer {
     }
 
     private void drawSwitch(Graphics2D g, int x, int y, int width, int height, boolean on) {
-        if (!on) {
+        if (on) {
             g.drawImage(switchImage, x, y, null);
             return;
         }
