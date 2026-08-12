@@ -347,7 +347,7 @@ public final class SoundManager {
         sounds.put("SHOP", withMovement(movement, "ui-open.wav", "door-open.wav", "door-close.wav"));
         sounds.put("BOARD", Arrays.asList("ui-open.wav", "ui-close.wav", "ui-select.wav", "ui-error.wav",
             "ui-confirm.wav", "ui-click.wav", "gate-place.wav", "switch.wav", "success.wav", "failure.wav"));
-        sounds.put("NOTEBOOK", Arrays.asList("book-open.wav", "book-close.wav", "book-flip.wav", "ui-select.wav"));
+        sounds.put("NOTEBOOK", Arrays.asList("book-open.wav", "book-flip.wav", "ui-close.wav", "ui-select.wav"));
         sounds.put("END", Collections.singletonList("ui-confirm.wav"));
         return Collections.unmodifiableMap(sounds);
     }

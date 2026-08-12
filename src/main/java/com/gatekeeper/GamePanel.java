@@ -99,6 +99,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int catY = 152;
     private GameScene scene = GameScene.TITLE;
     private GameScene returnScene = GameScene.BEDROOM;
+    private GameScene notebookReturnScene = GameScene.BEDROOM;
     private String line;
     private String completedObjective;
     private int lineAge;
@@ -910,19 +911,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == GameScene.NOTEBOOK) {
-                scene = returnScene;
-                playSound("book-close");
+                scene = notebookReturnScene;
+                playSound("ui-close");
             }
             else {
-                returnScene = scene;
+                notebookReturnScene = scene;
                 notebookPage = selectedRecipe;
                 scene = GameScene.NOTEBOOK;
                 playSound("book-open");
             }
         } else if (scene == GameScene.NOTEBOOK) {
             if (key == KeyEvent.VK_ESCAPE) {
-                scene = returnScene;
-                playSound("book-close");
+                scene = notebookReturnScene;
+                playSound("ui-close");
             }
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
