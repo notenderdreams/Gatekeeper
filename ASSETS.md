@@ -69,6 +69,13 @@ converted to an alpha PNG, and downsampled with nearest-neighbor filtering for t
 game's low-resolution reward screen. No text, logo, watermark, holograms, or futuristic
 controls.
 
+## Workbench node assets
+
+- `src/main/resources/assets/items/canvas/node-texture.png`: dark textured material used
+  inside the scalable logic-node body.
+- `src/main/resources/assets/items/canvas/wire-end.png`: directional metal port cap used
+  on both sides of a node; output ports mirror the source image.
+
 ## Mystery Box asset
 
 Saved as `src/main/resources/assets/box.png`.

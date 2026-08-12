@@ -77,6 +77,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage workbenchLightOffImage = loadRawImage("/assets/items/canvas/light-off.png");
     private final BufferedImage workbenchSwitchImage = loadRawImage("/assets/items/canvas/switch.png");
     private final BufferedImage workbenchLightOnImage = loadRawImage("/assets/items/canvas/light-on.png");
+    private final BufferedImage workbenchNodeTextureImage = loadRawImage("/assets/items/canvas/node-texture.png");
+    private final BufferedImage workbenchWireEndImage = loadRawImage("/assets/items/canvas/wire-end.png");
     private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
     private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
@@ -142,7 +144,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final AutoTester autoTester = new AutoTester();
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
-        workbenchLightOnImage);
+        workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage);
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
@@ -265,7 +267,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
-            case BOARD -> workbenchRenderer.draw(g);
+            case BOARD -> workbenchRenderer.draw(g, circuit.recipe());
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);

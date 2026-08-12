@@ -9,6 +9,8 @@ test -s "$PROJECT_DIR/src/main/resources/assets/backgrounds/street-normal.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/backgrounds/shop-normal.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/characters/alex-sprites.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/characters/mira-sprites.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/node-texture.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/wire-end.png"
 
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \
@@ -16,10 +18,13 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/Facing.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameScene.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameConstants.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/LogicNodeRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveManager.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitRecipe.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitModel.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/LogicNodeRendererTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.LogicNodeRendererTest

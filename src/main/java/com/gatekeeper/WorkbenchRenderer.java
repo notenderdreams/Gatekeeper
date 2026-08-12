@@ -36,17 +36,20 @@ final class WorkbenchRenderer {
     private final BufferedImage lightOffImage;
     private final BufferedImage switchImage;
     private final BufferedImage lightOnImage;
+    private final LogicNodeRenderer nodeRenderer;
     private final boolean[] switches = new boolean[CONTROL_COUNT];
 
     WorkbenchRenderer(BufferedImage canvasImage, BufferedImage lightOffImage,
-                      BufferedImage switchImage, BufferedImage lightOnImage) {
+                      BufferedImage switchImage, BufferedImage lightOnImage,
+                      BufferedImage nodeTextureImage, BufferedImage wireEndImage) {
         this.canvasImage = canvasImage;
         this.lightOffImage = lightOffImage;
         this.switchImage = switchImage;
         this.lightOnImage = lightOnImage;
+        nodeRenderer = new LogicNodeRenderer(nodeTextureImage, wireEndImage);
     }
 
-    void draw(Graphics2D graphics) {
+    void draw(Graphics2D graphics, CircuitRecipe recipe) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -59,6 +62,7 @@ final class WorkbenchRenderer {
             g.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
 
+        drawNodePreview(g, recipe);
         drawOutputs(g);
         drawInputs(g);
         g.dispose();
@@ -116,6 +120,27 @@ final class WorkbenchRenderer {
                 numberBaseline, 2);
             g.drawImage(light, OUTPUT_LED_X, y, OUTPUT_LED_WIDTH, OUTPUT_LED_HEIGHT, null);
         }
+    }
+
+    private void drawNodePreview(Graphics2D g, CircuitRecipe recipe) {
+        int[][] layout = nodeLayout(recipe);
+        for (int index = 0; index < recipe.solution.length; index++) {
+            int[] position = layout[index];
+            nodeRenderer.draw(g, position[0], position[1], recipe.solution[index]);
+        }
+    }
+
+    private static int[][] nodeLayout(CircuitRecipe recipe) {
+        return switch (recipe.name) {
+            case "XOR" -> new int[][]{
+                {500, 500}, {790, 500}, {500, 230}, {790, 230}, {1130, 365}
+            };
+            case "XNOR" -> new int[][]{
+                {430, 230}, {430, 500}, {700, 500}, {950, 365}, {1190, 365}
+            };
+            case "IMPLY" -> new int[][]{{570, 365}, {1010, 365}};
+            default -> new int[][]{{570, 365}, {1010, 365}};
+        };
     }
 
     private void drawSwitch(Graphics2D g, int x, int y, int width, int height, boolean on) {
