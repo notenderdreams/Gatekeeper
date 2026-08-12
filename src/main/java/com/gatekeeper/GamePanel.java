@@ -73,6 +73,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
     private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
+    private final BufferedImage workbenchCanvasImage = loadRawImage("/assets/items/canvas/canvas.png");
+    private final BufferedImage workbenchLightOffImage = loadRawImage("/assets/items/canvas/light-off.png");
+    private final BufferedImage workbenchSwitchImage = loadRawImage("/assets/items/canvas/switch.png");
+    private final BufferedImage workbenchLightOnImage = loadRawImage("/assets/items/canvas/light-on.png");
     private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
     private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
@@ -137,7 +141,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
-        recipes, crafted, circuit, autoTester, logicLensImage);
+        workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
+        workbenchLightOnImage);
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
@@ -260,8 +265,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
-            case BOARD -> workbenchRenderer.draw(g, chapter, selectedRecipe, heldGate,
-                boardMessageTimer, boardMessage, mouseX, mouseY);
+            case BOARD -> workbenchRenderer.draw(g);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
@@ -928,44 +932,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
-            boolean isControlDown = (event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
-                || (event.getModifiersEx() & KeyEvent.META_DOWN_MASK) != 0;
-            if (isControlDown && key == KeyEvent.VK_Z) {
-                if (event.isShiftDown()) {
-                    if (circuit.redo()) {
-                        boardMessage = "Redid gate action.";
-                        playSound("ui-select");
-                    }
-                } else {
-                    if (circuit.undo()) {
-                        boardMessage = "Undid last gate action.";
-                        playSound("ui-back");
-                    }
-                }
-                boardMessageTimer = 120;
-                return;
-            } else if (isControlDown && key == KeyEvent.VK_Y) {
-                if (circuit.redo()) {
-                    boardMessage = "Redid gate action.";
-                    playSound("ui-select");
-                }
-                boardMessageTimer = 120;
-                return;
-            }
             if (key == KeyEvent.VK_ESCAPE) {
                 scene = returnScene;
                 playSound("ui-close");
             }
-            else if (key == KeyEvent.VK_H) toggleAutoTester();
-            else if (autoTester.isRunning()) return;
-            else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
-                heldGate = GateType.values()[key - KeyEvent.VK_1];
-                playSound("ui-select");
-            }
-            else if (key == KeyEvent.VK_A) toggleInputA();
-            else if (key == KeyEvent.VK_B) toggleInputB();
-            else if (key == KeyEvent.VK_R) recordOrAutoTest();
-            else if (key == KeyEvent.VK_T || key == KeyEvent.VK_ENTER) verify();
         }
     }
 
@@ -1117,54 +1087,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
-        if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
-        boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
-
-        int available = chapter >= 3 ? 5 : 3;
-        if (!rightClick) {
-            if (inside(x, y, 420, 15, 44, 14) || inside(x, y, 410, 15, 56, 20)) {
-                scene = returnScene;
-                playSound("ui-close");
-                return;
-            }
-            for (int i = 0; i < available; i++) {
-                if (inside(x, y, 126 + i * 52, 15, 46, 14)) {
-                    selectRecipe(i);
-                    return;
-                }
-            }
-            if (inside(x, y, 24, 90, 52, 16)) toggleInputA();
-            if (inside(x, y, 24, 138, 52, 16)) toggleInputB();
-            for (int i = 0; i < 3; i++) if (inside(x, y, 18 + i * 80, 226, 74, 28)) {
-                heldGate = GateType.values()[i];
-                playSound("ui-select");
-            }
+        if (scene != GameScene.BOARD || line != null
+            || event.getButton() != MouseEvent.BUTTON1) return;
+        if (workbenchRenderer.toggleSwitchAt(x, y)) {
+            playSound("ui-click");
+            repaint();
         }
-
-        int[][] layout = WorkbenchRenderer.socketLayout(circuit.recipe());
-        for (int i = 0; i < circuit.recipe().slotCount(); i++) {
-            if (inside(x, y, layout[i][0], layout[i][1], BOARD_SOCKET_W, BOARD_SOCKET_H)) {
-                if (rightClick) {
-                    if (circuit.placed()[i] == null) return;
-                    circuit.place(i, null);
-                    boardMessage = "Removed gate from socket " + (i + 1) + ".";
-                    playSound("ui-close");
-                } else {
-                    circuit.place(i, heldGate);
-                    boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
-                    playSound("gate-place");
-                }
-                boardMessageTimer = 120;
-                return;
-            }
-        }
-        if (rightClick) return;
-        if (inside(x, y, 277, 226, 60, 28)) {
-            if (chapter >= 3) toggleAutoTester();
-            else playSound("ui-close");
-        }
-        else if (inside(x, y, 342, 226, 58, 28)) recordOrAutoTest();
-        else if (inside(x, y, 405, 226, 58, 28)) verify();
     }
 
     @Override public void mouseReleased(MouseEvent event) {}
