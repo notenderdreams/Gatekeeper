@@ -14,6 +14,12 @@ public final class LogicNodeRendererTest {
             "node body should grow with the larger port count");
         require(LogicNodeRenderer.bodyHeight(1, 4) == LogicNodeRenderer.bodyHeight(4, 1),
             "input and output counts should affect height symmetrically");
+        int firstAndPort = LogicNodeRenderer.inputPortY(200, GateType.AND, 0);
+        int secondAndPort = LogicNodeRenderer.inputPortY(200, GateType.AND, 1);
+        require(firstAndPort < 200 && secondAndPort > 200,
+            "two input ports should straddle the node center");
+        require(LogicNodeRenderer.outputPortY(200, GateType.AND, 0) == 200,
+            "single output port should be centered");
 
         boolean rejectedNegativeCount = false;
         try {

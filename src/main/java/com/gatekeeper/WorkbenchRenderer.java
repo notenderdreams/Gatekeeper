@@ -37,16 +37,19 @@ final class WorkbenchRenderer {
     private final BufferedImage switchImage;
     private final BufferedImage lightOnImage;
     private final LogicNodeRenderer nodeRenderer;
+    private final CircuitWireRenderer wireRenderer;
     private final boolean[] switches = new boolean[CONTROL_COUNT];
 
     WorkbenchRenderer(BufferedImage canvasImage, BufferedImage lightOffImage,
                       BufferedImage switchImage, BufferedImage lightOnImage,
-                      BufferedImage nodeTextureImage, BufferedImage wireEndImage) {
+                      BufferedImage nodeTextureImage, BufferedImage wireEndImage,
+                      BufferedImage endpointImage) {
         this.canvasImage = canvasImage;
         this.lightOffImage = lightOffImage;
         this.switchImage = switchImage;
         this.lightOnImage = lightOnImage;
         nodeRenderer = new LogicNodeRenderer(nodeTextureImage, wireEndImage);
+        wireRenderer = new CircuitWireRenderer(endpointImage);
     }
 
     void draw(Graphics2D graphics, CircuitRecipe recipe) {
@@ -62,7 +65,9 @@ final class WorkbenchRenderer {
             g.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
 
-        drawNodePreview(g, recipe);
+        int[][] layout = nodeLayout(recipe);
+        wireRenderer.draw(g, recipe, layout);
+        drawNodePreview(g, recipe, layout);
         drawOutputs(g);
         drawInputs(g);
         g.dispose();
@@ -122,8 +127,7 @@ final class WorkbenchRenderer {
         }
     }
 
-    private void drawNodePreview(Graphics2D g, CircuitRecipe recipe) {
-        int[][] layout = nodeLayout(recipe);
+    private void drawNodePreview(Graphics2D g, CircuitRecipe recipe, int[][] layout) {
         for (int index = 0; index < recipe.solution.length; index++) {
             int[] position = layout[index];
             nodeRenderer.draw(g, position[0], position[1], recipe.solution[index]);

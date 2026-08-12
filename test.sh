@@ -11,6 +11,7 @@ test -s "$PROJECT_DIR/src/main/resources/assets/characters/alex-sprites.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/characters/mira-sprites.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/node-texture.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/wire-end.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/endpoint.png"
 
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \
@@ -18,6 +19,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/Facing.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameScene.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameConstants.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitWireRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/LogicNodeRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveManager.java \

@@ -79,6 +79,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage workbenchLightOnImage = loadRawImage("/assets/items/canvas/light-on.png");
     private final BufferedImage workbenchNodeTextureImage = loadRawImage("/assets/items/canvas/node-texture.png");
     private final BufferedImage workbenchWireEndImage = loadRawImage("/assets/items/canvas/wire-end.png");
+    private final BufferedImage workbenchEndpointImage = loadRawImage("/assets/items/canvas/endpoint.png");
     private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
     private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
@@ -144,7 +145,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final AutoTester autoTester = new AutoTester();
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
-        workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage);
+        workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage,
+        workbenchEndpointImage);
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
         recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(

@@ -65,6 +65,32 @@ final class LogicNodeRenderer {
         return Math.max(MIN_BODY_HEIGHT, BODY_VERTICAL_PADDING + largestSide * PORT_ROW_HEIGHT);
     }
 
+    static int inputPortX(int bodyX) {
+        return bodyX;
+    }
+
+    static int outputPortX(int bodyX) {
+        return bodyX + BODY_WIDTH;
+    }
+
+    static int inputPortY(int centerY, GateType gate, int portIndex) {
+        return portY(centerY, gate.inputPorts, portIndex,
+            bodyHeight(gate.inputPorts, gate.outputPorts));
+    }
+
+    static int outputPortY(int centerY, GateType gate, int portIndex) {
+        return portY(centerY, gate.outputPorts, portIndex,
+            bodyHeight(gate.inputPorts, gate.outputPorts));
+    }
+
+    private static int portY(int centerY, int count, int index, int height) {
+        if (index < 0 || index >= count) {
+            throw new IllegalArgumentException("Port index is outside the node");
+        }
+        int top = centerY - height / 2;
+        return top + (int) Math.round((index + 1) * height / (double) (count + 1));
+    }
+
     private void drawShadow(Graphics2D g, int x, int y, int height) {
         BufferedImage shadow = shadowByHeight.computeIfAbsent(height,
             LogicNodeRenderer::createSoftShadow);

@@ -75,6 +75,8 @@ controls.
   inside the scalable logic-node body.
 - `src/main/resources/assets/items/canvas/wire-end.png`: directional metal port cap used
   on both sides of a node; output ports mirror the source image.
+- `src/main/resources/assets/items/canvas/endpoint.png`: brass terminal used at the free
+  input and output ends of workbench cables.
 
 ## Mystery Box asset
 
