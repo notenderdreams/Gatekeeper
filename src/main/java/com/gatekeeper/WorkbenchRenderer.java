@@ -195,7 +195,7 @@ final class WorkbenchRenderer {
         }
 
         g.setColor(new Color(62, 49, 31, 190));
-        GamePanel.pixelText(g, "CLICK EMPTY SPACE: ADD", 1000, 84, 1);
+        GamePanel.pixelText(g, "CLICK: ADD / DRAG: MOVE", 1000, 84, 1);
         GamePanel.pixelText(g, "OUTPUT -> INPUT: WIRE", 1000, 101, 1);
         GamePanel.pixelText(g, "CLICK CANVAS: BEND", 1000, 118, 1);
     }

@@ -30,8 +30,8 @@ final class WorkbenchGraph {
 
     static final class Node {
         private final int id;
-        private final int x;
-        private final int centerY;
+        private int x;
+        private int centerY;
         private final GateType gate;
 
         Node(int id, int x, int centerY, GateType gate) {
@@ -45,6 +45,11 @@ final class WorkbenchGraph {
         int x() { return x; }
         int centerY() { return centerY; }
         GateType gate() { return gate; }
+
+        void moveTo(int nextX, int nextCenterY) {
+            x = nextX;
+            centerY = nextCenterY;
+        }
     }
 
     static final class Wire {
@@ -78,6 +83,9 @@ final class WorkbenchGraph {
     private Integer selectedNodeId;
     private Integer pendingSourceId;
     private final List<RoutePoint> pendingCorners = new ArrayList<>();
+    private Integer draggingNodeId;
+    private int dragOffsetX;
+    private int dragOffsetY;
 
     WorkbenchGraph(CircuitRecipe recipe) {
         loadRecipe(recipe);
@@ -90,6 +98,7 @@ final class WorkbenchGraph {
         selectedNodeId = null;
         pendingSourceId = null;
         pendingCorners.clear();
+        draggingNodeId = null;
 
         int[][] layout = initialLayout(recipe);
         for (int index = 0; index < recipe.slotCount(); index++) {
@@ -109,6 +118,7 @@ final class WorkbenchGraph {
     List<Wire> wires() { return Collections.unmodifiableList(wires); }
     Integer selectedNodeId() { return selectedNodeId; }
     Integer pendingSourceId() { return pendingSourceId; }
+    boolean isDraggingNode() { return draggingNodeId != null; }
     List<RoutePoint> pendingCorners() {
         return Collections.unmodifiableList(pendingCorners);
     }
@@ -116,6 +126,43 @@ final class WorkbenchGraph {
     Node node(int id) {
         for (Node node : nodes) if (node.id == id) return node;
         return null;
+    }
+
+    boolean beginNodeDrag(int x, int y) {
+        if (pendingSourceId != null || sourceAt(x, y) != null || targetAt(x, y) != null) {
+            return false;
+        }
+        Node hitNode = nodeAt(x, y);
+        if (hitNode == null) return false;
+        selectedNodeId = hitNode.id;
+        draggingNodeId = hitNode.id;
+        dragOffsetX = x - hitNode.x;
+        dragOffsetY = y - hitNode.centerY;
+        return true;
+    }
+
+    boolean dragNodeTo(int x, int y) {
+        if (draggingNodeId == null) return false;
+        Node dragged = node(draggingNodeId);
+        if (dragged == null) {
+            draggingNodeId = null;
+            return false;
+        }
+        int height = LogicNodeRenderer.bodyHeight(
+            dragged.gate.inputPorts, dragged.gate.outputPorts);
+        int nextX = clamp(snap(x - dragOffsetX),
+            WORK_X, WORK_RIGHT - LogicNodeRenderer.BODY_WIDTH);
+        int nextCenterY = clamp(snap(y - dragOffsetY),
+            WORK_Y + height / 2, WORK_BOTTOM - height / 2);
+        if (nextX == dragged.x && nextCenterY == dragged.centerY) return false;
+        dragged.moveTo(nextX, nextCenterY);
+        return true;
+    }
+
+    boolean endNodeDrag() {
+        if (draggingNodeId == null) return false;
+        draggingNodeId = null;
+        return true;
     }
 
     EditResult click(int x, int y, GateType gateToAdd) {
@@ -189,6 +236,7 @@ final class WorkbenchGraph {
         wires.removeIf(wire -> wire.sourceId == removedId || wire.targetId == removedId);
         if (pendingSourceId != null && pendingSourceId == removedId) pendingSourceId = null;
         selectedNodeId = null;
+        if (draggingNodeId != null && draggingNodeId == removedId) draggingNodeId = null;
         return true;
     }
 
@@ -316,6 +364,11 @@ final class WorkbenchGraph {
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private static int snap(int value) {
+        int grid = 8;
+        return (int) Math.round(value / (double) grid) * grid;
     }
 
     private static int[][] initialLayout(CircuitRecipe recipe) {

@@ -1132,8 +1132,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        WorkbenchGraph.EditResult edit = workbenchGraph.click(
-            WorkbenchRenderer.canvasX(x), WorkbenchRenderer.canvasY(y), heldGate);
+        int canvasX = WorkbenchRenderer.canvasX(x);
+        int canvasY = WorkbenchRenderer.canvasY(y);
+        if (workbenchGraph.beginNodeDrag(canvasX, canvasY)) {
+            playSound("ui-select");
+            repaint();
+            return;
+        }
+
+        WorkbenchGraph.EditResult edit = workbenchGraph.click(canvasX, canvasY, heldGate);
         switch (edit) {
             case ADDED -> playSound("gate-place");
             case WIRED -> playSound("ui-confirm");
@@ -1144,7 +1151,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
 
-    @Override public void mouseReleased(MouseEvent event) {}
+    @Override public void mouseReleased(MouseEvent event) {
+        if (workbenchGraph.endNodeDrag()) repaint();
+    }
     @Override public void mouseClicked(MouseEvent event) {}
     @Override public void mouseEntered(MouseEvent event) { requestFocusInWindow(); }
     @Override public void mouseExited(MouseEvent event) { mouseX = -1; mouseY = -1; }
@@ -1232,7 +1241,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         repaint();
     }
-    @Override public void mouseDragged(MouseEvent event) { mouseMoved(event); }
+    @Override public void mouseDragged(MouseEvent event) {
+        if (scene == GameScene.BOARD && workbenchGraph.isDraggingNode()) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            workbenchGraph.dragNodeTo(WorkbenchRenderer.canvasX(mouseX),
+                WorkbenchRenderer.canvasY(mouseY));
+            repaint();
+            return;
+        }
+        mouseMoved(event);
+    }
 
     private int[] logicalPoint(MouseEvent event) {
         double scale = Math.min(getWidth() / (double) W, getHeight() / (double) H);

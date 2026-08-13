@@ -66,6 +66,22 @@ public final class WorkbenchGraphTest {
         require(routed.corners().size() == 1,
             "completed wire should retain its Proteus-style corner");
 
+        int[] portBeforeMove = graph.sourcePoint(source.id());
+        require(!graph.beginNodeDrag(portBeforeMove[0], portBeforeMove[1]),
+            "dragging from a port must remain reserved for wiring");
+        require(graph.beginNodeDrag(source.x() + LogicNodeRenderer.BODY_WIDTH / 2,
+                source.centerY()),
+            "pressing a node body should begin a drag");
+        require(graph.isDraggingNode(), "graph should expose its active drag state");
+        require(graph.dragNodeTo(1200, 220), "dragging should update the node position");
+        require(source.x() == 1144 && source.centerY() == 224,
+            "dragged node should preserve the grab offset and snap to the grid");
+        int[] portAfterMove = graph.sourcePoint(source.id());
+        require(portAfterMove[0] != portBeforeMove[0] || portAfterMove[1] != portBeforeMove[1],
+            "attached wire endpoints should follow a moved node");
+        require(graph.endNodeDrag(), "mouse release should end node dragging");
+        require(!graph.isDraggingNode(), "drag state should clear on release");
+
         System.out.println("WorkbenchGraphTest: all checks passed");
     }
 

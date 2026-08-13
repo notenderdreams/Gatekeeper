@@ -116,6 +116,9 @@ final class CircuitWireRenderer {
         int previousX = startX;
         int previousY = startY;
         for (WorkbenchGraph.RoutePoint corner : corners) {
+            if (previousX != corner.x() && previousY != corner.y()) {
+                path.lineTo(corner.x(), previousY);
+            }
             path.lineTo(corner.x(), corner.y());
             previousX = corner.x();
             previousY = corner.y();
