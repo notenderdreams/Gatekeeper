@@ -44,10 +44,15 @@ final class CircuitWireRenderer {
             }
         }
 
-        if (graph.pendingSourceId() != null) {
-            int[] start = graph.sourcePoint(graph.pendingSourceId());
+        if (graph.hasPendingWire()) {
+            int[] start = graph.pendingStartPoint();
             if (start != null) drawPreviewCable(g, start[0], start[1],
                 pointerX, pointerY, graph.pendingCorners());
+        }
+
+        for (WorkbenchGraph.Junction junction : graph.junctions()) {
+            drawJunction(g, junction.x(), junction.y(),
+                graph.sourceValue(junction.id(), externalInputs));
         }
 
         drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_0_Y, false);
@@ -57,6 +62,18 @@ final class CircuitWireRenderer {
         drawLabel(g, "IN 1", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_1_Y - 20);
         drawLabel(g, "OUT 0", WorkbenchGraph.OUTPUT_X + 10, WorkbenchGraph.OUTPUT_Y - 24);
         g.dispose();
+    }
+
+    private static void drawJunction(Graphics2D g, int centerX, int centerY,
+                                     boolean powered) {
+        g.setColor(new Color(35, 25, 15, 95));
+        g.fillOval(centerX - 10 + 3, centerY - 10 + 4, 20, 20);
+        g.setColor(powered ? POWERED_EDGE : CABLE_EDGE);
+        g.fillOval(centerX - 10, centerY - 10, 20, 20);
+        g.setColor(powered ? POWERED_FACE : CABLE_FACE);
+        g.fillOval(centerX - 6, centerY - 6, 12, 12);
+        g.setColor(powered ? POWERED_HIGHLIGHT : CABLE_HIGHLIGHT);
+        g.drawOval(centerX - 6, centerY - 7, 12, 12);
     }
 
     private static void drawCable(Graphics2D g, int startX, int startY,

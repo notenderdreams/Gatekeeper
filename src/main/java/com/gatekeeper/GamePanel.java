@@ -160,6 +160,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
     private int mouseX = -1;
     private int mouseY = -1;
+    private boolean wireDragActive;
+    private boolean wireDragMoved;
+    private int wireDragStartX;
+    private int wireDragStartY;
     private long ticks;
     private int introTimer = 0;
     private int introStage = 0;
@@ -990,7 +994,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     boardMessage = "Removed last wire corner.";
                     boardMessageTimer = 90;
                     playSound("ui-back");
-                } else if (workbenchGraph.pendingSourceId() != null) {
+                } else if (workbenchGraph.hasPendingWire()) {
                     workbenchGraph.cancelWire();
                     boardMessage = "Cancelled wire.";
                     boardMessageTimer = 90;
@@ -1174,6 +1178,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
+        if (event.isShiftDown()) {
+            WorkbenchGraph.EditResult junction = workbenchGraph.addJunctionAt(
+                canvasX, canvasY);
+            if (junction == WorkbenchGraph.EditResult.JUNCTION_ADDED
+                || junction == WorkbenchGraph.EditResult.WIRE_STARTED) {
+                beginWireDrag(canvasX, canvasY);
+                playSound("ui-confirm");
+            } else {
+                playSound("ui-error");
+            }
+            repaint();
+            return;
+        }
+
         if (workbenchGraph.beginNodeDrag(canvasX, canvasY)) {
             playSound("ui-select");
             repaint();
@@ -1181,10 +1199,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         WorkbenchGraph.EditResult edit = workbenchGraph.click(canvasX, canvasY, heldGate);
+        if (edit == WorkbenchGraph.EditResult.WIRE_STARTED) {
+            beginWireDrag(canvasX, canvasY);
+        }
         switch (edit) {
             case ADDED -> playSound("gate-place");
             case WIRED -> playSound("ui-confirm");
             case WIRE_STARTED, WIRE_CORNER, SELECTED -> playSound("ui-select");
+            case JUNCTION_ADDED -> playSound("ui-confirm");
             case INVALID_WIRE -> playSound("ui-error");
             case NONE -> { }
         }
@@ -1192,6 +1214,25 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     @Override public void mouseReleased(MouseEvent event) {
+        if (scene == GameScene.BOARD && wireDragActive) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            if (wireDragMoved) {
+                WorkbenchGraph.EditResult edit = workbenchGraph.finishWireAt(
+                    WorkbenchRenderer.canvasX(mouseX),
+                    WorkbenchRenderer.canvasY(mouseY));
+                if (edit == WorkbenchGraph.EditResult.WIRED) {
+                    playSound("ui-confirm");
+                } else if (edit == WorkbenchGraph.EditResult.INVALID_WIRE) {
+                    playSound("ui-error");
+                }
+            }
+            wireDragActive = false;
+            wireDragMoved = false;
+            repaint();
+            return;
+        }
         if (workbenchGraph.endNodeDrag()) repaint();
     }
     @Override public void mouseClicked(MouseEvent event) {}
@@ -1295,7 +1336,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
+        if (scene == GameScene.BOARD && wireDragActive) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            int canvasX = WorkbenchRenderer.canvasX(mouseX);
+            int canvasY = WorkbenchRenderer.canvasY(mouseY);
+            int dx = canvasX - wireDragStartX;
+            int dy = canvasY - wireDragStartY;
+            if (dx * dx + dy * dy >= 12 * 12) wireDragMoved = true;
+            repaint();
+            return;
+        }
         mouseMoved(event);
+    }
+
+    private void beginWireDrag(int canvasX, int canvasY) {
+        wireDragActive = true;
+        wireDragMoved = false;
+        wireDragStartX = canvasX;
+        wireDragStartY = canvasY;
     }
 
     private int[] logicalPoint(MouseEvent event) {

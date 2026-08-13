@@ -12,6 +12,25 @@ public final class WorkbenchGraphTest {
             "clicking OUT without a pending wire should not add a node");
         require(graph.nodes().size() == 2, "terminal clicks must stay outside placement handling");
 
+        WorkbenchGraph disconnected = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        require(disconnected.click(760, 690, GateType.OR) == WorkbenchGraph.EditResult.ADDED,
+            "empty canvas click should add the active gate");
+        WorkbenchGraph.Node reverseTarget = disconnected.nodes().get(2);
+        int[] emptyInput = disconnected.targetPoint(reverseTarget.id(), 0);
+        require(disconnected.click(emptyInput[0], emptyInput[1], GateType.OR)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "an empty gate input should start a reverse wire");
+        require(disconnected.hasPendingWire(),
+            "reverse wiring should retain the input as the pending endpoint");
+        require(disconnected.finishWireAt(WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_0_Y)
+                == WorkbenchGraph.EditResult.WIRED,
+            "a disconnected first gate should reconnect by dragging its input to IN 0");
+        require(disconnected.wires().stream().anyMatch(wire ->
+                wire.sourceId() == WorkbenchGraph.INPUT_0
+                    && wire.targetId() == reverseTarget.id()
+                    && wire.targetPort() == 0),
+            "reverse connection should be stored in source-to-input direction");
+
         require(graph.click(760, 690, GateType.OR) == WorkbenchGraph.EditResult.ADDED,
             "empty canvas click should add the active gate");
         WorkbenchGraph.Node source = graph.nodes().get(2);
@@ -106,6 +125,65 @@ public final class WorkbenchGraphTest {
         boolean feedbackValue = nand.outputValue(0, new boolean[]{true, true});
         require(feedbackValue == nand.outputValue(0, new boolean[]{true, true}),
             "feedback cycles should resolve safely and deterministically");
+
+        WorkbenchGraph branched = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        int wireCountBeforeJunction = branched.wires().size();
+        require(branched.addJunctionAt(430, WorkbenchGraph.INPUT_0_Y)
+                == WorkbenchGraph.EditResult.JUNCTION_ADDED,
+            "Shift-clicking a wire should create a junction source");
+        require(branched.junctions().size() == 1,
+            "created routing point should be retained by the graph");
+        WorkbenchGraph.Junction junction = branched.junctions().get(0);
+        require(junction.y() == WorkbenchGraph.INPUT_0_Y,
+            "junction should project precisely onto the tapped wire");
+        require(Integer.valueOf(junction.id()).equals(branched.pendingSourceId()),
+            "new junction should immediately become the active wire source");
+        require(!branched.sourceValue(junction.id(), new boolean[]{false, true}),
+            "junction should inherit its tapped wire signal when low");
+        require(branched.sourceValue(junction.id(), new boolean[]{true, false}),
+            "junction should inherit its tapped wire signal when high");
+        int[] branchTarget = branched.targetPoint(branched.nodes().get(0).id(), 1);
+        require(branched.click(branchTarget[0], branchTarget[1], GateType.AND)
+                == WorkbenchGraph.EditResult.WIRED,
+            "a branch wire should finish from the new junction");
+        require(branched.wires().size() == wireCountBeforeJunction,
+            "branching onto an occupied input should replace that input wire");
+        int nodeCountBeforeJunctionClick = branched.nodes().size();
+        require(branched.click(junction.x(), junction.y(), GateType.OR)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "clicking an existing junction should start a new branch wire");
+        require(Integer.valueOf(junction.id()).equals(branched.pendingSourceId()),
+            "clicked junction should become the active wire source");
+        require(branched.nodes().size() == nodeCountBeforeJunctionClick,
+            "clicking a junction must not add the selected gate");
+        require(branched.finishWireAt(branchTarget[0], branchTarget[1])
+                == WorkbenchGraph.EditResult.WIRED,
+            "dragging from a junction should connect when released on an input");
+        require(branched.pendingSourceId() == null,
+            "finishing a junction drag should clear the active wire source");
+
+        require(branched.click(800, 700, GateType.NOT)
+                == WorkbenchGraph.EditResult.ADDED,
+            "an independent source node should be placeable for junction wiring");
+        WorkbenchGraph.Node junctionDriver = branched.nodes()
+            .get(branched.nodes().size() - 1);
+        int[] driverOutput = branched.sourcePoint(junctionDriver.id());
+        require(branched.click(driverOutput[0], driverOutput[1], GateType.NOT)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "a node output should start a wire toward a junction");
+        require(branched.finishWireAt(junction.x(), junction.y())
+                == WorkbenchGraph.EditResult.WIRED,
+            "a node output wire should finish on an existing junction");
+        require(branched.wires().stream().anyMatch(wire ->
+                wire.sourceId() == junctionDriver.id()
+                    && wire.targetId() == junction.id()
+                    && wire.targetPort() == 0),
+            "the node-to-junction connection should be retained");
+        require(branched.sourceValue(junction.id(), new boolean[]{false, false}),
+            "a connected node output should drive the junction signal");
+
+        require(branched.addJunctionAt(10, 10) == WorkbenchGraph.EditResult.NONE,
+            "Shift-click away from a wire should not create a junction");
 
         System.out.println("WorkbenchGraphTest: all checks passed");
     }

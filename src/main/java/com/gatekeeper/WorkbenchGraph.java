@@ -29,10 +29,13 @@ final class WorkbenchGraph {
     static final int WORK_BOTTOM = WORK_Y + WORK_HEIGHT;
 
     private static final int PORT_HIT_RADIUS = 24;
+    private static final int WIRE_HIT_RADIUS = 18;
     private static final int MAX_NODES = 32;
+    private static final int FIRST_JUNCTION_ID = -1000;
 
     enum EditResult {
-        NONE, ADDED, SELECTED, WIRE_STARTED, WIRE_CORNER, WIRED, INVALID_WIRE
+        NONE, ADDED, SELECTED, WIRE_STARTED, WIRE_CORNER, JUNCTION_ADDED,
+        WIRED, INVALID_WIRE
     }
 
     static final class Node {
@@ -84,11 +87,33 @@ final class WorkbenchGraph {
 
     record RoutePoint(int x, int y) {}
 
+    static final class Junction {
+        private final int id;
+        private final int upstreamSourceId;
+        private final int x;
+        private final int y;
+
+        Junction(int id, int upstreamSourceId, int x, int y) {
+            this.id = id;
+            this.upstreamSourceId = upstreamSourceId;
+            this.x = x;
+            this.y = y;
+        }
+
+        int id() { return id; }
+        int upstreamSourceId() { return upstreamSourceId; }
+        int x() { return x; }
+        int y() { return y; }
+    }
+
     private final List<Node> nodes = new ArrayList<>();
     private final List<Wire> wires = new ArrayList<>();
+    private final List<Junction> junctions = new ArrayList<>();
     private int nextNodeId;
+    private int nextJunctionId = FIRST_JUNCTION_ID;
     private Integer selectedNodeId;
     private Integer pendingSourceId;
+    private Target pendingTarget;
     private final List<RoutePoint> pendingCorners = new ArrayList<>();
     private Integer draggingNodeId;
     private int dragOffsetX;
@@ -101,9 +126,12 @@ final class WorkbenchGraph {
     void loadRecipe(CircuitRecipe recipe) {
         nodes.clear();
         wires.clear();
+        junctions.clear();
         nextNodeId = 0;
+        nextJunctionId = FIRST_JUNCTION_ID;
         selectedNodeId = null;
         pendingSourceId = null;
+        pendingTarget = null;
         pendingCorners.clear();
         draggingNodeId = null;
 
@@ -123,8 +151,15 @@ final class WorkbenchGraph {
 
     List<Node> nodes() { return Collections.unmodifiableList(nodes); }
     List<Wire> wires() { return Collections.unmodifiableList(wires); }
+    List<Junction> junctions() { return Collections.unmodifiableList(junctions); }
     Integer selectedNodeId() { return selectedNodeId; }
     Integer pendingSourceId() { return pendingSourceId; }
+    boolean hasPendingWire() { return pendingSourceId != null || pendingTarget != null; }
+    int[] pendingStartPoint() {
+        if (pendingSourceId != null) return sourcePoint(pendingSourceId);
+        return pendingTarget == null ? null
+            : targetPoint(pendingTarget.nodeId, pendingTarget.port);
+    }
     boolean isDraggingNode() { return draggingNodeId != null; }
     List<RoutePoint> pendingCorners() {
         return Collections.unmodifiableList(pendingCorners);
@@ -135,8 +170,30 @@ final class WorkbenchGraph {
         return null;
     }
 
+    EditResult addJunctionAt(int x, int y) {
+        WireHit hit = wireAt(x, y);
+        if (hit == null) return EditResult.NONE;
+        for (Junction junction : junctions) {
+            if (near(hit.point.x, hit.point.y, junction.x, junction.y)) {
+                pendingSourceId = junction.id;
+                pendingTarget = null;
+                pendingCorners.clear();
+                selectedNodeId = null;
+                return EditResult.WIRE_STARTED;
+            }
+        }
+        Junction junction = new Junction(nextJunctionId--,
+            hit.wire.sourceId, hit.point.x, hit.point.y);
+        junctions.add(junction);
+        pendingSourceId = junction.id;
+        pendingTarget = null;
+        pendingCorners.clear();
+        selectedNodeId = null;
+        return EditResult.JUNCTION_ADDED;
+    }
+
     boolean beginNodeDrag(int x, int y) {
-        if (pendingSourceId != null || sourceAt(x, y) != null || targetAt(x, y) != null) {
+        if (hasPendingWire() || sourceAt(x, y) != null || targetAt(x, y) != null) {
             return false;
         }
         Node hitNode = nodeAt(x, y);
@@ -173,9 +230,16 @@ final class WorkbenchGraph {
     }
 
     EditResult click(int x, int y, GateType gateToAdd) {
+        if (pendingSourceId != null) {
+            Target target = targetAt(x, y);
+            if (target != null) return connectTo(target);
+        }
+
         Integer source = sourceAt(x, y);
         if (source != null) {
+            if (pendingTarget != null) return connectFrom(source);
             pendingSourceId = source;
+            pendingTarget = null;
             pendingCorners.clear();
             selectedNodeId = source >= 0 ? source : null;
             return EditResult.WIRE_STARTED;
@@ -183,32 +247,26 @@ final class WorkbenchGraph {
 
         Target target = targetAt(x, y);
         if (target != null) {
-            if (pendingSourceId != null) {
-                if (pendingSourceId == target.nodeId) return EditResult.INVALID_WIRE;
-                wires.removeIf(wire -> wire.targetId == target.nodeId
-                    && wire.targetPort == target.port);
-                wires.add(new Wire(pendingSourceId, target.nodeId, target.port,
-                    normalizedCorners(target)));
-                pendingSourceId = null;
-                pendingCorners.clear();
-                selectedNodeId = target.nodeId >= 0 ? target.nodeId : selectedNodeId;
-                return EditResult.WIRED;
-            }
+            if (pendingSourceId != null) return connectTo(target);
+            if (target.nodeId == OUTPUT) return EditResult.NONE;
+            pendingTarget = target;
+            pendingCorners.clear();
             selectedNodeId = target.nodeId >= 0 ? target.nodeId : null;
-            return target.nodeId >= 0 ? EditResult.SELECTED : EditResult.NONE;
+            return EditResult.WIRE_STARTED;
         }
 
         Node hitNode = nodeAt(x, y);
         if (hitNode != null) {
             selectedNodeId = hitNode.id;
             pendingSourceId = null;
+            pendingTarget = null;
             pendingCorners.clear();
             return EditResult.SELECTED;
         }
 
-        if (pendingSourceId != null && insideWorkArea(x, y)) {
+        if (hasPendingWire() && insideWorkArea(x, y)) {
             RoutePoint previous = pendingCorners.isEmpty()
-                ? sourceRoutePoint(pendingSourceId)
+                ? pendingStartRoutePoint()
                 : pendingCorners.get(pendingCorners.size() - 1);
             RoutePoint corner = snappedPoint(x, y, previous);
             if (!corner.equals(previous)) pendingCorners.add(corner);
@@ -225,13 +283,27 @@ final class WorkbenchGraph {
             Node added = addNode(bodyX, centerY, gateToAdd);
             selectedNodeId = added.id;
             pendingSourceId = null;
+            pendingTarget = null;
             pendingCorners.clear();
             return EditResult.ADDED;
         }
 
         selectedNodeId = null;
         pendingSourceId = null;
+        pendingTarget = null;
         pendingCorners.clear();
+        return EditResult.NONE;
+    }
+
+    EditResult finishWireAt(int x, int y) {
+        if (pendingSourceId != null) {
+            Target target = targetAt(x, y);
+            return target == null ? EditResult.NONE : connectTo(target);
+        }
+        if (pendingTarget != null) {
+            Integer source = sourceAt(x, y);
+            return source == null ? EditResult.NONE : connectFrom(source);
+        }
         return EditResult.NONE;
     }
 
@@ -241,21 +313,24 @@ final class WorkbenchGraph {
         boolean removed = nodes.removeIf(node -> node.id == removedId);
         if (!removed) return false;
         wires.removeIf(wire -> wire.sourceId == removedId || wire.targetId == removedId);
+        removeOrphanedJunctions(removedId);
         if (pendingSourceId != null && pendingSourceId == removedId) pendingSourceId = null;
+        if (pendingTarget != null && pendingTarget.nodeId == removedId) pendingTarget = null;
         selectedNodeId = null;
         if (draggingNodeId != null && draggingNodeId == removedId) draggingNodeId = null;
         return true;
     }
 
     boolean cancelWire() {
-        if (pendingSourceId == null) return false;
+        if (!hasPendingWire()) return false;
         pendingSourceId = null;
+        pendingTarget = null;
         pendingCorners.clear();
         return true;
     }
 
     boolean undoWireCorner() {
-        if (pendingSourceId == null || pendingCorners.isEmpty()) return false;
+        if (!hasPendingWire() || pendingCorners.isEmpty()) return false;
         pendingCorners.remove(pendingCorners.size() - 1);
         return true;
     }
@@ -276,6 +351,8 @@ final class WorkbenchGraph {
     int[] sourcePoint(int sourceId) {
         if (sourceId == INPUT_0) return new int[]{INPUT_X, INPUT_0_Y};
         if (sourceId == INPUT_1) return new int[]{INPUT_X, INPUT_1_Y};
+        Junction junction = junction(sourceId);
+        if (junction != null) return new int[]{junction.x, junction.y};
         Node source = node(sourceId);
         if (source == null) return null;
         return new int[]{LogicNodeRenderer.outputPortX(source.x),
@@ -284,6 +361,10 @@ final class WorkbenchGraph {
 
     int[] targetPoint(int targetId, int targetPort) {
         if (targetId == OUTPUT) return new int[]{OUTPUT_X, OUTPUT_Y};
+        Junction junction = junction(targetId);
+        if (junction != null && targetPort == 0) {
+            return new int[]{junction.x, junction.y};
+        }
         Node target = node(targetId);
         if (target == null || targetPort < 0 || targetPort >= target.gate.inputPorts) return null;
         return new int[]{LogicNodeRenderer.inputPortX(target.x),
@@ -302,6 +383,20 @@ final class WorkbenchGraph {
                                 Set<Integer> evaluating) {
         if (sourceId == INPUT_0) return inputValue(externalInputs, 0);
         if (sourceId == INPUT_1) return inputValue(externalInputs, 1);
+        Junction junction = junction(sourceId);
+        if (junction != null) {
+            Boolean cached = memo.get(sourceId);
+            if (cached != null) return cached;
+            if (!evaluating.add(sourceId)) return false;
+            Wire incoming = wireTo(junction.id, 0);
+            int driverId = incoming == null
+                ? junction.upstreamSourceId : incoming.sourceId;
+            boolean value = sourceValue(
+                driverId, externalInputs, memo, evaluating);
+            evaluating.remove(sourceId);
+            memo.put(sourceId, value);
+            return value;
+        }
         Boolean cached = memo.get(sourceId);
         if (cached != null) return cached;
         Node source = node(sourceId);
@@ -347,6 +442,117 @@ final class WorkbenchGraph {
         return node;
     }
 
+    private Junction junction(int id) {
+        for (Junction junction : junctions) if (junction.id == id) return junction;
+        return null;
+    }
+
+    private EditResult connectTo(Target target) {
+        if (pendingSourceId == target.nodeId) return EditResult.INVALID_WIRE;
+        wires.removeIf(wire -> wire.targetId == target.nodeId
+            && wire.targetPort == target.port);
+        wires.add(new Wire(pendingSourceId, target.nodeId, target.port,
+            normalizedCorners(target)));
+        pendingSourceId = null;
+        pendingTarget = null;
+        pendingCorners.clear();
+        selectedNodeId = target.nodeId >= 0 ? target.nodeId : selectedNodeId;
+        return EditResult.WIRED;
+    }
+
+    private EditResult connectFrom(int sourceId) {
+        Target target = pendingTarget;
+        if (target == null) return EditResult.NONE;
+        if (sourceId == target.nodeId) return EditResult.INVALID_WIRE;
+        wires.removeIf(wire -> wire.targetId == target.nodeId
+            && wire.targetPort == target.port);
+        List<RoutePoint> corners = new ArrayList<>(pendingCorners);
+        Collections.reverse(corners);
+        wires.add(new Wire(sourceId, target.nodeId, target.port, corners));
+        pendingSourceId = null;
+        pendingTarget = null;
+        pendingCorners.clear();
+        selectedNodeId = target.nodeId >= 0 ? target.nodeId : selectedNodeId;
+        return EditResult.WIRED;
+    }
+
+    private void removeOrphanedJunctions(int removedSourceId) {
+        Set<Integer> removed = new HashSet<>();
+        removed.add(removedSourceId);
+        boolean changed;
+        do {
+            changed = false;
+            for (Junction junction : List.copyOf(junctions)) {
+                if (removed.contains(junction.upstreamSourceId)) {
+                    removed.add(junction.id);
+                    junctions.remove(junction);
+                    changed = true;
+                }
+            }
+        } while (changed);
+        wires.removeIf(wire -> removed.contains(wire.sourceId));
+        if (pendingSourceId != null && removed.contains(pendingSourceId)) {
+            pendingSourceId = null;
+            pendingCorners.clear();
+        }
+    }
+
+    private WireHit wireAt(int x, int y) {
+        WireHit closest = null;
+        double closestDistance = WIRE_HIT_RADIUS + 1.0;
+        for (Wire wire : wires) {
+            List<RoutePoint> points = wireRoute(wire);
+            for (int index = 1; index < points.size(); index++) {
+                RoutePoint projected = projectOrthogonal(
+                    x, y, points.get(index - 1), points.get(index));
+                double distance = Math.hypot(x - projected.x, y - projected.y);
+                if (distance <= WIRE_HIT_RADIUS && distance < closestDistance) {
+                    closest = new WireHit(wire, projected);
+                    closestDistance = distance;
+                }
+            }
+        }
+        return closest;
+    }
+
+    private List<RoutePoint> wireRoute(Wire wire) {
+        int[] start = sourcePoint(wire.sourceId);
+        int[] end = targetPoint(wire.targetId, wire.targetPort);
+        if (start == null || end == null) return List.of();
+        List<RoutePoint> points = new ArrayList<>();
+        points.add(new RoutePoint(start[0], start[1]));
+        if (wire.corners.isEmpty()) {
+            int bendX = start[0] + Math.max(36, (end[0] - start[0]) / 2);
+            points.add(new RoutePoint(bendX, start[1]));
+            points.add(new RoutePoint(bendX, end[1]));
+        } else {
+            RoutePoint previous = points.get(0);
+            for (RoutePoint corner : wire.corners) {
+                if (previous.x != corner.x && previous.y != corner.y) {
+                    points.add(new RoutePoint(corner.x, previous.y));
+                }
+                points.add(corner);
+                previous = corner;
+            }
+            if (previous.x != end[0] && previous.y != end[1]) {
+                points.add(new RoutePoint(end[0], previous.y));
+            }
+        }
+        points.add(new RoutePoint(end[0], end[1]));
+        return points;
+    }
+
+    private static RoutePoint projectOrthogonal(int x, int y,
+                                                RoutePoint start,
+                                                RoutePoint end) {
+        if (start.x == end.x) {
+            return new RoutePoint(start.x, clamp(y,
+                Math.min(start.y, end.y), Math.max(start.y, end.y)));
+        }
+        return new RoutePoint(clamp(x,
+            Math.min(start.x, end.x), Math.max(start.x, end.x)), start.y);
+    }
+
     private List<RoutePoint> normalizedCorners(Target target) {
         if (pendingCorners.isEmpty()) return List.of();
         int[] end = targetPoint(target.nodeId, target.port);
@@ -368,6 +574,11 @@ final class WorkbenchGraph {
         return new RoutePoint(source[0], source[1]);
     }
 
+    private RoutePoint pendingStartRoutePoint() {
+        int[] start = pendingStartPoint();
+        return new RoutePoint(start[0], start[1]);
+    }
+
     private static RoutePoint snappedPoint(int x, int y, RoutePoint previous) {
         int grid = 8;
         int snappedX = (int) Math.round(x / (double) grid) * grid;
@@ -380,6 +591,10 @@ final class WorkbenchGraph {
     }
 
     private Integer sourceAt(int x, int y) {
+        for (int index = junctions.size() - 1; index >= 0; index--) {
+            Junction junction = junctions.get(index);
+            if (near(x, y, junction.x, junction.y)) return junction.id;
+        }
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
             int portX = LogicNodeRenderer.outputPortX(node.x);
@@ -392,6 +607,12 @@ final class WorkbenchGraph {
     }
 
     private Target targetAt(int x, int y) {
+        for (int index = junctions.size() - 1; index >= 0; index--) {
+            Junction junction = junctions.get(index);
+            if (near(x, y, junction.x, junction.y)) {
+                return new Target(junction.id, 0);
+            }
+        }
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
             for (int port = 0; port < node.gate.inputPorts; port++) {
@@ -449,4 +670,5 @@ final class WorkbenchGraph {
     }
 
     private record Target(int nodeId, int port) {}
+    private record WireHit(Wire wire, RoutePoint point) {}
 }
