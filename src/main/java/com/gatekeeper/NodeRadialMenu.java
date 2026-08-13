@@ -63,6 +63,12 @@ final class NodeRadialMenu {
         return true;
     }
 
+    GateType releaseAt(int x, int y) {
+        GateType selected = gateAt(x, y);
+        close();
+        return selected;
+    }
+
     GateType gateAt(int x, int y) {
         if (!open || unlocked.isEmpty()) return null;
         int dx = x - centerX;

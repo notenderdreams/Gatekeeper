@@ -142,6 +142,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
+    private boolean nodeWheelHeld;
     private String boardMessage = "Click empty space to add. Wire output to input. Backspace deletes.";
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
@@ -588,11 +589,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         return unlocked;
     }
 
-    private void toggleNodeRadialMenu() {
-        if (nodeRadialMenu.close()) {
-            playSound("ui-close");
-            return;
-        }
+    private void openNodeRadialMenu() {
         workbenchGraph.endNodeDrag();
         workbenchGraph.cancelWire();
         int logicalX = mouseX >= 0 ? mouseX : W / 2;
@@ -797,7 +794,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
-        keys.add(key);
+        boolean firstPress = keys.add(key);
         if (key == KeyEvent.VK_F1 && scene != GameScene.DEV) {
             devReturnScene = scene;
             devSection = 0;
@@ -974,14 +971,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
             if (nodeRadialMenu.isOpen()) {
-                if (key == KeyEvent.VK_Q || key == KeyEvent.VK_ESCAPE) {
+                if (key == KeyEvent.VK_ESCAPE) {
+                    nodeWheelHeld = false;
                     nodeRadialMenu.close();
                     playSound("ui-close");
                 }
                 return;
             }
-            if (key == KeyEvent.VK_Q) {
-                toggleNodeRadialMenu();
+            if (key == KeyEvent.VK_E && firstPress) {
+                nodeWheelHeld = true;
+                openNodeRadialMenu();
+            } else if (key == KeyEvent.VK_Q) {
+                if (cancelWireInteraction()) {
+                    boardMessage = "Cancelled wire.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                    repaint();
+                }
             } else if (key == KeyEvent.VK_ESCAPE) {
                 if (workbenchGraph.cancelWire()) {
                     playSound("ui-back");
@@ -1008,7 +1014,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
     }
 
-    @Override public void keyReleased(KeyEvent event) { keys.remove(event.getKeyCode()); }
+    @Override public void keyReleased(KeyEvent event) {
+        int key = event.getKeyCode();
+        keys.remove(key);
+        if (key != KeyEvent.VK_E || !nodeWheelHeld) return;
+        nodeWheelHeld = false;
+        if (scene != GameScene.BOARD || !nodeRadialMenu.isOpen()) return;
+
+        int logicalX = mouseX >= 0 ? mouseX : W / 2;
+        int logicalY = mouseY >= 0 ? mouseY : H / 2;
+        GateType chosen = nodeRadialMenu.releaseAt(
+            WorkbenchRenderer.canvasX(logicalX),
+            WorkbenchRenderer.canvasY(logicalY));
+        if (chosen != null) {
+            heldGate = chosen;
+            playSound("ui-confirm");
+        } else {
+            playSound("ui-close");
+        }
+        repaint();
+    }
     @Override public void keyTyped(KeyEvent event) {}
 
     @Override public void mousePressed(MouseEvent event) {
@@ -1356,6 +1381,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         wireDragMoved = false;
         wireDragStartX = canvasX;
         wireDragStartY = canvasY;
+    }
+
+    private boolean cancelWireInteraction() {
+        boolean cancelled = workbenchGraph.cancelWire();
+        if (wireDragActive) cancelled = true;
+        wireDragActive = false;
+        wireDragMoved = false;
+        return cancelled;
     }
 
     private int[] logicalPoint(MouseEvent event) {

@@ -8,7 +8,7 @@ public final class NodeRadialMenuTest {
     public static void main(String[] args) {
         NodeRadialMenu menu = new NodeRadialMenu();
         menu.openAt(700, 400, List.of(GateType.AND, GateType.OR, GateType.NOT));
-        require(menu.isOpen(), "Q should open the node wheel");
+        require(menu.isOpen(), "holding E should open the node wheel");
         require(menu.unlocked().size() == 3, "wheel should show every unlocked node type");
         require(menu.gateAt(700, 265) == GateType.AND,
             "top wedge should select AND");
@@ -20,7 +20,14 @@ public final class NodeRadialMenuTest {
             "the circular center should not select a node");
         require(menu.gateAt(950, 400) == null,
             "clicks outside the wheel should not select a node");
-        require(menu.close() && !menu.isOpen(), "Q or Escape should close the wheel");
+        require(menu.releaseAt(817, 468) == GateType.OR,
+            "releasing E over a wedge should select its gate");
+        require(!menu.isOpen(), "releasing E should close the wheel");
+
+        menu.openAt(700, 400, List.of(GateType.AND, GateType.OR, GateType.NOT));
+        require(menu.releaseAt(700, 400) == null,
+            "releasing E in the center should leave the active gate unchanged");
+        require(!menu.isOpen(), "a center release should still close the wheel");
 
         menu.openAt(WorkbenchGraph.WORK_X, WorkbenchGraph.WORK_Y,
             List.of(GateType.AND, GateType.AND));
