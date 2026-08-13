@@ -7,13 +7,10 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 /** Draws the physical cable layer beneath workbench logic nodes. */
 final class CircuitWireRenderer {
-    private static final int INPUT_X = 340;
-    private static final int INPUT_A_Y = 300;
-    private static final int INPUT_B_Y = 455;
-    private static final int OUTPUT_X = 1390;
     private static final int ENDPOINT_RENDER_HEIGHT = 36;
 
     private static final Color SHADOW = new Color(50, 34, 20, 88);
@@ -27,67 +24,71 @@ final class CircuitWireRenderer {
         this.endpointImage = endpointImage;
     }
 
-    void draw(Graphics2D graphics, CircuitRecipe recipe, int[][] layout) {
+    void draw(Graphics2D graphics, WorkbenchGraph graph, int pointerX, int pointerY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
             RenderingHints.VALUE_STROKE_PURE);
 
-        for (int nodeIndex = 0; nodeIndex < recipe.slotCount(); nodeIndex++) {
-            GateType gate = recipe.solution[nodeIndex];
-            drawSource(g, recipe, layout, recipe.leftSources[nodeIndex],
-                nodeIndex, 0);
-            if (gate.inputPorts > 1) {
-                drawSource(g, recipe, layout, recipe.rightSources[nodeIndex],
-                    nodeIndex, 1);
+        for (WorkbenchGraph.Wire wire : graph.wires()) {
+            int[] start = graph.sourcePoint(wire.sourceId());
+            int[] end = graph.targetPoint(wire.targetId(), wire.targetPort());
+            if (start != null && end != null) {
+                drawCable(g, start[0], start[1], end[0], end[1], wire.corners());
             }
         }
 
-        int lastIndex = recipe.slotCount() - 1;
-        int[] last = layout[lastIndex];
-        int outputY = LogicNodeRenderer.outputPortY(
-            last[1], recipe.solution[lastIndex], 0);
-        drawCable(g, LogicNodeRenderer.outputPortX(last[0]), outputY,
-            OUTPUT_X, outputY, OUTPUT_X - 82);
+        if (graph.pendingSourceId() != null) {
+            int[] start = graph.sourcePoint(graph.pendingSourceId());
+            if (start != null) drawPreviewCable(g, start[0], start[1],
+                pointerX, pointerY, graph.pendingCorners());
+        }
 
-        drawTerminal(g, INPUT_X, INPUT_A_Y, false);
-        drawTerminal(g, INPUT_X, INPUT_B_Y, false);
-        drawTerminal(g, OUTPUT_X, outputY, true);
-        drawLabel(g, "IN 1", INPUT_X - 76, INPUT_A_Y - 20);
-        drawLabel(g, "IN 2", INPUT_X - 76, INPUT_B_Y - 20);
-        drawLabel(g, "OUT", OUTPUT_X + 28, outputY - 20);
+        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_A_Y, false);
+        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_B_Y, false);
+        drawTerminal(g, WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y, true);
+        drawLabel(g, "IN 1", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_A_Y - 20);
+        drawLabel(g, "IN 2", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_B_Y - 20);
+        drawLabel(g, "OUT", WorkbenchGraph.OUTPUT_X + 28, WorkbenchGraph.OUTPUT_Y - 20);
         g.dispose();
     }
 
-    private void drawSource(Graphics2D g, CircuitRecipe recipe, int[][] layout,
-                            int source, int targetNode, int targetPort) {
-        int startX;
-        int startY;
-        if (source == CircuitRecipe.INPUT_A) {
-            startX = INPUT_X;
-            startY = INPUT_A_Y;
-        } else if (source == CircuitRecipe.INPUT_B) {
-            startX = INPUT_X;
-            startY = INPUT_B_Y;
-        } else {
-            int[] sourceNode = layout[source];
-            startX = LogicNodeRenderer.outputPortX(sourceNode[0]);
-            startY = LogicNodeRenderer.outputPortY(
-                sourceNode[1], recipe.solution[source], 0);
-        }
-
-        int[] target = layout[targetNode];
-        int endX = LogicNodeRenderer.inputPortX(target[0]);
-        int endY = LogicNodeRenderer.inputPortY(
-            target[1], recipe.solution[targetNode], targetPort);
+    private static void drawCable(Graphics2D g, int startX, int startY,
+                                  int endX, int endY) {
         int bendX = startX + Math.max(36, (endX - startX) / 2);
         drawCable(g, startX, startY, endX, endY, bendX);
     }
 
     private static void drawCable(Graphics2D g, int startX, int startY,
+                                  int endX, int endY,
+                                  List<WorkbenchGraph.RoutePoint> corners) {
+        if (corners.isEmpty()) {
+            drawCable(g, startX, startY, endX, endY);
+            return;
+        }
+        Path2D path = routedPath(startX, startY, endX, endY, corners);
+        drawCablePath(g, path);
+    }
+
+    private static void drawPreviewCable(Graphics2D g, int startX, int startY,
+                                         int endX, int endY,
+                                         List<WorkbenchGraph.RoutePoint> corners) {
+        Path2D path = routedPath(startX, startY, endX, endY, corners);
+        g.setColor(new Color(95, 69, 35, 165));
+        g.setStroke(new BasicStroke(5, BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND, 1f, new float[]{12f, 9f}, 0f));
+        g.draw(path);
+    }
+
+    private static void drawCable(Graphics2D g, int startX, int startY,
                                   int endX, int endY, int bendX) {
         Path2D path = orthogonalPath(startX, startY, endX, endY, bendX);
+
+        drawCablePath(g, path);
+    }
+
+    private static void drawCablePath(Graphics2D g, Path2D path) {
 
         g.translate(4, 6);
         g.setColor(SHADOW);
@@ -106,6 +107,24 @@ final class CircuitWireRenderer {
         g.translate(0, -1);
         g.draw(path);
         g.translate(0, 1);
+    }
+
+    private static Path2D routedPath(int startX, int startY, int endX, int endY,
+                                     List<WorkbenchGraph.RoutePoint> corners) {
+        Path2D path = new Path2D.Double();
+        path.moveTo(startX, startY);
+        int previousX = startX;
+        int previousY = startY;
+        for (WorkbenchGraph.RoutePoint corner : corners) {
+            path.lineTo(corner.x(), corner.y());
+            previousX = corner.x();
+            previousY = corner.y();
+        }
+        if (previousX != endX && previousY != endY) {
+            path.lineTo(endX, previousY);
+        }
+        path.lineTo(endX, endY);
+        return path;
     }
 
     private static Path2D orthogonalPath(int startX, int startY,

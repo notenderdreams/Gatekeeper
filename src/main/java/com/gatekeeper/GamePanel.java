@@ -99,6 +99,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
+    private final WorkbenchGraph workbenchGraph = new WorkbenchGraph(recipes.get(0));
     private final SoundManager sound = new SoundManager();
     private final Random random = new Random();
     private boolean catPresent;
@@ -140,7 +141,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
-    private String boardMessage = "Left-click to place. Right-click a socket to remove.";
+    private String boardMessage = "Click empty space to add. Wire output to input. Backspace deletes.";
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
@@ -269,7 +270,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case BEDROOM -> worldRenderer.drawBedroom(g);
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
-            case BOARD -> workbenchRenderer.draw(g, circuit.recipe());
+            case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
+                mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
@@ -560,6 +562,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
+        workbenchGraph.loadRecipe(recipes.get(selectedRecipe));
         playSound("ui-select");
         boardMessage = crafted[selectedRecipe] ? "Already delivered. You can rebuild it." : "Build the requested device.";
         boardMessageTimer = 180;
@@ -937,8 +940,30 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
             if (key == KeyEvent.VK_ESCAPE) {
-                scene = returnScene;
-                playSound("ui-close");
+                if (workbenchGraph.cancelWire()) {
+                    playSound("ui-back");
+                } else {
+                    scene = returnScene;
+                    playSound("ui-close");
+                }
+            } else if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
+                if (workbenchGraph.undoWireCorner()) {
+                    boardMessage = "Removed last wire corner.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                } else if (workbenchGraph.pendingSourceId() != null) {
+                    workbenchGraph.cancelWire();
+                    boardMessage = "Cancelled wire.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                } else if (workbenchGraph.deleteSelected()) {
+                    boardMessage = "Deleted selected node and its wires.";
+                    boardMessageTimer = 120;
+                    playSound("ui-close");
+                }
+            } else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
+                heldGate = GateType.values()[key - KeyEvent.VK_1];
+                playSound("ui-select");
             }
         }
     }
@@ -1096,7 +1121,27 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (workbenchRenderer.toggleSwitchAt(x, y)) {
             playSound("ui-click");
             repaint();
+            return;
         }
+
+        GateType clickedGate = WorkbenchRenderer.gateToolAt(x, y);
+        if (clickedGate != null) {
+            heldGate = clickedGate;
+            playSound("ui-select");
+            repaint();
+            return;
+        }
+
+        WorkbenchGraph.EditResult edit = workbenchGraph.click(
+            WorkbenchRenderer.canvasX(x), WorkbenchRenderer.canvasY(y), heldGate);
+        switch (edit) {
+            case ADDED -> playSound("gate-place");
+            case WIRED -> playSound("ui-confirm");
+            case WIRE_STARTED, WIRE_CORNER, SELECTED -> playSound("ui-select");
+            case INVALID_WIRE -> playSound("ui-error");
+            case NONE -> { }
+        }
+        repaint();
     }
 
     @Override public void mouseReleased(MouseEvent event) {}

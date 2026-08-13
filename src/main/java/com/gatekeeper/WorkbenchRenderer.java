@@ -1,5 +1,6 @@
 package com.gatekeeper;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -9,7 +10,7 @@ import java.awt.image.BufferedImage;
 import static com.gatekeeper.GameConstants.H;
 import static com.gatekeeper.GameConstants.W;
 
-/** Draws the asset-backed workbench shell and its temporary visual-only I/O controls. */
+/** Draws the asset-backed workbench shell and editable circuit graph. */
 final class WorkbenchRenderer {
     private static final int CANVAS_WIDTH = 1536;
     private static final int CANVAS_HEIGHT = 1024;
@@ -32,6 +33,12 @@ final class WorkbenchRenderer {
     private static final int OUTPUT_LED_HEIGHT = 64;
     private static final int OUTPUT_NUMBER_X = 53;
 
+    private static final int TOOL_X = 480;
+    private static final int TOOL_Y = 70;
+    private static final int TOOL_WIDTH = 150;
+    private static final int TOOL_HEIGHT = 44;
+    private static final int TOOL_GAP = 14;
+
     private final BufferedImage canvasImage;
     private final BufferedImage lightOffImage;
     private final BufferedImage switchImage;
@@ -52,7 +59,8 @@ final class WorkbenchRenderer {
         wireRenderer = new CircuitWireRenderer(endpointImage);
     }
 
-    void draw(Graphics2D graphics, CircuitRecipe recipe) {
+    void draw(Graphics2D graphics, WorkbenchGraph graph, GateType selectedGate,
+              int logicalMouseX, int logicalMouseY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -65,9 +73,11 @@ final class WorkbenchRenderer {
             g.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
 
-        int[][] layout = nodeLayout(recipe);
-        wireRenderer.draw(g, recipe, layout);
-        drawNodePreview(g, recipe, layout);
+        int pointerX = canvasX(logicalMouseX);
+        int pointerY = canvasY(logicalMouseY);
+        wireRenderer.draw(g, graph, pointerX, pointerY);
+        drawNodePreview(g, graph);
+        drawEditorToolbar(g, selectedGate, pointerX, pointerY);
         drawOutputs(g);
         drawInputs(g);
         g.dispose();
@@ -91,6 +101,27 @@ final class WorkbenchRenderer {
             }
         }
         return false;
+    }
+
+    static GateType gateToolAt(int logicalX, int logicalY) {
+        int sourceX = canvasX(logicalX);
+        int sourceY = canvasY(logicalY);
+        GateType[] gates = GateType.values();
+        for (int index = 0; index < gates.length; index++) {
+            int x = TOOL_X + index * (TOOL_WIDTH + TOOL_GAP);
+            if (inside(sourceX, sourceY, x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT)) {
+                return gates[index];
+            }
+        }
+        return null;
+    }
+
+    static int canvasX(int logicalX) {
+        return (int) Math.round(logicalX * CANVAS_WIDTH / (double) W);
+    }
+
+    static int canvasY(int logicalY) {
+        return (int) Math.round(logicalY * CANVAS_HEIGHT / (double) H);
     }
 
     private void drawInputs(Graphics2D g) {
@@ -127,24 +158,46 @@ final class WorkbenchRenderer {
         }
     }
 
-    private void drawNodePreview(Graphics2D g, CircuitRecipe recipe, int[][] layout) {
-        for (int index = 0; index < recipe.solution.length; index++) {
-            int[] position = layout[index];
-            nodeRenderer.draw(g, position[0], position[1], recipe.solution[index]);
+    private void drawNodePreview(Graphics2D g, WorkbenchGraph graph) {
+        for (WorkbenchGraph.Node node : graph.nodes()) {
+            nodeRenderer.draw(g, node.x(), node.centerY(), node.gate());
+            if (Integer.valueOf(node.id()).equals(graph.selectedNodeId())) {
+                int height = LogicNodeRenderer.bodyHeight(
+                    node.gate().inputPorts, node.gate().outputPorts);
+                int y = node.centerY() - height / 2;
+                g.setColor(new Color(107, 68, 25, 205));
+                g.setStroke(new BasicStroke(3));
+                g.drawRect(node.x() - 7, y - 7,
+                    LogicNodeRenderer.BODY_WIDTH + 14, height + 14);
+                g.setStroke(new BasicStroke(1));
+            }
         }
     }
 
-    private static int[][] nodeLayout(CircuitRecipe recipe) {
-        return switch (recipe.name) {
-            case "XOR" -> new int[][]{
-                {500, 500}, {790, 500}, {500, 230}, {790, 230}, {1130, 365}
-            };
-            case "XNOR" -> new int[][]{
-                {430, 230}, {430, 500}, {700, 500}, {950, 365}, {1190, 365}
-            };
-            case "IMPLY" -> new int[][]{{570, 365}, {1010, 365}};
-            default -> new int[][]{{570, 365}, {1010, 365}};
-        };
+    private static void drawEditorToolbar(Graphics2D g, GateType selectedGate,
+                                          int pointerX, int pointerY) {
+        GateType[] gates = GateType.values();
+        for (int index = 0; index < gates.length; index++) {
+            int x = TOOL_X + index * (TOOL_WIDTH + TOOL_GAP);
+            boolean selected = gates[index] == selectedGate;
+            boolean hovered = inside(pointerX, pointerY, x, TOOL_Y,
+                TOOL_WIDTH, TOOL_HEIGHT);
+            g.setColor(selected ? new Color(68, 55, 34, 235)
+                : hovered ? new Color(94, 72, 40, 220)
+                : new Color(46, 39, 29, 205));
+            g.fillRect(x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT);
+            g.setColor(selected ? new Color(225, 187, 105)
+                : new Color(98, 80, 48));
+            g.drawRect(x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT);
+            GamePanel.drawCenteredPixelText(g,
+                (index + 1) + "  " + gates[index].label,
+                x + TOOL_WIDTH / 2, TOOL_Y + 30, 2);
+        }
+
+        g.setColor(new Color(62, 49, 31, 190));
+        GamePanel.pixelText(g, "CLICK EMPTY SPACE: ADD", 1000, 84, 1);
+        GamePanel.pixelText(g, "OUTPUT -> INPUT: WIRE", 1000, 101, 1);
+        GamePanel.pixelText(g, "CLICK CANVAS: BEND", 1000, 118, 1);
     }
 
     private void drawSwitch(Graphics2D g, int x, int y, int width, int height, boolean on) {
@@ -161,5 +214,10 @@ final class WorkbenchRenderer {
 
     private static double inputSwitchX(int index, int switchWidth, double cellWidth) {
         return INPUT_REGION_X + index * cellWidth + (cellWidth - switchWidth) / 2.0;
+    }
+
+    private static boolean inside(int x, int y, int left, int top,
+                                  int width, int height) {
+        return x >= left && x <= left + width && y >= top && y <= top + height;
     }
 }
