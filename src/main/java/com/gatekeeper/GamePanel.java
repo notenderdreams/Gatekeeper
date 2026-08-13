@@ -100,6 +100,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
     private final WorkbenchGraph workbenchGraph = new WorkbenchGraph(recipes.get(0));
+    private final NodeRadialMenu nodeRadialMenu = new NodeRadialMenu();
     private final SoundManager sound = new SoundManager();
     private final Random random = new Random();
     private boolean catPresent;
@@ -271,7 +272,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
-                mouseX, mouseY);
+                nodeRadialMenu, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
@@ -559,6 +560,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void selectRecipe(int index) {
+        nodeRadialMenu.close();
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
@@ -566,6 +568,34 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         playSound("ui-select");
         boardMessage = crafted[selectedRecipe] ? "Already delivered. You can rebuild it." : "Build the requested device.";
         boardMessageTimer = 180;
+    }
+
+    private List<GateType> unlockedGateTypes() {
+        int availableRecipes = chapter >= 3 ? 5 : 3;
+        List<GateType> unlocked = new ArrayList<>();
+        for (GateType gate : GateType.values()) {
+            for (int recipeIndex = 0; recipeIndex < availableRecipes; recipeIndex++) {
+                if (Arrays.asList(recipes.get(recipeIndex).solution).contains(gate)) {
+                    unlocked.add(gate);
+                    break;
+                }
+            }
+        }
+        return unlocked;
+    }
+
+    private void toggleNodeRadialMenu() {
+        if (nodeRadialMenu.close()) {
+            playSound("ui-close");
+            return;
+        }
+        workbenchGraph.endNodeDrag();
+        workbenchGraph.cancelWire();
+        int logicalX = mouseX >= 0 ? mouseX : W / 2;
+        int logicalY = mouseY >= 0 ? mouseY : H / 2;
+        nodeRadialMenu.openAt(WorkbenchRenderer.canvasX(logicalX),
+            WorkbenchRenderer.canvasY(logicalY), unlockedGateTypes());
+        playSound("ui-open");
     }
 
     private void recordOrAutoTest() {
@@ -939,7 +969,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
-            if (key == KeyEvent.VK_ESCAPE) {
+            if (nodeRadialMenu.isOpen()) {
+                if (key == KeyEvent.VK_Q || key == KeyEvent.VK_ESCAPE) {
+                    nodeRadialMenu.close();
+                    playSound("ui-close");
+                }
+                return;
+            }
+            if (key == KeyEvent.VK_Q) {
+                toggleNodeRadialMenu();
+            } else if (key == KeyEvent.VK_ESCAPE) {
                 if (workbenchGraph.cancelWire()) {
                     playSound("ui-back");
                 } else {
@@ -961,9 +1000,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     boardMessageTimer = 120;
                     playSound("ui-close");
                 }
-            } else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
-                heldGate = GateType.values()[key - KeyEvent.VK_1];
-                playSound("ui-select");
             }
         }
     }
@@ -1118,22 +1154,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene != GameScene.BOARD || line != null
             || event.getButton() != MouseEvent.BUTTON1) return;
+        int canvasX = WorkbenchRenderer.canvasX(x);
+        int canvasY = WorkbenchRenderer.canvasY(y);
+        if (nodeRadialMenu.isOpen()) {
+            GateType chosen = nodeRadialMenu.gateAt(canvasX, canvasY);
+            nodeRadialMenu.close();
+            if (chosen != null) {
+                heldGate = chosen;
+                playSound("ui-confirm");
+            } else {
+                playSound("ui-close");
+            }
+            repaint();
+            return;
+        }
         if (workbenchRenderer.toggleSwitchAt(x, y)) {
             playSound("ui-click");
             repaint();
             return;
         }
 
-        GateType clickedGate = WorkbenchRenderer.gateToolAt(x, y);
-        if (clickedGate != null) {
-            heldGate = clickedGate;
-            playSound("ui-select");
-            repaint();
-            return;
-        }
-
-        int canvasX = WorkbenchRenderer.canvasX(x);
-        int canvasY = WorkbenchRenderer.canvasY(y);
         if (workbenchGraph.beginNodeDrag(canvasX, canvasY)) {
             playSound("ui-select");
             repaint();
@@ -1242,6 +1282,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
     @Override public void mouseDragged(MouseEvent event) {
+        if (scene == GameScene.BOARD && nodeRadialMenu.isOpen()) {
+            mouseMoved(event);
+            return;
+        }
         if (scene == GameScene.BOARD && workbenchGraph.isDraggingNode()) {
             int[] point = logicalPoint(event);
             mouseX = point[0];

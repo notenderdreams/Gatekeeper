@@ -16,10 +16,13 @@ final class WorkbenchGraph {
     static final int OUTPUT_X = 1390;
     static final int OUTPUT_Y = 365;
 
-    static final int WORK_X = 205;
-    static final int WORK_Y = 125;
-    static final int WORK_RIGHT = 1450;
-    static final int WORK_BOTTOM = 790;
+    // "Node Canvas" from assets/items/canvas/canvas.annotations.json.
+    static final int WORK_X = 192;
+    static final int WORK_Y = 47;
+    static final int WORK_WIDTH = 1293;
+    static final int WORK_HEIGHT = 750;
+    static final int WORK_RIGHT = WORK_X + WORK_WIDTH;
+    static final int WORK_BOTTOM = WORK_Y + WORK_HEIGHT;
 
     private static final int PORT_HIT_RADIUS = 24;
     private static final int MAX_NODES = 32;

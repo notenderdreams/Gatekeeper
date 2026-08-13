@@ -33,16 +33,11 @@ final class WorkbenchRenderer {
     private static final int OUTPUT_LED_HEIGHT = 64;
     private static final int OUTPUT_NUMBER_X = 53;
 
-    private static final int TOOL_X = 480;
-    private static final int TOOL_Y = 70;
-    private static final int TOOL_WIDTH = 150;
-    private static final int TOOL_HEIGHT = 44;
-    private static final int TOOL_GAP = 14;
-
     private final BufferedImage canvasImage;
     private final BufferedImage lightOffImage;
     private final BufferedImage switchImage;
     private final BufferedImage lightOnImage;
+    private final BufferedImage nodeTextureImage;
     private final LogicNodeRenderer nodeRenderer;
     private final CircuitWireRenderer wireRenderer;
     private final boolean[] switches = new boolean[CONTROL_COUNT];
@@ -55,12 +50,13 @@ final class WorkbenchRenderer {
         this.lightOffImage = lightOffImage;
         this.switchImage = switchImage;
         this.lightOnImage = lightOnImage;
+        this.nodeTextureImage = nodeTextureImage;
         nodeRenderer = new LogicNodeRenderer(nodeTextureImage, wireEndImage);
         wireRenderer = new CircuitWireRenderer(endpointImage);
     }
 
     void draw(Graphics2D graphics, WorkbenchGraph graph, GateType selectedGate,
-              int logicalMouseX, int logicalMouseY) {
+              NodeRadialMenu radialMenu, int logicalMouseX, int logicalMouseY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -77,9 +73,10 @@ final class WorkbenchRenderer {
         int pointerY = canvasY(logicalMouseY);
         wireRenderer.draw(g, graph, pointerX, pointerY);
         drawNodePreview(g, graph);
-        drawEditorToolbar(g, selectedGate, pointerX, pointerY);
         drawOutputs(g);
         drawInputs(g);
+        radialMenu.draw(g, nodeRenderer, nodeTextureImage,
+            selectedGate, pointerX, pointerY);
         g.dispose();
     }
 
@@ -101,19 +98,6 @@ final class WorkbenchRenderer {
             }
         }
         return false;
-    }
-
-    static GateType gateToolAt(int logicalX, int logicalY) {
-        int sourceX = canvasX(logicalX);
-        int sourceY = canvasY(logicalY);
-        GateType[] gates = GateType.values();
-        for (int index = 0; index < gates.length; index++) {
-            int x = TOOL_X + index * (TOOL_WIDTH + TOOL_GAP);
-            if (inside(sourceX, sourceY, x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT)) {
-                return gates[index];
-            }
-        }
-        return null;
     }
 
     static int canvasX(int logicalX) {
@@ -174,32 +158,6 @@ final class WorkbenchRenderer {
         }
     }
 
-    private static void drawEditorToolbar(Graphics2D g, GateType selectedGate,
-                                          int pointerX, int pointerY) {
-        GateType[] gates = GateType.values();
-        for (int index = 0; index < gates.length; index++) {
-            int x = TOOL_X + index * (TOOL_WIDTH + TOOL_GAP);
-            boolean selected = gates[index] == selectedGate;
-            boolean hovered = inside(pointerX, pointerY, x, TOOL_Y,
-                TOOL_WIDTH, TOOL_HEIGHT);
-            g.setColor(selected ? new Color(68, 55, 34, 235)
-                : hovered ? new Color(94, 72, 40, 220)
-                : new Color(46, 39, 29, 205));
-            g.fillRect(x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT);
-            g.setColor(selected ? new Color(225, 187, 105)
-                : new Color(98, 80, 48));
-            g.drawRect(x, TOOL_Y, TOOL_WIDTH, TOOL_HEIGHT);
-            GamePanel.drawCenteredPixelText(g,
-                (index + 1) + "  " + gates[index].label,
-                x + TOOL_WIDTH / 2, TOOL_Y + 30, 2);
-        }
-
-        g.setColor(new Color(62, 49, 31, 190));
-        GamePanel.pixelText(g, "CLICK: ADD / DRAG: MOVE", 1000, 84, 1);
-        GamePanel.pixelText(g, "OUTPUT -> INPUT: WIRE", 1000, 101, 1);
-        GamePanel.pixelText(g, "CLICK CANVAS: BEND", 1000, 118, 1);
-    }
-
     private void drawSwitch(Graphics2D g, int x, int y, int width, int height, boolean on) {
         if (on) {
             g.drawImage(switchImage, x, y, null);
@@ -216,8 +174,4 @@ final class WorkbenchRenderer {
         return INPUT_REGION_X + index * cellWidth + (cellWidth - switchWidth) / 2.0;
     }
 
-    private static boolean inside(int x, int y, int left, int top,
-                                  int width, int height) {
-        return x >= left && x <= left + width && y >= top && y <= top + height;
-    }
 }

@@ -22,6 +22,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitWireRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/LogicNodeRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/WorkbenchGraph.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/NodeRadialMenu.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveManager.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitRecipe.java \
@@ -29,7 +30,9 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/LogicNodeRendererTest.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/WorkbenchGraphTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/WorkbenchGraphTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/NodeRadialMenuTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.LogicNodeRendererTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.WorkbenchGraphTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.NodeRadialMenuTest
