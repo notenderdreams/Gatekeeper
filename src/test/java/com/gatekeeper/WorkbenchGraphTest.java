@@ -82,6 +82,31 @@ public final class WorkbenchGraphTest {
         require(graph.endNodeDrag(), "mouse release should end node dragging");
         require(!graph.isDraggingNode(), "drag state should clear on release");
 
+        WorkbenchGraph nand = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        require(nand.outputValue(0, new boolean[]{false, false}),
+            "OUT 0 should evaluate NAND high for input switches 0=0, 1=0");
+        require(nand.outputValue(0, new boolean[]{true, false}),
+            "OUT 0 should evaluate NAND high for input switches 0=1, 1=0");
+        require(!nand.outputValue(0, new boolean[]{true, true}),
+            "OUT 0 should evaluate NAND low for input switches 0=1, 1=1");
+        require(!nand.outputValue(1, new boolean[]{false, false}),
+            "unmapped left indicators should remain off");
+        require(!nand.sourceValue(WorkbenchGraph.INPUT_0, new boolean[]{false, true}),
+            "IN 0 should read bottom switch 0");
+        require(nand.sourceValue(WorkbenchGraph.INPUT_1, new boolean[]{false, true}),
+            "IN 1 should read bottom switch 1");
+
+        int outputSource = nand.wires().stream()
+            .filter(wire -> wire.targetId() == WorkbenchGraph.OUTPUT)
+            .findFirst().orElseThrow().sourceId();
+        int[] outputSourcePort = nand.sourcePoint(outputSource);
+        nand.click(outputSourcePort[0], outputSourcePort[1], GateType.AND);
+        int[] firstNodeInput = nand.targetPoint(nand.nodes().get(0).id(), 0);
+        nand.click(firstNodeInput[0], firstNodeInput[1], GateType.AND);
+        boolean feedbackValue = nand.outputValue(0, new boolean[]{true, true});
+        require(feedbackValue == nand.outputValue(0, new boolean[]{true, true}),
+            "feedback cycles should resolve safely and deterministically");
+
         System.out.println("WorkbenchGraphTest: all checks passed");
     }
 

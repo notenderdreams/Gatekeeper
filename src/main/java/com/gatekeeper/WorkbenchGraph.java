@@ -2,17 +2,21 @@ package com.gatekeeper;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Mutable node-and-wire state for the physical workbench editor. */
 final class WorkbenchGraph {
-    static final int INPUT_A = -1;
-    static final int INPUT_B = -2;
+    static final int INPUT_0 = -1;
+    static final int INPUT_1 = -2;
     static final int OUTPUT = -3;
 
     static final int INPUT_X = 340;
-    static final int INPUT_A_Y = 300;
-    static final int INPUT_B_Y = 455;
+    static final int INPUT_0_Y = 300;
+    static final int INPUT_1_Y = 455;
     static final int OUTPUT_X = 1390;
     static final int OUTPUT_Y = 365;
 
@@ -256,9 +260,22 @@ final class WorkbenchGraph {
         return true;
     }
 
+    boolean outputValue(int outputIndex, boolean[] externalInputs) {
+        if (outputIndex != 0) return false;
+        Wire outputWire = wireTo(OUTPUT, outputIndex);
+        if (outputWire == null) return false;
+        return sourceValue(outputWire.sourceId, externalInputs,
+            new HashMap<>(), new HashSet<>());
+    }
+
+    boolean sourceValue(int sourceId, boolean[] externalInputs) {
+        return sourceValue(sourceId, externalInputs,
+            new HashMap<>(), new HashSet<>());
+    }
+
     int[] sourcePoint(int sourceId) {
-        if (sourceId == INPUT_A) return new int[]{INPUT_X, INPUT_A_Y};
-        if (sourceId == INPUT_B) return new int[]{INPUT_X, INPUT_B_Y};
+        if (sourceId == INPUT_0) return new int[]{INPUT_X, INPUT_0_Y};
+        if (sourceId == INPUT_1) return new int[]{INPUT_X, INPUT_1_Y};
         Node source = node(sourceId);
         if (source == null) return null;
         return new int[]{LogicNodeRenderer.outputPortX(source.x),
@@ -274,10 +291,54 @@ final class WorkbenchGraph {
     }
 
     private void addRecipeWire(int recipeSource, int targetIndex, int targetPort) {
-        int sourceId = recipeSource == CircuitRecipe.INPUT_A ? INPUT_A
-            : recipeSource == CircuitRecipe.INPUT_B ? INPUT_B
+        int sourceId = recipeSource == CircuitRecipe.INPUT_A ? INPUT_0
+            : recipeSource == CircuitRecipe.INPUT_B ? INPUT_1
             : nodes.get(recipeSource).id;
         wires.add(new Wire(sourceId, nodes.get(targetIndex).id, targetPort));
+    }
+
+    private boolean sourceValue(int sourceId, boolean[] externalInputs,
+                                Map<Integer, Boolean> memo,
+                                Set<Integer> evaluating) {
+        if (sourceId == INPUT_0) return inputValue(externalInputs, 0);
+        if (sourceId == INPUT_1) return inputValue(externalInputs, 1);
+        Boolean cached = memo.get(sourceId);
+        if (cached != null) return cached;
+        Node source = node(sourceId);
+        if (source == null || !evaluating.add(sourceId)) return false;
+
+        boolean first = inputPortValue(source, 0, externalInputs, memo, evaluating);
+        boolean value = switch (source.gate) {
+            case AND -> first
+                && inputPortValue(source, 1, externalInputs, memo, evaluating);
+            case OR -> first
+                || inputPortValue(source, 1, externalInputs, memo, evaluating);
+            case NOT -> !first;
+        };
+        evaluating.remove(sourceId);
+        memo.put(sourceId, value);
+        return value;
+    }
+
+    private boolean inputPortValue(Node target, int port,
+                                   boolean[] externalInputs,
+                                   Map<Integer, Boolean> memo,
+                                   Set<Integer> evaluating) {
+        Wire incoming = wireTo(target.id, port);
+        return incoming != null && sourceValue(
+            incoming.sourceId, externalInputs, memo, evaluating);
+    }
+
+    private Wire wireTo(int targetId, int targetPort) {
+        for (Wire wire : wires) {
+            if (wire.targetId == targetId && wire.targetPort == targetPort) return wire;
+        }
+        return null;
+    }
+
+    private static boolean inputValue(boolean[] externalInputs, int index) {
+        return externalInputs != null && index >= 0
+            && index < externalInputs.length && externalInputs[index];
     }
 
     private Node addNode(int x, int centerY, GateType gate) {
@@ -325,8 +386,8 @@ final class WorkbenchGraph {
             int portY = LogicNodeRenderer.outputPortY(node.centerY, node.gate, 0);
             if (near(x, y, portX, portY)) return node.id;
         }
-        if (near(x, y, INPUT_X, INPUT_A_Y)) return INPUT_A;
-        if (near(x, y, INPUT_X, INPUT_B_Y)) return INPUT_B;
+        if (near(x, y, INPUT_X, INPUT_0_Y)) return INPUT_0;
+        if (near(x, y, INPUT_X, INPUT_1_Y)) return INPUT_1;
         return null;
     }
 

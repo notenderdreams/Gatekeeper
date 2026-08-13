@@ -17,6 +17,9 @@ final class CircuitWireRenderer {
     private static final Color CABLE_EDGE = new Color(18, 20, 18);
     private static final Color CABLE_FACE = new Color(46, 49, 43);
     private static final Color CABLE_HIGHLIGHT = new Color(150, 145, 116, 125);
+    private static final Color POWERED_EDGE = new Color(26, 52, 42);
+    private static final Color POWERED_FACE = new Color(72, 138, 101);
+    private static final Color POWERED_HIGHLIGHT = new Color(190, 232, 166, 190);
 
     private final BufferedImage endpointImage;
 
@@ -24,7 +27,8 @@ final class CircuitWireRenderer {
         this.endpointImage = endpointImage;
     }
 
-    void draw(Graphics2D graphics, WorkbenchGraph graph, int pointerX, int pointerY) {
+    void draw(Graphics2D graphics, WorkbenchGraph graph, boolean[] externalInputs,
+              int pointerX, int pointerY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON);
@@ -35,7 +39,8 @@ final class CircuitWireRenderer {
             int[] start = graph.sourcePoint(wire.sourceId());
             int[] end = graph.targetPoint(wire.targetId(), wire.targetPort());
             if (start != null && end != null) {
-                drawCable(g, start[0], start[1], end[0], end[1], wire.corners());
+                drawCable(g, start[0], start[1], end[0], end[1], wire.corners(),
+                    graph.sourceValue(wire.sourceId(), externalInputs));
             }
         }
 
@@ -45,12 +50,12 @@ final class CircuitWireRenderer {
                 pointerX, pointerY, graph.pendingCorners());
         }
 
-        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_A_Y, false);
-        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_B_Y, false);
+        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_0_Y, false);
+        drawTerminal(g, WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_1_Y, false);
         drawTerminal(g, WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y, true);
-        drawLabel(g, "IN 1", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_A_Y - 20);
-        drawLabel(g, "IN 2", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_B_Y - 20);
-        drawLabel(g, "OUT", WorkbenchGraph.OUTPUT_X + 28, WorkbenchGraph.OUTPUT_Y - 20);
+        drawLabel(g, "IN 0", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_0_Y - 20);
+        drawLabel(g, "IN 1", WorkbenchGraph.INPUT_X - 76, WorkbenchGraph.INPUT_1_Y - 20);
+        drawLabel(g, "OUT 0", WorkbenchGraph.OUTPUT_X + 10, WorkbenchGraph.OUTPUT_Y - 24);
         g.dispose();
     }
 
@@ -62,13 +67,16 @@ final class CircuitWireRenderer {
 
     private static void drawCable(Graphics2D g, int startX, int startY,
                                   int endX, int endY,
-                                  List<WorkbenchGraph.RoutePoint> corners) {
+                                  List<WorkbenchGraph.RoutePoint> corners,
+                                  boolean powered) {
         if (corners.isEmpty()) {
-            drawCable(g, startX, startY, endX, endY);
+            int bendX = startX + Math.max(36, (endX - startX) / 2);
+            drawCablePath(g,
+                orthogonalPath(startX, startY, endX, endY, bendX), powered);
             return;
         }
         Path2D path = routedPath(startX, startY, endX, endY, corners);
-        drawCablePath(g, path);
+        drawCablePath(g, path, powered);
     }
 
     private static void drawPreviewCable(Graphics2D g, int startX, int startY,
@@ -85,10 +93,10 @@ final class CircuitWireRenderer {
                                   int endX, int endY, int bendX) {
         Path2D path = orthogonalPath(startX, startY, endX, endY, bendX);
 
-        drawCablePath(g, path);
+        drawCablePath(g, path, false);
     }
 
-    private static void drawCablePath(Graphics2D g, Path2D path) {
+    private static void drawCablePath(Graphics2D g, Path2D path, boolean powered) {
 
         g.translate(4, 6);
         g.setColor(SHADOW);
@@ -96,13 +104,13 @@ final class CircuitWireRenderer {
         g.draw(path);
         g.translate(-4, -6);
 
-        g.setColor(CABLE_EDGE);
+        g.setColor(powered ? POWERED_EDGE : CABLE_EDGE);
         g.setStroke(stroke(9));
         g.draw(path);
-        g.setColor(CABLE_FACE);
+        g.setColor(powered ? POWERED_FACE : CABLE_FACE);
         g.setStroke(stroke(5));
         g.draw(path);
-        g.setColor(CABLE_HIGHLIGHT);
+        g.setColor(powered ? POWERED_HIGHLIGHT : CABLE_HIGHLIGHT);
         g.setStroke(stroke(1));
         g.translate(0, -1);
         g.draw(path);

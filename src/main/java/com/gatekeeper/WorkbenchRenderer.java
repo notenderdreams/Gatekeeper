@@ -71,9 +71,9 @@ final class WorkbenchRenderer {
 
         int pointerX = canvasX(logicalMouseX);
         int pointerY = canvasY(logicalMouseY);
-        wireRenderer.draw(g, graph, pointerX, pointerY);
+        wireRenderer.draw(g, graph, switches, pointerX, pointerY);
         drawNodePreview(g, graph);
-        drawOutputs(g);
+        drawOutputs(g, graph);
         drawInputs(g);
         radialMenu.draw(g, nodeRenderer, nodeTextureImage,
             selectedGate, pointerX, pointerY);
@@ -125,13 +125,14 @@ final class WorkbenchRenderer {
         }
     }
 
-    private void drawOutputs(Graphics2D g) {
+    private void drawOutputs(Graphics2D g, WorkbenchGraph graph) {
         if (lightOffImage == null || lightOnImage == null) return;
 
         double rowHeight = OUTPUT_REGION_HEIGHT / (double) CONTROL_COUNT;
         g.setColor(new Color(225, 187, 105));
         for (int index = 0; index < CONTROL_COUNT; index++) {
-            BufferedImage light = switches[index] ? lightOnImage : lightOffImage;
+            boolean powered = graph.outputValue(index, switches);
+            BufferedImage light = powered ? lightOnImage : lightOffImage;
             int y = (int) Math.round(OUTPUT_REGION_Y + index * rowHeight
                 + (rowHeight - OUTPUT_LED_HEIGHT) / 2.0);
             int numberBaseline = (int) Math.round(
