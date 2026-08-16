@@ -40,13 +40,16 @@ final class AutoTesterRenderer {
     private final BufferedImage frameImage;
     private final BufferedImage buttonSheet;
     private final BufferedImage navigationButtonSheet;
+    private final BufferedImage plugImage;
     private final Font pixelFont;
 
     AutoTesterRenderer(BufferedImage frameImage, BufferedImage buttonSheet,
-                       BufferedImage navigationButtonSheet, Font pixelFont) {
+                       BufferedImage navigationButtonSheet, BufferedImage plugImage,
+                       Font pixelFont) {
         this.frameImage = frameImage;
         this.buttonSheet = buttonSheet;
         this.navigationButtonSheet = navigationButtonSheet;
+        this.plugImage = plugImage;
         this.pixelFont = pixelFont;
     }
 
@@ -62,6 +65,11 @@ final class AutoTesterRenderer {
         if (frameImage != null) {
             // Normalize the frame into the square space used by tester.annotations.json.
             g.drawImage(frameImage, FRAME_X, FRAME_Y, FRAME_SIZE, FRAME_SIZE, null);
+        }
+        if (plugImage != null) {
+            g.drawImage(plugImage, TesterPlugLayout.LOGICAL_X, TesterPlugLayout.LOGICAL_Y,
+                TesterPlugLayout.logicalWidth(plugImage.getWidth()),
+                TesterPlugLayout.logicalHeight(plugImage.getHeight()), null);
         }
 
         Rectangle screen = screenBounds();

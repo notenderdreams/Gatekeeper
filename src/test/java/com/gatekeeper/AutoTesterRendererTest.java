@@ -21,7 +21,7 @@ public final class AutoTesterRendererTest {
         require(frameBounds.contains(sidebar), "annotated sidebar should remain inside the frame");
         require(!screen.intersects(sidebar), "annotated screen and sidebar should not overlap");
 
-        AutoTesterRenderer renderer = new AutoTesterRenderer(null, null, null, null);
+        AutoTesterRenderer renderer = new AutoTesterRenderer(null, null, null, null, null);
         EnumSet<AutoTesterRenderer.Action> found = EnumSet.noneOf(AutoTesterRenderer.Action.class);
         for (int y = sidebar.y; y <= sidebar.y + sidebar.height; y++) {
             for (int x = sidebar.x; x <= sidebar.x + sidebar.width; x++) {
@@ -45,7 +45,9 @@ public final class AutoTesterRendererTest {
             require(buttons.getWidth() == 1024 && buttons.getHeight() == 1536,
                 "tester button sheet must retain its tightly cropped 2x3 layout");
             renderer = new AutoTesterRenderer(
-                frame, buttons, navigationButtons, GameAssets.loadPixelFont());
+                frame, buttons, navigationButtons,
+                GameAssets.loadRawImage("/assets/items/canvas/tester-plug.png"),
+                GameAssets.loadPixelFont());
             BufferedImage snapshot = new BufferedImage(GameConstants.W, GameConstants.H,
                 BufferedImage.TYPE_INT_ARGB);
             Graphics2D graphics = snapshot.createGraphics();

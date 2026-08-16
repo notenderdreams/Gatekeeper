@@ -80,6 +80,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage workbenchNodeTextureImage = loadRawImage("/assets/items/canvas/node-texture.png");
     private final BufferedImage workbenchWireEndImage = loadRawImage("/assets/items/canvas/wire-end.png");
     private final BufferedImage workbenchEndpointImage = loadRawImage("/assets/items/canvas/endpoint.png");
+    private final BufferedImage autoTesterPlugImage =
+        loadRawImage("/assets/items/canvas/tester-plug.png");
     private final BufferedImage autoTesterFrameImage = loadRawImage("/assets/items/tester/tester.png");
     private final BufferedImage autoTesterButtonSheet = loadRawImage("/assets/items/tester/tester-buttons.png");
     private final BufferedImage autoTesterNavigationButtonSheet =
@@ -152,7 +154,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
     private final AutoTesterRenderer autoTesterRenderer = new AutoTesterRenderer(
-        autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet, PIXEL_FONT);
+        autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet,
+        autoTesterPlugImage, PIXEL_FONT);
     private boolean autoTesterOverlayVisible;
     private boolean autoTesterRunFromOverlay;
     private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
