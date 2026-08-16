@@ -319,7 +319,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.SHOP && shopOverlayVisible) {
             shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction);
         }
-        if (inventoryVisible) inventoryRenderer.draw(g, shopModel);
+        if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount());
         if (!disableHud && !shopOverlayVisible && !inventoryVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
@@ -1662,6 +1662,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         shopModel.grant("NOT", 5);
     }
 
+    private int knownInventoryProductCount() {
+        if (!boxOpened) return 0;
+        if (chapter < 2) return 3;
+        if (chapter < 3) return 5;
+        return 6;
+    }
+
     private void closeShopOverlay() {
         shopOverlayVisible = false;
         pressedShopAction = ShopRenderer.Action.NONE;
@@ -1910,6 +1917,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
+        shopModel.reset();
 
         if (preset == 0) {
             boxRetrieved = false;
@@ -1920,6 +1928,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             boxRetrieved = true;
             boxOpened = true;
             workbenchInstalled = true;
+            grantStarterGates();
         }
 
         switch (preset) {

@@ -32,7 +32,7 @@ final class InventoryRenderer {
         gateRenderer = new ProductGateRenderer(panelTexture, portImage, font);
     }
 
-    void draw(Graphics2D graphics, ShopModel inventory) {
+    void draw(Graphics2D graphics, ShopModel inventory, int knownProductCount) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -62,7 +62,9 @@ final class InventoryRenderer {
         g.setColor(new Color(156, 111, 51));
         g.drawLine(PANEL.x + 16, PANEL.y + 27, PANEL.x + PANEL.width - 16, PANEL.y + 27);
 
-        for (int slot = 0; slot < Math.min(SLOT_COUNT, inventory.products().size()); slot++) {
+        int visibleCount = Math.min(SLOT_COUNT,
+            Math.min(Math.max(0, knownProductCount), inventory.products().size()));
+        for (int slot = 0; slot < visibleCount; slot++) {
             drawCard(g, inventory, slot, cardBounds(slot));
         }
 

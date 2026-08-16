@@ -97,10 +97,20 @@ public final class ShopModelTest {
             node, card, port, GameAssets.loadPixelFont());
         BufferedImage inventoryImage = new BufferedImage(480, 270, BufferedImage.TYPE_INT_RGB);
         Graphics2D inventoryGraphics = inventoryImage.createGraphics();
-        inventoryRenderer.draw(inventoryGraphics, model);
+        inventoryRenderer.draw(inventoryGraphics, model, 6);
         inventoryGraphics.dispose();
         require(brightness(inventoryImage.getRGB(54, 76)) > 0,
             "inventory should render its textured panel border");
+        BufferedImage earlyInventory = new BufferedImage(480, 270, BufferedImage.TYPE_INT_RGB);
+        Graphics2D earlyGraphics = earlyInventory.createGraphics();
+        inventoryRenderer.draw(earlyGraphics, model, 3);
+        earlyGraphics.dispose();
+        Rectangle unknownCard = InventoryRenderer.cardBounds(3);
+        int unknownX = centerX(unknownCard);
+        int unknownY = unknownCard.y + 8;
+        require(brightness(earlyInventory.getRGB(unknownX, unknownY))
+                < brightness(inventoryImage.getRGB(unknownX, unknownY)),
+            "inventory should hide products the story has not introduced");
         System.out.println("ShopModelTest: all checks passed");
     }
 
