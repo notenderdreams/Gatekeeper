@@ -80,6 +80,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage workbenchNodeTextureImage = loadRawImage("/assets/items/canvas/node-texture.png");
     private final BufferedImage workbenchWireEndImage = loadRawImage("/assets/items/canvas/wire-end.png");
     private final BufferedImage workbenchEndpointImage = loadRawImage("/assets/items/canvas/endpoint.png");
+    private final BufferedImage autoTesterFrameImage = loadRawImage("/assets/items/tester/tester.png");
+    private final BufferedImage autoTesterButtonSheet = loadRawImage("/assets/items/tester/tester-buttons.png");
+    private final BufferedImage autoTesterNavigationButtonSheet =
+        loadRawImage("/assets/items/tester/tester-navigation-buttons.png");
     private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
     private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
     private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
@@ -146,6 +150,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private String boardMessage = "Click empty space to add. Wire output to input. Backspace deletes.";
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
+    private final AutoTesterRenderer autoTesterRenderer = new AutoTesterRenderer(
+        autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet, PIXEL_FONT);
+    private boolean autoTesterOverlayVisible;
+    private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+    private int selectedTesterRow = 2;
+    private String autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
         workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage,
@@ -281,6 +291,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
+        }
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            autoTesterRenderer.draw(g, circuit, selectedTesterRow,
+                mouseX, mouseY, pressedAutoTesterAction, autoTesterUiStatus);
         }
         if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
@@ -679,6 +693,52 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         playSound(autoTester.isAttached() ? "ui-confirm" : "ui-close");
     }
 
+    private void openAutoTesterOverlay() {
+        nodeWheelHeld = false;
+        nodeRadialMenu.close();
+        cancelWireInteraction();
+        workbenchGraph.endNodeDrag();
+        autoTesterOverlayVisible = true;
+        autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
+        playSound("ui-open");
+        repaint();
+    }
+
+    private void closeAutoTesterOverlay() {
+        autoTesterOverlayVisible = false;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        playSound("ui-close");
+        repaint();
+    }
+
+    private void navigateTesterRows(int direction) {
+        selectedTesterRow = (selectedTesterRow + direction + 4) % 4;
+        autoTesterUiStatus = "SELECTED TEST CASE #" + (selectedTesterRow + 1);
+        playSound("ui-select");
+        repaint();
+    }
+
+    private void handleAutoTesterAction(AutoTesterRenderer.Action action) {
+        switch (action) {
+            case RUN -> {
+                autoTesterUiStatus = "RUN CONTROL // LOGIC NEXT";
+                playSound("ui-select");
+            }
+            case STOP -> {
+                autoTesterUiStatus = "STOP CONTROL // LOGIC NEXT";
+                playSound("ui-select");
+            }
+            case CLEAR -> {
+                autoTesterUiStatus = "CLEAR CONTROL // LOGIC NEXT";
+                playSound("ui-select");
+            }
+            case PREVIOUS -> navigateTesterRows(-1);
+            case NEXT -> navigateTesterRows(1);
+            case NONE -> { }
+        }
+        repaint();
+    }
+
     private void completeCurrent() {
         crafted[selectedRecipe] = true;
         boardMessage = circuit.recipe().name + " COMPLETE! Take it to Mira.";
@@ -904,6 +964,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else lineAge = Integer.MAX_VALUE / 2;
             return;
         }
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            if ((key == KeyEvent.VK_H && firstPress) || key == KeyEvent.VK_ESCAPE) {
+                closeAutoTesterOverlay();
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                navigateTesterRows(-1);
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                navigateTesterRows(1);
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                handleAutoTesterAction(AutoTesterRenderer.Action.RUN);
+            }
+            return;
+        }
         if (scene == GameScene.TITLE) {
             int max = SaveManager.hasSave() ? 5 : 4;
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
@@ -970,7 +1042,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
-            if (nodeRadialMenu.isOpen()) {
+            if (key == KeyEvent.VK_H && firstPress) {
+                openAutoTesterOverlay();
+            } else if (nodeRadialMenu.isOpen()) {
                 if (key == KeyEvent.VK_ESCAPE) {
                     nodeWheelHeld = false;
                     nodeRadialMenu.close();
@@ -1058,6 +1132,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (dialogueVisible()) {
             if (dialogueLineComplete()) nextLine();
             else lineAge = Integer.MAX_VALUE / 2;
+            return;
+        }
+
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            AutoTesterRenderer.Action action = autoTesterRenderer.actionAt(x, y);
+            pressedAutoTesterAction = action;
+            if (action != AutoTesterRenderer.Action.NONE) handleAutoTesterAction(action);
+            else repaint();
             return;
         }
 
@@ -1239,6 +1321,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     @Override public void mouseReleased(MouseEvent event) {
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+            repaint();
+            return;
+        }
         if (scene == GameScene.BOARD && wireDragActive) {
             int[] point = logicalPoint(event);
             mouseX = point[0];
@@ -1262,7 +1352,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
     @Override public void mouseClicked(MouseEvent event) {}
     @Override public void mouseEntered(MouseEvent event) { requestFocusInWindow(); }
-    @Override public void mouseExited(MouseEvent event) { mouseX = -1; mouseY = -1; }
+    @Override public void mouseExited(MouseEvent event) {
+        mouseX = -1;
+        mouseY = -1;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        repaint();
+    }
     @Override public void mouseMoved(MouseEvent event) {
         int[] point = logicalPoint(event);
         mouseX = point[0];
@@ -1348,6 +1443,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
     @Override public void mouseDragged(MouseEvent event) {
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            mouseMoved(event);
+            return;
+        }
         if (scene == GameScene.BOARD && nodeRadialMenu.isOpen()) {
             mouseMoved(event);
             return;

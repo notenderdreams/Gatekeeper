@@ -1,0 +1,33 @@
+{
+  "image": "tester.png",
+  "image_width": 1254,
+  "image_height": 1254,
+  "annotations": [
+    {
+      "id": 1,
+      "label": "Sidebar",
+      "x": 1018.0,
+      "y": 187.0,
+      "width": 171.0,
+      "height": 797.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "label": "screen",
+      "x": 95.0,
+      "y": 199.0,
+      "width": 857.0,
+      "height": 800.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    }
+  ]
+}
