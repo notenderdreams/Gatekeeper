@@ -39,7 +39,9 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTesterRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopProduct.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopModel.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/ProductGateRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopRenderer.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/InventoryRenderer.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterRendererTest.java \

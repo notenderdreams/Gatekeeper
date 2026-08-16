@@ -82,6 +82,19 @@ public final class ShopModelTest {
             "pressed button should render less saturated than its idle state");
         require(idle.getRGB(add.x - 2, sampleY) == pressed.getRGB(add.x - 2, sampleY),
             "pressed effect should not draw outside the annotated button crop");
+
+        require(new Rectangle(74, 108, 38, 43).equals(InventoryRenderer.cardBounds(0)),
+            "inventory should start its eight-slot row at the expected position");
+        require(new Rectangle(368, 108, 38, 43).equals(InventoryRenderer.cardBounds(7)),
+            "inventory should reserve room for an eighth card in the same row");
+        InventoryRenderer inventoryRenderer = new InventoryRenderer(
+            node, card, port, GameAssets.loadPixelFont());
+        BufferedImage inventoryImage = new BufferedImage(480, 270, BufferedImage.TYPE_INT_RGB);
+        Graphics2D inventoryGraphics = inventoryImage.createGraphics();
+        inventoryRenderer.draw(inventoryGraphics, model);
+        inventoryGraphics.dispose();
+        require(brightness(inventoryImage.getRGB(54, 76)) > 0,
+            "inventory should render its textured panel border");
         System.out.println("ShopModelTest: all checks passed");
     }
 

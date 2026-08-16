@@ -1,5 +1,6 @@
 package com.gatekeeper;
 
+import java.util.Arrays;
 import java.util.List;
 
 /** Owns the small amount of mutable state used by Mira's shop overlay. */
@@ -27,6 +28,20 @@ final class ShopModel {
     int balance() { return balance; }
     int total() { return -selected().price() * quantity; }
     int purchased(int index) { return purchased[index]; }
+    int[] purchased() { return Arrays.copyOf(purchased, purchased.length); }
+
+    void restore(int savedBalance, int[] savedInventory) {
+        balance = Math.max(0, savedBalance);
+        Arrays.fill(purchased, 0);
+        if (savedInventory != null) {
+            for (int index = 0; index < Math.min(purchased.length, savedInventory.length); index++) {
+                purchased[index] = Math.max(0, savedInventory[index]);
+            }
+        }
+        quantity = 0;
+    }
+
+    void reset() { restore(250, null); }
 
     void select(int index) {
         if (index < 0 || index >= products.size() || index == selectedIndex) return;

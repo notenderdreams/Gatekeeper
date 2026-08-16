@@ -167,7 +167,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final ShopRenderer shopRenderer = new ShopRenderer(
         shopFrameImage, shopItemFrameImage, workbenchNodeTextureImage,
         workbenchWireEndImage, PIXEL_FONT);
+    private final InventoryRenderer inventoryRenderer = new InventoryRenderer(
+        workbenchNodeTextureImage, shopItemFrameImage, workbenchWireEndImage, PIXEL_FONT);
     private boolean shopOverlayVisible;
+    private boolean inventoryVisible;
     private ShopRenderer.Action pressedShopAction = ShopRenderer.Action.NONE;
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
@@ -316,7 +319,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.SHOP && shopOverlayVisible) {
             shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction);
         }
-        if (!disableHud && !shopOverlayVisible
+        if (inventoryVisible) inventoryRenderer.draw(g, shopModel);
+        if (!disableHud && !shopOverlayVisible && !inventoryVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
                 crafted, completedObjective, taskbarOnRight);
@@ -344,6 +348,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         completedObjective = null;
         keys.clear();
         Arrays.fill(crafted, false);
+        shopModel.reset();
         selectedRecipe = 0;
         notebookPage = 0;
         resetAutoTesterState();
@@ -374,7 +379,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.BOARD && autoTester.isRunning()) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
-        if (!exitPrompt && line == null && !shopOverlayVisible
+        if (!exitPrompt && line == null && !shopOverlayVisible && !inventoryVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             boolean sideView = scene == GameScene.STREET;
             boolean shift = keys.contains(KeyEvent.VK_SHIFT);
@@ -1029,6 +1034,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
+        if (inventoryVisible) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_I) {
+                inventoryVisible = false;
+                keys.clear();
+                playSound("ui-close");
+                repaint();
+            }
+            return;
+        }
         if (calibratorEnabled && supportsPositionMarker(scene)) {
             if (key == KeyEvent.VK_BACK_SPACE) {
                 worldRenderer.undoCalibratedPoint();
@@ -1055,6 +1069,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (line != null && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE)) {
             if (dialogueLineComplete()) nextLine();
             else lineAge = Integer.MAX_VALUE / 2;
+            return;
+        }
+        if (key == KeyEvent.VK_I && firstPress && line == null
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET
+                || scene == GameScene.SHOP)) {
+            inventoryVisible = true;
+            keys.clear();
+            playSound("ui-open");
+            repaint();
             return;
         }
         if (scene == GameScene.SHOP && key == KeyEvent.VK_F && firstPress
@@ -1241,6 +1264,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
+
+        if (inventoryVisible) return;
 
         if (dialogueVisible()) {
             if (dialogueLineComplete()) nextLine();
@@ -1624,7 +1649,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void tradeSelectedShopItem() {
-        playSound(shopModel.trade() ? "ui-confirm" : "ui-error");
+        boolean traded = shopModel.trade();
+        playSound(traded ? "ui-confirm" : "ui-error");
+        if (traded) saveCurrentProgress();
         repaint();
     }
 
@@ -2031,6 +2058,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.starCount = starCount;
         data.mothCount = mothCount;
         data.disableHud = disableHud;
+        data.shopBalance = shopModel.balance();
+        data.gateInventory = shopModel.purchased();
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
@@ -2075,6 +2104,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.starCount = data.starCount;
         this.mothCount = data.mothCount;
         this.disableHud = data.disableHud;
+        this.shopModel.restore(data.shopBalance, data.gateInventory);
         updateBedroomBackground();
         updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);

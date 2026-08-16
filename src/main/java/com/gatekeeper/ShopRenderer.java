@@ -54,7 +54,7 @@ final class ShopRenderer {
     private final BufferedImage pressedFrame;
     private final BufferedImage itemFrame;
     private final Font font;
-    private final LogicNodeRenderer nodeRenderer;
+    private final ProductGateRenderer gateRenderer;
 
     ShopRenderer(BufferedImage frame, BufferedImage itemFrame,
                  BufferedImage nodeTexture, BufferedImage portImage, Font font) {
@@ -62,7 +62,7 @@ final class ShopRenderer {
         this.pressedFrame = createPressedFrame(frame);
         this.itemFrame = itemFrame;
         this.font = font;
-        this.nodeRenderer = new LogicNodeRenderer(nodeTexture, portImage);
+        this.gateRenderer = new ProductGateRenderer(nodeTexture, portImage, font);
     }
 
     void draw(Graphics2D graphics, ShopModel model, int mouseX, int mouseY,
@@ -148,10 +148,13 @@ final class ShopRenderer {
 
         Rectangle specs = scaledRegion(SOURCE_SPECIFICATIONS);
         g.setColor(CREAM);
-        text(g, "INPUTS", specs.x + 5, specs.y + 12, 9f);
-        text(g, Integer.toString(product.inputs()), specs.x + specs.width - 13, specs.y + 12, 9f);
-        text(g, "OUTPUTS", specs.x + 5, specs.y + 25, 9f);
-        text(g, Integer.toString(product.outputs()), specs.x + specs.width - 13, specs.y + 25, 9f);
+        text(g, "INPUTS", specs.x + 5, specs.y + 9, 8.5f);
+        text(g, Integer.toString(product.inputs()), specs.x + specs.width - 13, specs.y + 9, 8.5f);
+        text(g, "OUTPUTS", specs.x + 5, specs.y + 18, 8.5f);
+        text(g, Integer.toString(product.outputs()), specs.x + specs.width - 13, specs.y + 18, 8.5f);
+        text(g, "OWNED", specs.x + 5, specs.y + 27, 8.5f);
+        text(g, Integer.toString(model.purchased(model.selectedIndex())),
+            specs.x + specs.width - 13, specs.y + 27, 8.5f);
 
         g.setColor(CREAM);
         centeredText(g, Integer.toString(model.quantity()), scaledRegion(SOURCE_QUANTITY), 10f);
@@ -161,22 +164,7 @@ final class ShopRenderer {
     }
 
     private void drawCanvasGate(Graphics2D g, ShopProduct product, Rectangle area) {
-        int bodyHeight = LogicNodeRenderer.bodyHeight(product.inputs(), product.outputs());
-        double sourceWidth = LogicNodeRenderer.BODY_WIDTH + 28.0;
-        double sourceHeight = bodyHeight + 28.0;
-        double scale = Math.min(area.width / sourceWidth, area.height / sourceHeight);
-        double drawWidth = sourceWidth * scale;
-        double drawHeight = sourceHeight * scale;
-
-        Graphics2D gate = (Graphics2D) g.create();
-        gate.clip(area);
-        gate.translate(area.x + (area.width - drawWidth) / 2.0,
-            area.y + (area.height - drawHeight) / 2.0);
-        gate.scale(scale, scale);
-        gate.setFont(font);
-        nodeRenderer.draw(gate, 14, 14 + bodyHeight / 2,
-            product.name(), product.inputs(), product.outputs());
-        gate.dispose();
+        gateRenderer.draw(g, product, area);
     }
 
     private void drawPressedControl(Graphics2D g, Action action) {

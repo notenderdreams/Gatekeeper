@@ -49,7 +49,16 @@ public final class SaveManager {
             json.append("  \"starCount\": ").append(data.starCount).append(",\n");
             json.append("  \"mothCount\": ").append(data.mothCount).append(",\n");
             json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append(",\n");
-            json.append("  \"disableHud\": ").append(data.disableHud).append("\n");
+            json.append("  \"disableHud\": ").append(data.disableHud).append(",\n");
+            json.append("  \"shopBalance\": ").append(data.shopBalance).append(",\n");
+            json.append("  \"gateInventory\": [");
+            if (data.gateInventory != null) {
+                for (int i = 0; i < data.gateInventory.length; i++) {
+                    json.append(data.gateInventory[i]);
+                    if (i < data.gateInventory.length - 1) json.append(", ");
+                }
+            }
+            json.append("]\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -88,6 +97,8 @@ public final class SaveManager {
             data.mothCount = parseInt(content, "mothCount", 3);
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
             data.disableHud = parseBoolean(content, "disableHud", false);
+            data.shopBalance = parseInt(content, "shopBalance", 250);
+            data.gateInventory = parseIntArray(content, "gateInventory", 6);
 
             return data;
         } catch (Exception e) {
@@ -143,6 +154,20 @@ public final class SaveManager {
             String[] parts = matcher.group(1).split(",");
             for (int i = 0; i < Math.min(length, parts.length); i++) {
                 result[i] = Boolean.parseBoolean(parts[i].trim());
+            }
+        }
+        return result;
+    }
+
+    private static int[] parseIntArray(String json, String key, int length) {
+        int[] result = new int[length];
+        Pattern pattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+        Matcher matcher = pattern.matcher(json);
+        if (matcher.find()) {
+            String[] parts = matcher.group(1).split(",");
+            for (int i = 0; i < Math.min(length, parts.length); i++) {
+                try { result[i] = Integer.parseInt(parts[i].trim()); }
+                catch (Exception ignored) { result[i] = 0; }
             }
         }
         return result;

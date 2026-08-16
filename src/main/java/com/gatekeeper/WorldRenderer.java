@@ -687,6 +687,7 @@ final class WorldRenderer {
         g.fillRect(0, 0, W, 20);
         g.setColor(INK);
         GamePanel.pixelText(g, location, 8, 14, 1);
+        GamePanel.pixelText(g, "I: BAG", 344, 14, 1);
         if (chapter >= 1) GamePanel.pixelText(g, "N: NOTEBOOK", 393, 14, 1);
     }
 
