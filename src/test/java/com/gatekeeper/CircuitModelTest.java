@@ -31,22 +31,20 @@ public final class CircuitModelTest {
         incomplete.recordCurrent();
         require(!incomplete.allRowsRecorded(), "incomplete circuits must not record");
 
-        CircuitModel autoModel = new CircuitModel(recipes.get(0));
-        for (int i = 0; i < autoModel.recipe().solution.length; i++) {
-            autoModel.place(i, autoModel.recipe().solution[i]);
-        }
+        WorkbenchGraph autoGraph = new WorkbenchGraph(recipes.get(0));
         AutoTester tester = new AutoTester();
         tester.toggleAttachment();
         require(tester.isAttached(), "LogicLens should attach");
-        require(tester.start(autoModel), "LogicLens should start on a complete circuit");
+        require(tester.start(recipes.get(0)), "LogicLens should start with a target config");
         int completedRows = 0;
         while (tester.isRunning()) {
-            AutoTester.Tick tick = tester.update(autoModel);
+            AutoTester.Tick tick = tester.update(autoGraph);
             if (tick.advanced() || tick.finished()) completedRows++;
             if (tick.finished()) require(tick.passed(), "LogicLens should pass a correct circuit");
         }
         require(completedRows == 4, "LogicLens should sweep every truth-table row");
-        require(autoModel.matchesTruthTable(), "LogicLens should record matching observations");
+        require(Boolean.FALSE.equals(tester.observations()[3]),
+            "LogicLens should record the workbench's final observation");
 
         CircuitRecipe xor = recipes.get(2);
         require(xor.solution.length == 5 && xor.solution[4] == GateType.OR,

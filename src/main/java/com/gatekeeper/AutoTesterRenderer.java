@@ -50,8 +50,9 @@ final class AutoTesterRenderer {
         this.pixelFont = pixelFont;
     }
 
-    void draw(Graphics2D graphics, CircuitModel circuit, int mouseX, int mouseY,
-              Action pressedAction, String status) {
+    void draw(Graphics2D graphics, CircuitRecipe target, Boolean[] observations,
+              int activeRow, int mouseX, int mouseY, Action pressedAction,
+              String status) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -65,7 +66,7 @@ final class AutoTesterRenderer {
 
         Rectangle screen = screenBounds();
         Rectangle sidebar = sidebarBounds();
-        drawScreen(g, circuit, screen, status);
+        drawScreen(g, target, observations, activeRow, screen, status);
         drawSidebar(g, sidebar, mouseX, mouseY, pressedAction);
         g.dispose();
     }
@@ -92,23 +93,24 @@ final class AutoTesterRenderer {
         return scaledRegion(SOURCE_SIDEBAR);
     }
 
-    private void drawScreen(Graphics2D g, CircuitModel circuit, Rectangle screen,
-                            String status) {
+    private void drawScreen(Graphics2D g, CircuitRecipe target, Boolean[] observations,
+                            int activeRow, Rectangle screen, String status) {
         Graphics2D crt = (Graphics2D) g.create();
         crt.setClip(screen);
         drawCrtGlass(crt, screen);
-        drawPhosphorContent(crt, circuit, screen, status);
+        drawPhosphorContent(crt, target, observations, activeRow, screen, status);
         crt.dispose();
     }
 
-    private void drawPhosphorContent(Graphics2D g, CircuitModel circuit, Rectangle screen,
-                                     String status) {
+    private void drawPhosphorContent(Graphics2D g, CircuitRecipe target,
+                                     Boolean[] observations, int activeRow,
+                                     Rectangle screen, String status) {
         int left = screen.x + 11;
 
         g.setColor(CRT_BRIGHT);
-        text(g, "LOGICLENS / " + circuit.recipe().name, left, screen.y + 15, 0.65f);
+        text(g, "LOGICLENS / " + target.name, left, screen.y + 15, 0.65f);
         g.setColor(CRT);
-        text(g, "TARGET CONFIG // " + circuit.recipe().name, left, screen.y + 29, 0.55f);
+        text(g, "TARGET CONFIG // " + target.name, left, screen.y + 29, 0.55f);
 
         int statusX = left;
         int rowX = left + 30;
@@ -125,13 +127,13 @@ final class AutoTesterRenderer {
         text(g, "EXP", expectedX, headerY, 0.5f);
         text(g, "GOT", actualX, headerY, 0.5f);
 
-        Boolean[] observations = circuit.observations();
         for (int row = 0; row < 4; row++) {
             int baseline = screen.y + 63 + row * 15;
 
             Boolean actual = observations[row];
-            boolean expected = circuit.recipe().truth[row];
-            if (actual == null) g.setColor(CRT);
+            boolean expected = target.truth[row];
+            if (row == activeRow) g.setColor(CRT_BRIGHT);
+            else if (actual == null) g.setColor(CRT);
             else g.setColor(actual == expected ? CRT_BRIGHT : FAIL);
             text(g, resultLabel(actual, expected), statusX, baseline, 0.5f);
             text(g, Integer.toString(row + 1), rowX, baseline, 0.52f);

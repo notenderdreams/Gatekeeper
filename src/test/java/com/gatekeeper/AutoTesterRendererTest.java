@@ -51,8 +51,8 @@ public final class AutoTesterRendererTest {
             Graphics2D graphics = snapshot.createGraphics();
             BufferedImage canvas = GameAssets.loadRawImage("/assets/items/canvas/canvas.png");
             graphics.drawImage(canvas, 0, 0, GameConstants.W, GameConstants.H, null);
-            CircuitModel circuit = new CircuitModel(CircuitRecipe.all().get(0));
-            renderer.draw(graphics, circuit,
+            CircuitRecipe target = CircuitRecipe.all().get(0);
+            renderer.draw(graphics, target, new Boolean[4], -1,
                 sidebar.x + sidebar.width / 2, sidebar.y + 20,
                 AutoTesterRenderer.Action.PREVIOUS, "UI READY // LOGIC OFFLINE");
             graphics.dispose();

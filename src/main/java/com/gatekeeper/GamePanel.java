@@ -135,6 +135,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean settingsOpenedFromPause;
     private GameScene pausedScene = GameScene.BEDROOM;
     private int selectedRecipe;
+    private int testerTargetRecipe;
     private int notebookPage;
     private int playerX = 210;
     private int playerY = 157;
@@ -153,6 +154,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final AutoTesterRenderer autoTesterRenderer = new AutoTesterRenderer(
         autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet, PIXEL_FONT);
     private boolean autoTesterOverlayVisible;
+    private boolean autoTesterRunFromOverlay;
     private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
     private String autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
@@ -292,8 +294,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case END -> notebookRenderer.drawEnding(g);
         }
         if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
-            autoTesterRenderer.draw(g, circuit, mouseX, mouseY,
-                pressedAutoTesterAction, autoTesterUiStatus);
+            autoTesterRenderer.draw(g, testerTarget(), autoTester.observations(),
+                autoTester.currentRow(), mouseX, mouseY, pressedAutoTesterAction,
+                autoTesterUiStatus);
         }
         if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
@@ -324,7 +327,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
-        autoTester.reset();
+        resetAutoTesterState();
         circuit.selectRecipe(recipes.get(0));
         playSound("knock");
         say("*knock knock*",
@@ -646,23 +649,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void autoTest() {
-        if (!circuit.recipe().isComplete(circuit.placed())) {
-            boardMessage = "LogicLens: incomplete circuit.";
-            playSound("ui-error");
-            boardMessageTimer = 180;
-            return;
-        }
-        if (!autoTester.start(circuit)) return;
+        if (!autoTester.start(recipes.get(selectedRecipe))) return;
+        autoTesterRunFromOverlay = false;
         boardMessage = "LogicLens: starting four-row sweep.";
         boardMessageTimer = 180;
         playSound("ui-open");
     }
 
     private void updateAutoTest() {
-        AutoTester.Tick tick = autoTester.update(circuit);
+        AutoTester.Tick tick = autoTester.update(workbenchGraph);
         if (tick.finished()) {
             boardMessageTimer = 240;
-            if (tick.passed()) {
+            if (autoTesterRunFromOverlay) {
+                autoTesterUiStatus = tick.passed()
+                    ? "PASS // " + autoTester.target().name
+                    : "FAIL // " + autoTester.target().name;
+                boardMessage = tick.passed()
+                    ? "LogicLens: current circuit matches " + autoTester.target().name + "."
+                    : "LogicLens: current circuit does not match " + autoTester.target().name + ".";
+                playSound(tick.passed() ? "success" : "failure");
+            } else if (tick.passed()) {
                 completeCurrent();
             } else {
                 boardMessage = "LogicLens: FAILED on one or more rows.";
@@ -671,6 +677,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (tick.advanced()) {
+            if (autoTesterRunFromOverlay) {
+                autoTesterUiStatus = "RUNNING // ROW "
+                    + (autoTester.currentRow() + 1) + " OF 4";
+            }
             boardMessage = "LogicLens: testing row " + (autoTester.currentRow() + 1) + " of 4.";
             boardMessageTimer = 180;
             playSound("ui-click");
@@ -698,7 +708,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         cancelWireInteraction();
         workbenchGraph.endNodeDrag();
         autoTesterOverlayVisible = true;
-        autoTesterUiStatus = "TEST CONFIG // " + circuit.recipe().name;
+        autoTesterUiStatus = "TEST CONFIG // " + testerTarget().name;
         playSound("ui-open");
         repaint();
     }
@@ -711,25 +721,60 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void navigateTesterRecipe(int direction) {
-        int available = chapter >= 3 ? 5 : 3;
-        int nextRecipe = (selectedRecipe + direction + available) % available;
-        selectRecipe(nextRecipe);
-        autoTesterUiStatus = "TEST CONFIG // " + circuit.recipe().name;
+        if (autoTester.isRunning()) {
+            autoTesterUiStatus = "STOP TEST BEFORE CHANGING CONFIG";
+            playSound("ui-error");
+            repaint();
+            return;
+        }
+        testerTargetRecipe = (testerTargetRecipe + direction + recipes.size()) % recipes.size();
+        autoTester.clearResults();
+        autoTesterRunFromOverlay = false;
+        autoTesterUiStatus = "TEST CONFIG // " + testerTarget().name;
+        playSound("ui-select");
         repaint();
+    }
+
+    private CircuitRecipe testerTarget() {
+        return recipes.get(testerTargetRecipe);
+    }
+
+    private void resetAutoTesterState() {
+        autoTester.reset();
+        testerTargetRecipe = 0;
+        autoTesterOverlayVisible = false;
+        autoTesterRunFromOverlay = false;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
     }
 
     private void handleAutoTesterAction(AutoTesterRenderer.Action action) {
         switch (action) {
             case RUN -> {
-                autoTesterUiStatus = "RUN CONTROL // LOGIC NEXT";
-                playSound("ui-select");
+                if (autoTester.start(testerTarget())) {
+                    autoTesterRunFromOverlay = true;
+                    autoTesterUiStatus = "RUNNING // ROW 1 OF 4";
+                    boardMessage = "LogicLens: testing the current circuit as "
+                        + testerTarget().name + ".";
+                    boardMessageTimer = 180;
+                    playSound("ui-open");
+                } else {
+                    autoTesterUiStatus = "TEST ALREADY RUNNING";
+                    playSound("ui-error");
+                }
             }
             case STOP -> {
-                autoTesterUiStatus = "STOP CONTROL // LOGIC NEXT";
-                playSound("ui-select");
+                boolean stopped = autoTester.stop();
+                autoTesterRunFromOverlay = false;
+                autoTesterUiStatus = stopped
+                    ? "STOPPED // " + testerTarget().name
+                    : "TESTER IDLE // " + testerTarget().name;
+                playSound(stopped ? "ui-close" : "ui-select");
             }
             case CLEAR -> {
-                autoTesterUiStatus = "CLEAR CONTROL // LOGIC NEXT";
+                autoTester.clearResults();
+                autoTesterRunFromOverlay = false;
+                autoTesterUiStatus = "READY // " + testerTarget().name;
                 playSound("ui-select");
             }
             case PREVIOUS -> navigateTesterRecipe(-1);
@@ -1717,7 +1762,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         completedObjective = null;
         ObjectiveRenderer.reset();
         exitPrompt = false;
-        autoTester.reset();
+        resetAutoTesterState();
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
@@ -1852,7 +1897,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         boxRetrieved = false;
         updateBedroomBackground();
         updateStreetBackground();
-        autoTester.reset();
+        resetAutoTesterState();
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
@@ -1926,7 +1971,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.worldRenderer.setStarCount(starCount);
         this.worldRenderer.setMothCount(mothCount);
         this.worldRenderer.setDisableHud(disableHud);
-        this.autoTester.reset();
+        resetAutoTesterState();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();
         }

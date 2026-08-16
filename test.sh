@@ -34,11 +34,13 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTesterRenderer.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterRendererTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/LogicNodeRendererTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/WorkbenchGraphTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/NodeRadialMenuTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.AutoTesterTest
 java -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.AutoTesterRendererTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.LogicNodeRendererTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.WorkbenchGraphTest
