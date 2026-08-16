@@ -709,6 +709,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void openAutoTesterOverlay() {
+        if (!autoTesterUnlocked()) {
+            boardMessage = "The tester is not available yet. Talk to Mira.";
+            boardMessageTimer = 180;
+            playSound("ui-error");
+            repaint();
+            return;
+        }
         nodeWheelHeld = false;
         nodeRadialMenu.close();
         cancelWireInteraction();
@@ -743,6 +750,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private CircuitRecipe testerTarget() {
         return recipes.get(testerTargetRecipe);
+    }
+
+    private boolean autoTesterUnlocked() {
+        return chapter >= 3;
     }
 
     private void resetAutoTesterState() {
