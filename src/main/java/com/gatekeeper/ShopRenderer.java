@@ -9,7 +9,7 @@ import java.awt.image.BufferedImage;
 
 /** Draws Mira's annotated, asset-backed shop overlay and owns all of its hit regions. */
 final class ShopRenderer {
-    enum Action { NONE, CLOSE, DECREASE, INCREASE, ADD_TO_CART }
+    enum Action { NONE, CLOSE, DECREASE, INCREASE, BUY_SELL }
 
     private static final int SOURCE_W = 1362;
     private static final int SOURCE_H = 948;
@@ -35,7 +35,7 @@ final class ShopRenderer {
     private static final Rectangle SOURCE_CLOSE = new Rectangle(1252, 41, 78, 76);
     private static final Rectangle SOURCE_DECREASE = new Rectangle(1120, 707, 42, 45);
     private static final Rectangle SOURCE_INCREASE = new Rectangle(1268, 707, 41, 44);
-    private static final Rectangle SOURCE_ADD = new Rectangle(945, 841, 369, 74);
+    private static final Rectangle SOURCE_TRADE = new Rectangle(945, 841, 369, 74);
 
     // Exact source-space regions from shop-item.annotations.json.
     private static final Rectangle CARD_GATE_IMAGE = new Rectangle(19, 17, 150, 99);
@@ -90,6 +90,7 @@ final class ShopRenderer {
 
         drawDetails(g, model);
         if (pressedAction != Action.NONE) drawPressedControl(g, pressedAction);
+        drawTradeLabel(g, pressedAction == Action.BUY_SELL);
         g.dispose();
     }
 
@@ -97,7 +98,7 @@ final class ShopRenderer {
         if (closeBounds().contains(x, y)) return Action.CLOSE;
         if (decreaseBounds().contains(x, y)) return Action.DECREASE;
         if (increaseBounds().contains(x, y)) return Action.INCREASE;
-        if (addBounds().contains(x, y)) return Action.ADD_TO_CART;
+        if (tradeBounds().contains(x, y)) return Action.BUY_SELL;
         return Action.NONE;
     }
 
@@ -122,7 +123,7 @@ final class ShopRenderer {
     static Rectangle closeBounds() { return scaledRegion(SOURCE_CLOSE); }
     static Rectangle decreaseBounds() { return scaledRegion(SOURCE_DECREASE); }
     static Rectangle increaseBounds() { return scaledRegion(SOURCE_INCREASE); }
-    static Rectangle addBounds() { return scaledRegion(SOURCE_ADD); }
+    static Rectangle tradeBounds() { return scaledRegion(SOURCE_TRADE); }
 
     private void drawCardContents(Graphics2D g, ShopProduct product, Rectangle card) {
         Rectangle gate = cardRegion(card, CARD_GATE_IMAGE);
@@ -155,7 +156,7 @@ final class ShopRenderer {
         g.setColor(CREAM);
         centeredText(g, Integer.toString(model.quantity()), scaledRegion(SOURCE_QUANTITY), 10f);
         g.setColor(GOLD);
-        centeredText(g, Integer.toString(model.total()), scaledRegion(SOURCE_TOTAL), 10f);
+        centeredText(g, signedTotal(model.total()), scaledRegion(SOURCE_TOTAL), 10f);
         centeredText(g, Integer.toString(model.balance()), scaledRegion(SOURCE_BALANCE), 10f);
     }
 
@@ -183,7 +184,7 @@ final class ShopRenderer {
             case CLOSE -> SOURCE_CLOSE;
             case DECREASE -> SOURCE_DECREASE;
             case INCREASE -> SOURCE_INCREASE;
-            case ADD_TO_CART -> SOURCE_ADD;
+            case BUY_SELL -> SOURCE_TRADE;
             case NONE -> null;
         };
         if (source == null || pressedFrame == null) return;
@@ -191,6 +192,30 @@ final class ShopRenderer {
         g.drawImage(pressedFrame,
             bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height,
             source.x, source.y, source.x + source.width, source.y + source.height, null);
+    }
+
+    private void drawTradeLabel(Graphics2D g, boolean pressed) {
+        BufferedImage sourceImage = pressed ? pressedFrame : frame;
+        if (sourceImage == null) return;
+        Rectangle button = tradeBounds();
+        Rectangle label = new Rectangle(
+            button.x + 7, button.y + 3, button.width - 14, button.height - 6);
+
+        // Replace only the old label pixels with an untouched patch from the same
+        // green button, preserving the surrounding frame and button border exactly.
+        int cleanX = SOURCE_TRADE.x + 18;
+        int cleanY = SOURCE_TRADE.y + 19;
+        int cleanWidth = 50;
+        int cleanHeight = 36;
+        g.drawImage(sourceImage,
+            label.x, label.y, label.x + label.width, label.y + label.height,
+            cleanX, cleanY, cleanX + cleanWidth, cleanY + cleanHeight, null);
+        g.setColor(pressed ? new Color(132, 129, 116) : CREAM);
+        centeredText(g, "BUY / SELL", label, 13f);
+    }
+
+    private static String signedTotal(int total) {
+        return total > 0 ? "+" + total : Integer.toString(total);
     }
 
     private void drawFallbackFrame(Graphics2D g) {

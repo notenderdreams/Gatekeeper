@@ -1025,7 +1025,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-click");
                 repaint();
             } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
-                purchaseSelectedShopItem();
+                tradeSelectedShopItem();
             }
             return;
         }
@@ -1618,13 +1618,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 shopModel.increaseQuantity();
                 playSound("ui-click");
             }
-            case ADD_TO_CART -> purchaseSelectedShopItem();
+            case BUY_SELL -> tradeSelectedShopItem();
             case NONE -> { }
         }
     }
 
-    private void purchaseSelectedShopItem() {
-        playSound(shopModel.purchase() ? "ui-confirm" : "ui-error");
+    private void tradeSelectedShopItem() {
+        playSound(shopModel.trade() ? "ui-confirm" : "ui-error");
         repaint();
     }
 

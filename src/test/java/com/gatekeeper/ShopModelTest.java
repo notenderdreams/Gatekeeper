@@ -13,18 +13,33 @@ public final class ShopModelTest {
         require(catalog.get(5).name().equals("XNOR"), "XNOR should be sixth");
 
         ShopModel model = new ShopModel(catalog, 250);
+        require(model.quantity() == 0, "shop should open with a neutral zero quantity");
         model.select(3);
+        model.increaseQuantity();
         model.increaseQuantity();
         require(model.selected().name().equals("NAND"), "selection should update details");
         require(model.quantity() == 2, "plus should increase quantity");
-        require(model.total() == 48, "total should be price times quantity");
-        require(model.purchase(), "affordable purchase should succeed");
+        require(model.total() == -48, "buy total should show the balance deduction");
+        require(model.trade(), "affordable purchase should succeed");
         require(model.balance() == 202, "purchase should reduce the balance");
         require(model.purchased(3) == 2, "purchase count should retain purchased quantity");
-        require(model.quantity() == 1, "purchase should reset quantity");
+        require(model.quantity() == 0, "purchase should reset quantity to neutral");
+
+        model.decreaseQuantity();
+        require(model.quantity() == -1, "minus should support negative sell quantities");
+        require(model.total() == 24, "sell total should show the balance addition");
+        require(model.trade(), "owned inventory should be sellable");
+        require(model.balance() == 226, "sale should add its value back to the balance");
+        require(model.purchased(3) == 1, "sale should remove owned inventory");
+
+        model.decreaseQuantity();
+        model.decreaseQuantity();
+        require(!model.trade(), "selling more than owned inventory should fail");
+        require(model.balance() == 226, "failed sale should preserve balance");
 
         ShopModel poor = new ShopModel(catalog, 1);
-        require(!poor.purchase(), "unaffordable purchase should fail");
+        poor.increaseQuantity();
+        require(!poor.trade(), "unaffordable purchase should fail");
         require(poor.balance() == 1, "failed purchase should preserve balance");
 
         require(new Rectangle(46, 0, 388, 270).equals(ShopRenderer.frameBounds()),
@@ -55,8 +70,8 @@ public final class ShopModelTest {
         ShopRenderer assetRenderer = new ShopRenderer(
             frame, card, node, port, GameAssets.loadPixelFont());
         BufferedImage idle = render(assetRenderer, model, ShopRenderer.Action.NONE);
-        BufferedImage pressed = render(assetRenderer, model, ShopRenderer.Action.ADD_TO_CART);
-        Rectangle add = ShopRenderer.addBounds();
+        BufferedImage pressed = render(assetRenderer, model, ShopRenderer.Action.BUY_SELL);
+        Rectangle add = ShopRenderer.tradeBounds();
         int sampleX = centerX(add);
         int sampleY = centerY(add);
         int idleButton = idle.getRGB(sampleX, sampleY);
