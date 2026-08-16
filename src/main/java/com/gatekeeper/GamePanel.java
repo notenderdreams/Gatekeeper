@@ -154,7 +154,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet, PIXEL_FONT);
     private boolean autoTesterOverlayVisible;
     private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
-    private int selectedTesterRow = 2;
     private String autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
@@ -293,8 +292,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case END -> notebookRenderer.drawEnding(g);
         }
         if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
-            autoTesterRenderer.draw(g, circuit, selectedTesterRow,
-                mouseX, mouseY, pressedAutoTesterAction, autoTesterUiStatus);
+            autoTesterRenderer.draw(g, circuit, mouseX, mouseY,
+                pressedAutoTesterAction, autoTesterUiStatus);
         }
         if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
@@ -699,7 +698,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         cancelWireInteraction();
         workbenchGraph.endNodeDrag();
         autoTesterOverlayVisible = true;
-        autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
+        autoTesterUiStatus = "TEST CONFIG // " + circuit.recipe().name;
         playSound("ui-open");
         repaint();
     }
@@ -711,10 +710,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
 
-    private void navigateTesterRows(int direction) {
-        selectedTesterRow = (selectedTesterRow + direction + 4) % 4;
-        autoTesterUiStatus = "SELECTED TEST CASE #" + (selectedTesterRow + 1);
-        playSound("ui-select");
+    private void navigateTesterRecipe(int direction) {
+        int available = chapter >= 3 ? 5 : 3;
+        int nextRecipe = (selectedRecipe + direction + available) % available;
+        selectRecipe(nextRecipe);
+        autoTesterUiStatus = "TEST CONFIG // " + circuit.recipe().name;
         repaint();
     }
 
@@ -732,8 +732,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 autoTesterUiStatus = "CLEAR CONTROL // LOGIC NEXT";
                 playSound("ui-select");
             }
-            case PREVIOUS -> navigateTesterRows(-1);
-            case NEXT -> navigateTesterRows(1);
+            case PREVIOUS -> navigateTesterRecipe(-1);
+            case NEXT -> navigateTesterRecipe(1);
             case NONE -> { }
         }
         repaint();
@@ -968,9 +968,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             if ((key == KeyEvent.VK_H && firstPress) || key == KeyEvent.VK_ESCAPE) {
                 closeAutoTesterOverlay();
             } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
-                navigateTesterRows(-1);
+                navigateTesterRecipe(-1);
             } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
-                navigateTesterRows(1);
+                navigateTesterRecipe(1);
             } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
                 handleAutoTesterAction(AutoTesterRenderer.Action.RUN);
             }

@@ -44,8 +44,6 @@ public final class AutoTesterRendererTest {
                 "tester navigation button sheet must retain its tightly cropped layout");
             require(buttons.getWidth() == 1024 && buttons.getHeight() == 1536,
                 "tester button sheet must retain its tightly cropped 2x3 layout");
-            require(frame.getWidth() == frame.getHeight(),
-                "tester frame must retain a square aspect ratio");
             renderer = new AutoTesterRenderer(
                 frame, buttons, navigationButtons, GameAssets.loadPixelFont());
             BufferedImage snapshot = new BufferedImage(GameConstants.W, GameConstants.H,
@@ -54,7 +52,7 @@ public final class AutoTesterRendererTest {
             BufferedImage canvas = GameAssets.loadRawImage("/assets/items/canvas/canvas.png");
             graphics.drawImage(canvas, 0, 0, GameConstants.W, GameConstants.H, null);
             CircuitModel circuit = new CircuitModel(CircuitRecipe.all().get(0));
-            renderer.draw(graphics, circuit, 2,
+            renderer.draw(graphics, circuit,
                 sidebar.x + sidebar.width / 2, sidebar.y + 20,
                 AutoTesterRenderer.Action.PREVIOUS, "UI READY // LOGIC OFFLINE");
             graphics.dispose();

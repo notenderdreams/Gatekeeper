@@ -3,8 +3,10 @@ package com.gatekeeper;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.RadialGradientPaint;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 
 /** Draws the asset-backed LogicLens overlay and owns its annotated UI geometry. */
@@ -29,12 +31,11 @@ final class AutoTesterRenderer {
     private static final Rectangle SOURCE_SCREEN = new Rectangle(95, 199, 857, 800);
     private static final Rectangle SOURCE_SIDEBAR = new Rectangle(1018, 187, 171, 797);
 
-    private static final Color CRT = new Color(83, 166, 87);
-    private static final Color CRT_BRIGHT = new Color(120, 211, 117);
-    private static final Color CRT_DIM = new Color(38, 91, 49);
-    private static final Color CRT_SCANLINE = new Color(29, 82, 40, 72);
+    private static final Color CRT = new Color(112, 232, 122);
+    private static final Color CRT_BRIGHT = new Color(198, 255, 187);
+    private static final Color CRT_DIM = new Color(40, 110, 52);
     private static final Color CRT_DARK = new Color(7, 27, 17, 220);
-    private static final Color FAIL = new Color(205, 122, 69);
+    private static final Color FAIL = new Color(255, 158, 89);
 
     private final BufferedImage frameImage;
     private final BufferedImage buttonSheet;
@@ -49,8 +50,8 @@ final class AutoTesterRenderer {
         this.pixelFont = pixelFont;
     }
 
-    void draw(Graphics2D graphics, CircuitModel circuit, int selectedRow,
-              int mouseX, int mouseY, Action pressedAction, String status) {
+    void draw(Graphics2D graphics, CircuitModel circuit, int mouseX, int mouseY,
+              Action pressedAction, String status) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -58,13 +59,13 @@ final class AutoTesterRenderer {
         g.setColor(new Color(0, 0, 0, 155));
         g.fillRect(0, 0, GameConstants.W, GameConstants.H);
         if (frameImage != null) {
-            // tester.png is square; equal destination dimensions preserve its aspect ratio.
+            // Normalize the frame into the square space used by tester.annotations.json.
             g.drawImage(frameImage, FRAME_X, FRAME_Y, FRAME_SIZE, FRAME_SIZE, null);
         }
 
         Rectangle screen = screenBounds();
         Rectangle sidebar = sidebarBounds();
-        drawScreen(g, circuit, selectedRow, screen, status);
+        drawScreen(g, circuit, screen, status);
         drawSidebar(g, sidebar, mouseX, mouseY, pressedAction);
         g.dispose();
     }
@@ -91,25 +92,23 @@ final class AutoTesterRenderer {
         return scaledRegion(SOURCE_SIDEBAR);
     }
 
-    private void drawScreen(Graphics2D g, CircuitModel circuit, int selectedRow,
-                            Rectangle screen, String status) {
-        int left = screen.x + 11;
-        int tableRight = left + 126;
-        g.setClip(screen);
+    private void drawScreen(Graphics2D g, CircuitModel circuit, Rectangle screen,
+                            String status) {
+        Graphics2D crt = (Graphics2D) g.create();
+        crt.setClip(screen);
+        drawCrtGlass(crt, screen);
+        drawPhosphorContent(crt, circuit, screen, status);
+        crt.dispose();
+    }
 
-        g.setColor(CRT_SCANLINE);
-        for (int y = screen.y + 2; y < screen.y + screen.height; y += 3) {
-            g.drawLine(screen.x + 2, y, screen.x + screen.width - 3, y);
-        }
+    private void drawPhosphorContent(Graphics2D g, CircuitModel circuit, Rectangle screen,
+                                     String status) {
+        int left = screen.x + 11;
 
         g.setColor(CRT_BRIGHT);
-        text(g, "LOGICLENS / " + circuit.recipe().name, left, screen.y + 15, 0.55f);
+        text(g, "LOGICLENS / " + circuit.recipe().name, left, screen.y + 15, 0.65f);
         g.setColor(CRT);
-        text(g, "TRUTH TABLE  CASE #" + (selectedRow + 1), left, screen.y + 28, 0.46f);
-
-        int dividerY = screen.y + 35;
-        g.setColor(CRT_DIM);
-        g.drawLine(left, dividerY, tableRight, dividerY);
+        text(g, "TARGET CONFIG // " + circuit.recipe().name, left, screen.y + 29, 0.55f);
 
         int statusX = left;
         int rowX = left + 30;
@@ -119,44 +118,56 @@ final class AutoTesterRenderer {
         int actualX = left + 103;
         int headerY = screen.y + 47;
         g.setColor(CRT);
-        text(g, "STATE", statusX, headerY, 0.38f);
-        text(g, "#", rowX, headerY, 0.38f);
-        text(g, "A", aX, headerY, 0.38f);
-        text(g, "B", bX, headerY, 0.38f);
-        text(g, "EXP", expectedX, headerY, 0.38f);
-        text(g, "GOT", actualX, headerY, 0.38f);
+        text(g, "STATE", statusX, headerY, 0.5f);
+        text(g, "#", rowX, headerY, 0.5f);
+        text(g, "A", aX, headerY, 0.5f);
+        text(g, "B", bX, headerY, 0.5f);
+        text(g, "EXP", expectedX, headerY, 0.5f);
+        text(g, "GOT", actualX, headerY, 0.5f);
 
         Boolean[] observations = circuit.observations();
         for (int row = 0; row < 4; row++) {
-            int top = screen.y + 53 + row * 15;
-            int baseline = top + 10;
-            boolean selected = row == selectedRow;
-            if (selected) {
-                g.setColor(new Color(39, 101, 51, 105));
-                g.fillRect(left - 3, top, tableRight - left + 6, 12);
-                g.setColor(CRT_BRIGHT);
-                g.drawRect(left - 3, top, tableRight - left + 5, 12);
-            }
+            int baseline = screen.y + 63 + row * 15;
 
             Boolean actual = observations[row];
             boolean expected = circuit.recipe().truth[row];
-            if (actual == null) g.setColor(selected ? CRT_BRIGHT : CRT);
+            if (actual == null) g.setColor(CRT);
             else g.setColor(actual == expected ? CRT_BRIGHT : FAIL);
-            text(g, resultLabel(actual, expected), statusX, baseline, 0.4f);
-            text(g, Integer.toString(row + 1), rowX, baseline, 0.42f);
-            text(g, row >= 2 ? "1" : "0", aX, baseline, 0.42f);
-            text(g, row % 2 == 1 ? "1" : "0", bX, baseline, 0.42f);
-            text(g, expected ? "1" : "0", expectedX + 4, baseline, 0.42f);
+            text(g, resultLabel(actual, expected), statusX, baseline, 0.5f);
+            text(g, Integer.toString(row + 1), rowX, baseline, 0.52f);
+            text(g, row >= 2 ? "1" : "0", aX, baseline, 0.52f);
+            text(g, row % 2 == 1 ? "1" : "0", bX, baseline, 0.52f);
+            text(g, expected ? "1" : "0", expectedX + 4, baseline, 0.52f);
             text(g, actual == null ? "-" : (actual ? "1" : "0"),
-                actualX + 4, baseline, 0.42f);
+                actualX + 4, baseline, 0.52f);
         }
 
         int footerY = screen.y + 135;
-        g.setColor(CRT_DIM);
-        g.drawLine(left, footerY - 11, tableRight, footerY - 11);
         g.setColor(CRT);
-        text(g, status, left, footerY, 0.38f);
-        g.setClip(null);
+        text(g, status, left, footerY, 0.48f);
+    }
+
+    private static void drawCrtGlass(Graphics2D g, Rectangle screen) {
+        g.setColor(new Color(0, 0, 0, 26));
+        for (int y = screen.y + 1; y < screen.y + screen.height - 1; y += 3) {
+            g.fillRect(screen.x + 2, y, screen.width - 4, 1);
+        }
+
+        g.setColor(new Color(165, 255, 157, 13));
+        for (int y = screen.y + 3; y < screen.y + screen.height - 3; y += 5) {
+            for (int x = screen.x + 3; x < screen.x + screen.width - 3; x += 7) {
+                if (((x * 31 + y * 17) & 15) == 0) g.fillRect(x, y, 1, 1);
+            }
+        }
+
+        float radius = Math.max(screen.width, screen.height) * 0.68f;
+        g.setPaint(new RadialGradientPaint(
+            new Point2D.Float(screen.x + screen.width / 2f,
+                screen.y + screen.height / 2f),
+            radius,
+            new float[] { 0.58f, 1f },
+            new Color[] { new Color(0, 0, 0, 0), new Color(0, 7, 3, 170) }));
+        g.fillRect(screen.x, screen.y, screen.width, screen.height);
     }
 
     private void drawSidebar(Graphics2D g, Rectangle sidebar, int mouseX, int mouseY,
