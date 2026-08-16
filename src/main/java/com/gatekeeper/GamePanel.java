@@ -484,11 +484,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 completedObjective = "OPEN THE MYSTERY BOX";
                 boxOpened = true;
                 if (chapter == 0) chapter = 1;
+                grantStarterGates();
                 updateBedroomBackground();
                 playSound("ui-open");
                 say(NOTEBOOK_ITEM_CARD,
                     WORKBENCH_ITEM_CARD,
-                    "ALEX|A box full of tiny black pieces... AND, OR, NOT.",
+                    "ALEX|There are 5 electrical components marked AND, 5 marked OR, and 5 marked NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
                 saveCurrentProgress();
@@ -1655,6 +1656,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         repaint();
     }
 
+    private void grantStarterGates() {
+        shopModel.grant("AND", 5);
+        shopModel.grant("OR", 5);
+        shopModel.grant("NOT", 5);
+    }
+
     private void closeShopOverlay() {
         shopOverlayVisible = false;
         pressedShopAction = ShopRenderer.Action.NONE;
@@ -2060,6 +2067,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.disableHud = disableHud;
         data.shopBalance = shopModel.balance();
         data.gateInventory = shopModel.purchased();
+        data.gateInventoryInitialized = true;
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
@@ -2105,6 +2113,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.mothCount = data.mothCount;
         this.disableHud = data.disableHud;
         this.shopModel.restore(data.shopBalance, data.gateInventory);
+        if (!data.gateInventoryInitialized && data.boxOpened) grantStarterGates();
         updateBedroomBackground();
         updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);

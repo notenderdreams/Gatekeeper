@@ -43,6 +43,17 @@ final class ShopModel {
 
     void reset() { restore(250, null); }
 
+    void grant(String productName, int amount) {
+        if (amount <= 0) return;
+        for (int index = 0; index < products.size(); index++) {
+            if (products.get(index).name().equals(productName)) {
+                purchased[index] += amount;
+                return;
+            }
+        }
+        throw new IllegalArgumentException("Unknown shop product: " + productName);
+    }
+
     void select(int index) {
         if (index < 0 || index >= products.size() || index == selectedIndex) return;
         selectedIndex = index;

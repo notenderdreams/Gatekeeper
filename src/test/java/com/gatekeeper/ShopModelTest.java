@@ -14,6 +14,12 @@ public final class ShopModelTest {
 
         ShopModel model = new ShopModel(catalog, 250);
         require(model.quantity() == 0, "shop should open with a neutral zero quantity");
+        model.grant("AND", 5);
+        model.grant("OR", 5);
+        model.grant("NOT", 5);
+        require(model.purchased(0) == 5 && model.purchased(1) == 5
+                && model.purchased(2) == 5,
+            "opening-box grants should add five primitive gates to inventory");
         model.select(3);
         model.increaseQuantity();
         model.increaseQuantity();

@@ -99,6 +99,7 @@ public final class SaveManager {
             data.disableHud = parseBoolean(content, "disableHud", false);
             data.shopBalance = parseInt(content, "shopBalance", 250);
             data.gateInventory = parseIntArray(content, "gateInventory", 6);
+            data.gateInventoryInitialized = content.contains("\"gateInventory\"");
 
             return data;
         } catch (Exception e) {
