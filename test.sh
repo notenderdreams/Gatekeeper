@@ -16,6 +16,8 @@ test -s "$PROJECT_DIR/src/main/resources/assets/items/canvas/tester-plug.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/tester/tester.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/tester/tester-buttons.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/tester/tester-navigation-buttons.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/items/shop/shop.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/items/shop/shop-item.png"
 
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \
@@ -35,13 +37,17 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitModel.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTester.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/AutoTesterRenderer.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopProduct.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopModel.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopRenderer.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterRendererTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/LogicNodeRendererTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/WorkbenchGraphTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/TesterPlugLayoutTest.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/NodeRadialMenuTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/NodeRadialMenuTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/ShopModelTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.AutoTesterTest
 java -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.AutoTesterRendererTest
@@ -49,3 +55,4 @@ java -cp "$TEST_BUILD_DIR" com.gatekeeper.LogicNodeRendererTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.WorkbenchGraphTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.TesterPlugLayoutTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.NodeRadialMenuTest
+java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.ShopModelTest

@@ -1,0 +1,46 @@
+{
+  "image": "/Users/sajidalnahian/Desktop/shop-item.png",
+  "image_width": 189,
+  "image_height": 213,
+  "annotations": [
+    {
+      "id": 1,
+      "label": "Gate Img",
+      "x": 19.0,
+      "y": 17.0,
+      "width": 150.0,
+      "height": 99.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "label": "name",
+      "x": 26.0,
+      "y": 131.0,
+      "width": 143.0,
+      "height": 25.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 3,
+      "label": "price",
+      "x": 92.0,
+      "y": 173.0,
+      "width": 76.0,
+      "height": 15.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    }
+  ]
+}

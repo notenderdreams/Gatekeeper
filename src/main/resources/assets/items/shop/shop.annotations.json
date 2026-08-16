@@ -1,0 +1,163 @@
+{
+  "image": "/Users/sajidalnahian/Desktop/shop.png",
+  "image_width": 1362,
+  "image_height": 948,
+  "annotations": [
+    {
+      "id": 1,
+      "label": "Thumbnail",
+      "x": 964.0,
+      "y": 221.0,
+      "width": 335.0,
+      "height": 190.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "label": "Name",
+      "x": 964.0,
+      "y": 159.0,
+      "width": 341.0,
+      "height": 33.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 3,
+      "label": "description",
+      "x": 960.0,
+      "y": 431.0,
+      "width": 342.0,
+      "height": 64.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 4,
+      "label": "specifications",
+      "x": 957.0,
+      "y": 566.0,
+      "width": 345.0,
+      "height": 104.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 5,
+      "label": "quantity",
+      "x": 1181.0,
+      "y": 713.0,
+      "width": 69.0,
+      "height": 32.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 6,
+      "label": "total",
+      "x": 1203.0,
+      "y": 786.0,
+      "width": 92.0,
+      "height": 28.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 7,
+      "label": "items grid",
+      "x": 43.0,
+      "y": 180.0,
+      "width": 847.0,
+      "height": 732.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 8,
+      "label": "balance",
+      "x": 1099.0,
+      "y": 64.0,
+      "width": 106.0,
+      "height": 31.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 9,
+      "label": "btn_04",
+      "x": 1252.0,
+      "y": 41.0,
+      "width": 78.0,
+      "height": 76.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 10,
+      "label": "btn_01",
+      "x": 1120.0,
+      "y": 707.0,
+      "width": 42.0,
+      "height": 45.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 11,
+      "label": "btn_02",
+      "x": 1268.0,
+      "y": 707.0,
+      "width": 41.0,
+      "height": 44.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 12,
+      "label": "btn_03",
+      "x": 945.0,
+      "y": 841.0,
+      "width": 369.0,
+      "height": 74.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    }
+  ]
+}

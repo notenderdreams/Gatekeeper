@@ -598,7 +598,7 @@ final class WorldRenderer {
             drawMaskedShopkeeper(g, 240, 136, 102);
             drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
             drawHud(g, "MIRA'S ELECTRONICS");
-            if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
+            if (near(240, 160)) prompt(g, "E  TALK     F  SHOP");
             else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
 
             if (showCollisions) {
@@ -677,7 +677,7 @@ final class WorldRenderer {
         drawShopkeeper(g, 240, 120);
         drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
         drawHud(g, "MIRA'S ELECTRONICS");
-        if (near(240, 155)) prompt(g, "E  TALK TO MIRA");
+        if (near(240, 155)) prompt(g, "E  TALK     F  SHOP");
         if (playerX < 45) prompt(g, "E  GO OUTSIDE");
     }
 
