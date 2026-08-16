@@ -293,6 +293,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 g, chapter, notebookPage, ticks);
             case END -> notebookRenderer.drawEnding(g);
         }
+        if (scene == GameScene.BOARD) {
+            worldRenderer.drawPositionMarkers(g, 0);
+        }
         if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
             autoTesterRenderer.draw(g, testerTarget(), autoTester.observations(),
                 autoTester.currentRow(), mouseX, mouseY, pressedAutoTesterAction,
@@ -981,7 +984,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+        if (calibratorEnabled && supportsPositionMarker(scene)) {
             if (key == KeyEvent.VK_BACK_SPACE) {
                 worldRenderer.undoCalibratedPoint();
                 repaint();
@@ -1300,7 +1303,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+        if (calibratorEnabled && supportsPositionMarker(scene)) {
             int cameraX = (scene == GameScene.STREET) ? worldRenderer.streetCameraX() : 0;
             int worldX = cameraX + x;
             int worldY = y;
@@ -1988,6 +1991,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
+
+    private static boolean supportsPositionMarker(GameScene targetScene) {
+        return targetScene == GameScene.BEDROOM
+            || targetScene == GameScene.STREET
+            || targetScene == GameScene.SHOP
+            || targetScene == GameScene.BOARD;
+    }
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }

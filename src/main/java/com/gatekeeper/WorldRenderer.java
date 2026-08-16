@@ -167,7 +167,7 @@ final class WorldRenderer {
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
             }
-            drawCalibratedPoints(g, 0);
+            drawPositionMarkers(g, 0);
             return;
         }
         // Layered night-time room: wallpaper, moonlit window, floor and rug.
@@ -275,7 +275,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
         }
-        drawCalibratedPoints(g, 0);
+        drawPositionMarkers(g, 0);
     }
 
     void drawStreet(Graphics2D g) {
@@ -341,7 +341,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.STREET, playerX, playerY, cameraX);
         }
-        drawCalibratedPoints(g, cameraX);
+        drawPositionMarkers(g, cameraX);
     }
 
     private void drawStreetPlayer(Graphics2D g, int screenX) {
@@ -448,7 +448,7 @@ final class WorldRenderer {
         DevLog.log(sb.toString());
     }
 
-    private void drawCalibratedPoints(Graphics2D g, int cameraX) {
+    void drawPositionMarkers(Graphics2D g, int cameraX) {
         for (CalibratedPoint p : calibratedPoints) {
             int screenX = p.worldX - cameraX;
             int screenY = p.worldY;
@@ -604,7 +604,7 @@ final class WorldRenderer {
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.SHOP, playerX, playerY, 0);
             }
-            drawCalibratedPoints(g, 0);
+            drawPositionMarkers(g, 0);
             return;
         }
         // A warm, crowded neighborhood electronics shop.
