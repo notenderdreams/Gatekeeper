@@ -98,7 +98,7 @@ public final class SaveManager {
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
             data.disableHud = parseBoolean(content, "disableHud", false);
             data.shopBalance = parseInt(content, "shopBalance", 250);
-            data.gateInventory = parseIntArray(content, "gateInventory", 6);
+            data.gateInventory = parseIntArray(content, "gateInventory", 8);
             data.gateInventoryInitialized = content.contains("\"gateInventory\"");
 
             return data;

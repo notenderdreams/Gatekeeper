@@ -8,9 +8,28 @@ import java.util.List;
 public final class ShopModelTest {
     public static void main(String[] args) {
         List<ShopProduct> catalog = ShopProduct.catalog();
-        require(catalog.size() == 6, "shop should expose the requested six gates");
+        require(catalog.size() == 8, "shop should expose all eight economy components");
         require(catalog.get(0).name().equals("AND"), "AND should be first");
-        require(catalog.get(5).name().equals("XNOR"), "XNOR should be sixth");
+        require(catalog.get(7).name().equals("IMPLY"), "IMPLY should be eighth");
+        require(catalog.get(0).buyPrice() == 10 && catalog.get(0).sellPrice() == 6,
+            "primitive gates should have distinct low buy and sell prices");
+        require(catalog.get(6).buyPrice() == 90 && catalog.get(6).sellPrice() == 68,
+            "advanced gates should carry a larger complexity premium");
+        for (int index = 3; index < catalog.size(); index++) {
+            ShopProduct product = catalog.get(index);
+            int ingredientCost = 0;
+            for (GateType part : product.parts()) {
+                ingredientCost += switch (part) {
+                    case AND -> catalog.get(0).buyPrice();
+                    case OR -> catalog.get(1).buyPrice();
+                    case NOT -> catalog.get(2).buyPrice();
+                };
+            }
+            require(product.sellPrice() > ingredientCost,
+                product.name() + " should sell above its purchased ingredient cost");
+            require(product.buyPrice() > product.sellPrice(),
+                product.name() + " should cost more to buy than it returns when sold");
+        }
 
         ShopModel model = new ShopModel(catalog, 250);
         require(model.quantity() == 0, "shop should open with a neutral zero quantity");
@@ -20,28 +39,34 @@ public final class ShopModelTest {
         require(model.purchased(0) == 5 && model.purchased(1) == 5
                 && model.purchased(2) == 5,
             "opening-box grants should add five primitive gates to inventory");
+        require(model.craft("NAND", new GateType[]{GateType.AND, GateType.NOT}),
+            "crafting should consume available primitive ingredients");
+        require(model.purchased(0) == 4 && model.purchased(2) == 4
+                && model.purchased(3) == 1,
+            "crafting should replace ingredients with one finished component");
         model.select(3);
         model.increaseQuantity();
         model.increaseQuantity();
         require(model.selected().name().equals("NAND"), "selection should update details");
         require(model.quantity() == 2, "plus should increase quantity");
-        require(model.total() == -48, "buy total should show the balance deduction");
+        require(model.total() == -64, "buy total should use the selected buy price");
         require(model.trade(), "affordable purchase should succeed");
-        require(model.balance() == 202, "purchase should reduce the balance");
-        require(model.purchased(3) == 2, "purchase count should retain purchased quantity");
+        require(model.balance() == 186, "purchase should reduce balance by the buy price");
+        require(model.purchased(3) == 3, "purchase should add to crafted inventory");
         require(model.quantity() == 0, "purchase should reset quantity to neutral");
 
         model.decreaseQuantity();
         require(model.quantity() == -1, "minus should support negative sell quantities");
-        require(model.total() == 24, "sell total should show the balance addition");
+        require(model.total() == 24, "sell total should use the selected sell price");
         require(model.trade(), "owned inventory should be sellable");
-        require(model.balance() == 226, "sale should add its value back to the balance");
-        require(model.purchased(3) == 1, "sale should remove owned inventory");
+        require(model.balance() == 210, "sale should add the lower sell price to balance");
+        require(model.purchased(3) == 2, "sale should remove owned inventory");
 
         model.decreaseQuantity();
         model.decreaseQuantity();
+        model.decreaseQuantity();
         require(!model.trade(), "selling more than owned inventory should fail");
-        require(model.balance() == 226, "failed sale should preserve balance");
+        require(model.balance() == 210, "failed sale should preserve balance");
 
         ShopModel poor = new ShopModel(catalog, 1);
         poor.increaseQuantity();
@@ -61,11 +86,11 @@ public final class ShopModelTest {
         require(renderer.actionAt(centerX(plus), centerY(plus)) == ShopRenderer.Action.INCREASE,
             "plus annotation should map to increase action");
         Rectangle first = ShopRenderer.cardBounds(0);
-        require(renderer.productAt(centerX(first), centerY(first), 6) == 0,
+        require(renderer.productAt(centerX(first), centerY(first), 8) == 0,
             "first item card should be selectable");
-        Rectangle sixth = ShopRenderer.cardBounds(5);
-        require(renderer.productAt(centerX(sixth), centerY(sixth), 6) == 5,
-            "second-row item card should be selectable");
+        Rectangle eighth = ShopRenderer.cardBounds(7);
+        require(renderer.productAt(centerX(eighth), centerY(eighth), 8) == 7,
+            "eighth item card should be selectable on the second row");
 
         BufferedImage frame = GameAssets.loadRawImage("/assets/items/shop/shop.png");
         BufferedImage card = GameAssets.loadRawImage("/assets/items/shop/shop-item.png");
@@ -121,7 +146,7 @@ public final class ShopModelTest {
                                         ShopRenderer.Action action) {
         BufferedImage image = new BufferedImage(480, 270, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = image.createGraphics();
-        renderer.draw(graphics, model, -1, -1, action);
+        renderer.draw(graphics, model, -1, -1, action, model.products().size());
         graphics.dispose();
         return image;
     }

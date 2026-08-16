@@ -26,12 +26,17 @@ final class ShopModel {
     int selectedIndex() { return selectedIndex; }
     int quantity() { return quantity; }
     int balance() { return balance; }
-    int total() { return -selected().price() * quantity; }
+    int total() {
+        if (quantity > 0) return -selected().buyPrice() * quantity;
+        if (quantity < 0) return selected().sellPrice() * -quantity;
+        return 0;
+    }
     int purchased(int index) { return purchased[index]; }
     int[] purchased() { return Arrays.copyOf(purchased, purchased.length); }
 
     void restore(int savedBalance, int[] savedInventory) {
         balance = Math.max(0, savedBalance);
+        selectedIndex = 0;
         Arrays.fill(purchased, 0);
         if (savedInventory != null) {
             for (int index = 0; index < Math.min(purchased.length, savedInventory.length); index++) {
@@ -50,6 +55,30 @@ final class ShopModel {
                 purchased[index] += amount;
                 return;
             }
+        }
+        throw new IllegalArgumentException("Unknown shop product: " + productName);
+    }
+
+    boolean craft(String productName, GateType[] ingredients) {
+        int productIndex = productIndex(productName);
+        int[] required = new int[purchased.length];
+        for (GateType ingredient : ingredients) {
+            int ingredientIndex = productIndex(ingredient.label);
+            required[ingredientIndex]++;
+        }
+        for (int index = 0; index < required.length; index++) {
+            if (purchased[index] < required[index]) return false;
+        }
+        for (int index = 0; index < required.length; index++) {
+            purchased[index] -= required[index];
+        }
+        purchased[productIndex]++;
+        return true;
+    }
+
+    private int productIndex(String productName) {
+        for (int index = 0; index < products.size(); index++) {
+            if (products.get(index).name().equals(productName)) return index;
         }
         throw new IllegalArgumentException("Unknown shop product: " + productName);
     }

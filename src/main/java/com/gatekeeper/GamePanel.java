@@ -317,7 +317,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 autoTesterUiStatus);
         }
         if (scene == GameScene.SHOP && shopOverlayVisible) {
-            shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction);
+            shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction,
+                knownInventoryProductCount());
         }
         if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount());
         if (!disableHud && !shopOverlayVisible && !inventoryVisible
@@ -821,8 +822,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void completeCurrent() {
+        CircuitRecipe completedRecipe = circuit.recipe();
+        if (!shopModel.craft(completedRecipe.name, completedRecipe.solution)) {
+            boardMessage = "Not enough primitive components in inventory.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
         crafted[selectedRecipe] = true;
-        boardMessage = circuit.recipe().name + " COMPLETE! Take it to Mira.";
+        boardMessage = completedRecipe.name + " COMPLETE! Added to inventory.";
         playSound("success");
         saveCurrentProgress();
     }
@@ -1256,7 +1264,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         if (shopOverlayVisible) {
-            int product = shopRenderer.productAt(x, y, shopModel.products().size());
+            int product = shopRenderer.productAt(x, y, knownInventoryProductCount());
             if (product >= 0) {
                 shopModel.select(product);
                 playSound("ui-select");
@@ -1665,8 +1673,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int knownInventoryProductCount() {
         if (!boxOpened) return 0;
         if (chapter < 2) return 3;
-        if (chapter < 3) return 5;
-        return 6;
+        if (chapter < 3) return 6;
+        return 8;
     }
 
     private void closeShopOverlay() {

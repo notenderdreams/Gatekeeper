@@ -25,7 +25,7 @@ public final class SaveData {
     public boolean taskbarOnRight = false;
     public boolean disableHud = false;
     public int shopBalance = 250;
-    public int[] gateInventory = new int[6];
+    public int[] gateInventory = new int[8];
     public boolean gateInventoryInitialized;
 
     public SaveData() {

@@ -78,7 +78,7 @@ public final class CircuitModelTest {
         save.taskbarOnRight = true;
         save.disableHud = true;
         save.shopBalance = 178;
-        save.gateInventory = new int[]{3, 1, 4, 1, 5, 9};
+        save.gateInventory = new int[]{3, 1, 4, 1, 5, 9, 2, 6};
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -101,7 +101,7 @@ public final class CircuitModelTest {
         require(loaded.taskbarOnRight, "loaded taskbarOnRight should be true");
         require(loaded.disableHud, "loaded disableHud should be true");
         require(loaded.shopBalance == 178, "loaded shop balance should match");
-        require(loaded.gateInventory[0] == 3 && loaded.gateInventory[5] == 9,
+        require(loaded.gateInventory[0] == 3 && loaded.gateInventory[7] == 6,
             "loaded gate inventory should match");
 
         SaveManager.deleteSave();

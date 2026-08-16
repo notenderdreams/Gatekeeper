@@ -40,7 +40,6 @@ final class ShopRenderer {
     // Exact source-space regions from shop-item.annotations.json.
     private static final Rectangle CARD_GATE_IMAGE = new Rectangle(19, 17, 150, 99);
     private static final Rectangle CARD_NAME = new Rectangle(26, 131, 143, 25);
-    private static final Rectangle CARD_PRICE = new Rectangle(92, 173, 76, 15);
 
     private static final int CARD_COLUMNS = 4;
     private static final int CARD_GAP_X = 6;
@@ -66,7 +65,7 @@ final class ShopRenderer {
     }
 
     void draw(Graphics2D graphics, ShopModel model, int mouseX, int mouseY,
-              Action pressedAction) {
+              Action pressedAction, int unlockedProductCount) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -77,7 +76,8 @@ final class ShopRenderer {
         }
         else drawFallbackFrame(g);
 
-        for (int i = 0; i < model.products().size(); i++) {
+        int visibleCount = Math.min(Math.max(0, unlockedProductCount), model.products().size());
+        for (int i = 0; i < visibleCount; i++) {
             Rectangle card = cardBounds(i);
             if (itemFrame != null) g.drawImage(itemFrame, card.x, card.y, card.width, card.height, null);
             else drawFallbackCard(g, card);
@@ -128,12 +128,16 @@ final class ShopRenderer {
     private void drawCardContents(Graphics2D g, ShopProduct product, Rectangle card) {
         Rectangle gate = cardRegion(card, CARD_GATE_IMAGE);
         Rectangle name = cardRegion(card, CARD_NAME);
-        Rectangle price = cardRegion(card, CARD_PRICE);
         drawCanvasGate(g, product, gate);
         g.setColor(CREAM);
         centeredText(g, product.name(), name, 10f);
+        Rectangle price = new Rectangle(card.x + 3, card.y + card.height - 14,
+            card.width - 6, 11);
+        g.setColor(new Color(5, 6, 6, 225));
+        g.fillRect(price.x, price.y, price.width, price.height);
         g.setColor(GOLD);
-        centeredText(g, Integer.toString(product.price()), price, 9.5f);
+        centeredFittedText(g,
+            "B " + product.buyPrice() + "  /  S " + product.sellPrice(), price, 8.5f);
     }
 
     private void drawDetails(Graphics2D g, ShopModel model) {
@@ -148,13 +152,22 @@ final class ShopRenderer {
 
         Rectangle specs = scaledRegion(SOURCE_SPECIFICATIONS);
         g.setColor(CREAM);
-        text(g, "INPUTS", specs.x + 5, specs.y + 9, 8.5f);
-        text(g, Integer.toString(product.inputs()), specs.x + specs.width - 13, specs.y + 9, 8.5f);
-        text(g, "OUTPUTS", specs.x + 5, specs.y + 18, 8.5f);
-        text(g, Integer.toString(product.outputs()), specs.x + specs.width - 13, specs.y + 18, 8.5f);
-        text(g, "OWNED", specs.x + 5, specs.y + 27, 8.5f);
+        int rightColumn = specs.x + specs.width / 2 + 4;
+        text(g, "INPUTS", specs.x + 5, specs.y + 9, 7.5f);
+        text(g, Integer.toString(product.inputs()), specs.x + specs.width / 2 - 8,
+            specs.y + 9, 7.5f);
+        text(g, "BUY", rightColumn, specs.y + 9, 7.5f);
+        text(g, Integer.toString(product.buyPrice()), specs.x + specs.width - 16,
+            specs.y + 9, 7.5f);
+        text(g, "OUTPUTS", specs.x + 5, specs.y + 18, 7.5f);
+        text(g, Integer.toString(product.outputs()), specs.x + specs.width / 2 - 8,
+            specs.y + 18, 7.5f);
+        text(g, "SELL", rightColumn, specs.y + 18, 7.5f);
+        text(g, Integer.toString(product.sellPrice()), specs.x + specs.width - 16,
+            specs.y + 18, 7.5f);
+        text(g, "OWNED", specs.x + 5, specs.y + 27, 7.5f);
         text(g, Integer.toString(model.purchased(model.selectedIndex())),
-            specs.x + specs.width - 13, specs.y + 27, 8.5f);
+            specs.x + specs.width / 2 - 8, specs.y + 27, 7.5f);
 
         g.setColor(CREAM);
         centeredText(g, Integer.toString(model.quantity()), scaledRegion(SOURCE_QUANTITY), 10f);
@@ -236,6 +249,17 @@ final class ShopRenderer {
             + g.getFontMetrics().getAscent();
         g.drawString(value, x, y);
         g.setFont(old);
+    }
+
+    private void centeredFittedText(Graphics2D g, String value, Rectangle bounds,
+                                    float preferredSize) {
+        float size = preferredSize;
+        Font selected = font.deriveFont(Font.PLAIN, size);
+        while (size > 6.5f && g.getFontMetrics(selected).stringWidth(value) > bounds.width) {
+            size -= 0.5f;
+            selected = font.deriveFont(Font.PLAIN, size);
+        }
+        centeredText(g, value, bounds, size);
     }
 
     private void wrappedText(Graphics2D g, String value, Rectangle bounds, float size) {
