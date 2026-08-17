@@ -27,6 +27,9 @@ public final class SaveData {
     public int shopBalance = 250;
     public int[] gateInventory = new int[8];
     public boolean gateInventoryInitialized;
+    public int[] contractDeliveries = new int[5];
+    public String[] craftedCircuits = new String[0];
+    public int selectedCraftedCircuit = -1;
 
     public SaveData() {
         this.chapter = 0;

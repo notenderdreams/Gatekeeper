@@ -58,7 +58,25 @@ public final class SaveManager {
                     if (i < data.gateInventory.length - 1) json.append(", ");
                 }
             }
-            json.append("]\n");
+            json.append("],\n");
+            json.append("  \"contractDeliveries\": [");
+            if (data.contractDeliveries != null) {
+                for (int i = 0; i < data.contractDeliveries.length; i++) {
+                    json.append(data.contractDeliveries[i]);
+                    if (i < data.contractDeliveries.length - 1) json.append(", ");
+                }
+            }
+            json.append("],\n");
+            json.append("  \"craftedCircuits\": [");
+            if (data.craftedCircuits != null) {
+                for (int i = 0; i < data.craftedCircuits.length; i++) {
+                    json.append('"').append(data.craftedCircuits[i]).append('"');
+                    if (i < data.craftedCircuits.length - 1) json.append(", ");
+                }
+            }
+            json.append("],\n");
+            json.append("  \"selectedCraftedCircuit\": ")
+                .append(data.selectedCraftedCircuit).append("\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -100,6 +118,9 @@ public final class SaveManager {
             data.shopBalance = parseInt(content, "shopBalance", 250);
             data.gateInventory = parseIntArray(content, "gateInventory", 8);
             data.gateInventoryInitialized = content.contains("\"gateInventory\"");
+            data.contractDeliveries = parseIntArray(content, "contractDeliveries", 5);
+            data.craftedCircuits = parseStringArray(content, "craftedCircuits");
+            data.selectedCraftedCircuit = parseInt(content, "selectedCraftedCircuit", -1);
 
             return data;
         } catch (Exception e) {
@@ -172,5 +193,15 @@ public final class SaveManager {
             }
         }
         return result;
+    }
+
+    private static String[] parseStringArray(String json, String key) {
+        Pattern arrayPattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+        Matcher arrayMatcher = arrayPattern.matcher(json);
+        if (!arrayMatcher.find()) return new String[0];
+        java.util.List<String> values = new java.util.ArrayList<>();
+        Matcher valueMatcher = Pattern.compile("\"([^\"]*)\"").matcher(arrayMatcher.group(1));
+        while (valueMatcher.find()) values.add(valueMatcher.group(1));
+        return values.toArray(String[]::new);
     }
 }

@@ -2,6 +2,7 @@ package com.gatekeeper;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /** Owns the small amount of mutable state used by Mira's shop overlay. */
 final class ShopModel {
@@ -32,6 +33,7 @@ final class ShopModel {
         return 0;
     }
     int purchased(int index) { return purchased[index]; }
+    int purchased(String productName) { return purchased[productIndex(productName)]; }
     int[] purchased() { return Arrays.copyOf(purchased, purchased.length); }
 
     void restore(int savedBalance, int[] savedInventory) {
@@ -60,11 +62,16 @@ final class ShopModel {
     }
 
     boolean craft(String productName, GateType[] ingredients) {
+        return produce(productName, ingredients, 1);
+    }
+
+    boolean produce(String productName, GateType[] ingredients, int quantity) {
+        if (quantity <= 0) return false;
         int productIndex = productIndex(productName);
         int[] required = new int[purchased.length];
         for (GateType ingredient : ingredients) {
             int ingredientIndex = productIndex(ingredient.label);
-            required[ingredientIndex]++;
+            required[ingredientIndex] += quantity;
         }
         for (int index = 0; index < required.length; index++) {
             if (purchased[index] < required[index]) return false;
@@ -72,8 +79,39 @@ final class ShopModel {
         for (int index = 0; index < required.length; index++) {
             purchased[index] -= required[index];
         }
-        purchased[productIndex]++;
+        purchased[productIndex] += quantity;
         return true;
+    }
+
+    boolean consume(String productName, int amount) {
+        if (amount <= 0) return false;
+        int index = productIndex(productName);
+        if (purchased[index] < amount) return false;
+        purchased[index] -= amount;
+        return true;
+    }
+
+    boolean consumeParts(Map<GateType, Integer> parts) {
+        if (parts == null || parts.isEmpty()) return false;
+        for (Map.Entry<GateType, Integer> entry : parts.entrySet()) {
+            if (entry.getValue() <= 0
+                || purchased(entry.getKey().label) < entry.getValue()) return false;
+        }
+        for (Map.Entry<GateType, Integer> entry : parts.entrySet()) {
+            purchased[productIndex(entry.getKey().label)] -= entry.getValue();
+        }
+        return true;
+    }
+
+    void grantParts(Map<GateType, Integer> parts) {
+        if (parts == null) return;
+        for (Map.Entry<GateType, Integer> entry : parts.entrySet()) {
+            if (entry.getValue() > 0) grant(entry.getKey().label, entry.getValue());
+        }
+    }
+
+    void credit(int amount) {
+        if (amount > 0) balance += amount;
     }
 
     private int productIndex(String productName) {

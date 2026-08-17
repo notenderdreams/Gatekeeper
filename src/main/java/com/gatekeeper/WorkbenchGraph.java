@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.EnumMap;
 
 /** Mutable node-and-wire state for the physical workbench editor. */
 final class WorkbenchGraph {
@@ -86,6 +87,19 @@ final class WorkbenchGraph {
     }
 
     record RoutePoint(int x, int y) {}
+    record NodeData(int id, int x, int centerY, GateType gate) {}
+    record WireData(int sourceId, int targetId, int targetPort, List<RoutePoint> corners) {
+        WireData { corners = List.copyOf(corners); }
+    }
+    record JunctionData(int id, int upstreamSourceId, int x, int y) {}
+    record Snapshot(List<NodeData> nodes, List<WireData> wires,
+                    List<JunctionData> junctions) {
+        Snapshot {
+            nodes = List.copyOf(nodes);
+            wires = List.copyOf(wires);
+            junctions = List.copyOf(junctions);
+        }
+    }
 
     static final class Junction {
         private final int id;
@@ -123,7 +137,7 @@ final class WorkbenchGraph {
         loadRecipe(recipe);
     }
 
-    void loadRecipe(CircuitRecipe recipe) {
+    void clear() {
         nodes.clear();
         wires.clear();
         junctions.clear();
@@ -134,6 +148,10 @@ final class WorkbenchGraph {
         pendingTarget = null;
         pendingCorners.clear();
         draggingNodeId = null;
+    }
+
+    void loadRecipe(CircuitRecipe recipe) {
+        clear();
 
         int[][] layout = initialLayout(recipe);
         for (int index = 0; index < recipe.slotCount(); index++) {
@@ -147,6 +165,89 @@ final class WorkbenchGraph {
         }
         if (!nodes.isEmpty()) wires.add(new Wire(nodes.get(nodes.size() - 1).id(), OUTPUT, 0));
         selectedNodeId = null;
+    }
+
+    Snapshot snapshot() {
+        List<NodeData> nodeData = nodes.stream()
+            .map(node -> new NodeData(node.id, node.x, node.centerY, node.gate)).toList();
+        List<WireData> wireData = wires.stream()
+            .map(wire -> new WireData(wire.sourceId, wire.targetId,
+                wire.targetPort, wire.corners)).toList();
+        List<JunctionData> junctionData = junctions.stream()
+            .map(junction -> new JunctionData(junction.id, junction.upstreamSourceId,
+                junction.x, junction.y)).toList();
+        return new Snapshot(nodeData, wireData, junctionData);
+    }
+
+    void restore(Snapshot snapshot) {
+        clear();
+        if (snapshot == null) return;
+        for (NodeData data : snapshot.nodes) {
+            nodes.add(new Node(data.id, data.x, data.centerY, data.gate));
+            nextNodeId = Math.max(nextNodeId, data.id + 1);
+        }
+        for (WireData data : snapshot.wires) {
+            wires.add(new Wire(data.sourceId, data.targetId, data.targetPort, data.corners));
+        }
+        for (JunctionData data : snapshot.junctions) {
+            junctions.add(new Junction(data.id, data.upstreamSourceId, data.x, data.y));
+            nextJunctionId = Math.min(nextJunctionId, data.id - 1);
+        }
+    }
+
+    boolean isCompleteCircuit() {
+        if (nodes.isEmpty() || wireTo(OUTPUT, 0) == null) return false;
+        for (Node node : nodes) {
+            for (int port = 0; port < node.gate.inputPorts; port++) {
+                if (wireTo(node.id, port) == null) return false;
+            }
+        }
+        return true;
+    }
+
+    boolean matches(CircuitRecipe recipe) {
+        if (!isCompleteCircuit()) return false;
+        for (int row = 0; row < recipe.truth.length; row++) {
+            boolean actual = outputValue(0,
+                new boolean[]{row >= 2, row % 2 == 1});
+            if (actual != recipe.truth[row]) return false;
+        }
+        return true;
+    }
+
+    int failedCases(CircuitRecipe recipe) {
+        if (!isCompleteCircuit()) return recipe.truth.length;
+        int failures = 0;
+        for (int row = 0; row < recipe.truth.length; row++) {
+            if (outputValue(0, new boolean[]{row >= 2, row % 2 == 1})
+                != recipe.truth[row]) failures++;
+        }
+        return failures;
+    }
+
+    int inputCount() {
+        boolean input0 = false;
+        boolean input1 = false;
+        for (Wire wire : wires) {
+            if (wire.sourceId == INPUT_0) input0 = true;
+            if (wire.sourceId == INPUT_1) input1 = true;
+        }
+        for (Junction junction : junctions) {
+            if (junction.upstreamSourceId == INPUT_0) input0 = true;
+            if (junction.upstreamSourceId == INPUT_1) input1 = true;
+        }
+        return (input0 ? 1 : 0) + (input1 ? 1 : 0);
+    }
+
+    int outputCount() {
+        return (int) wires.stream().filter(wire -> wire.targetId == OUTPUT)
+            .map(wire -> wire.targetPort).distinct().count();
+    }
+
+    Map<GateType, Integer> gateCounts() {
+        Map<GateType, Integer> result = new EnumMap<>(GateType.class);
+        for (Node node : nodes) result.merge(node.gate, 1, Integer::sum);
+        return result;
     }
 
     List<Node> nodes() { return Collections.unmodifiableList(nodes); }

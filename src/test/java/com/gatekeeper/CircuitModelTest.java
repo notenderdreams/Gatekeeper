@@ -79,6 +79,9 @@ public final class CircuitModelTest {
         save.disableHud = true;
         save.shopBalance = 178;
         save.gateInventory = new int[]{3, 1, 4, 1, 5, 9, 2, 6};
+        save.contractDeliveries = new int[]{2, 0, 1, 0, 0};
+        save.craftedCircuits = new String[]{"0@0,500,365,AND##"};
+        save.selectedCraftedCircuit = 0;
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -103,6 +106,13 @@ public final class CircuitModelTest {
         require(loaded.shopBalance == 178, "loaded shop balance should match");
         require(loaded.gateInventory[0] == 3 && loaded.gateInventory[7] == 6,
             "loaded gate inventory should match");
+        require(loaded.contractDeliveries[0] == 2 && loaded.contractDeliveries[2] == 1,
+            "loaded contract delivery counts should match");
+        require(loaded.craftedCircuits.length == 1
+                && loaded.craftedCircuits[0].startsWith("0@"),
+            "crafted player circuit data should persist");
+        require(loaded.selectedCraftedCircuit == 0,
+            "selected crafted circuit should persist");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");

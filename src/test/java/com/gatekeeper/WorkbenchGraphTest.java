@@ -102,6 +102,35 @@ public final class WorkbenchGraphTest {
         require(!graph.isDraggingNode(), "drag state should clear on release");
 
         WorkbenchGraph nand = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        WorkbenchGraph.Snapshot savedNand = nand.snapshot();
+        nand.clear();
+        require(nand.nodes().isEmpty() && nand.wires().isEmpty(),
+            "a commissioned project should support a genuinely empty canvas");
+        require(!nand.isCompleteCircuit(), "an empty canvas must not be craftable");
+        nand.restore(savedNand);
+        require(nand.isCompleteCircuit() && nand.matches(CircuitRecipe.all().get(0)),
+            "a crafted snapshot should restore and evaluate the player's exact graph");
+        CraftedCircuitInventory craftedInventory = new CraftedCircuitInventory();
+        require(craftedInventory.add("ABC", nand.snapshot()),
+            "a complete player graph should fit in crafted circuit storage");
+        String[] encodedCircuits = craftedInventory.saveData();
+        CraftedCircuitInventory restoredInventory = new CraftedCircuitInventory();
+        restoredInventory.restore(encodedCircuits, 0);
+        require(restoredInventory.selected() != null
+                && restoredInventory.selected().group().equals("ABC"),
+            "crafted circuit selection should survive serialization");
+        WorkbenchGraph restoredCircuit = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        restoredCircuit.restore(restoredInventory.selected().graph());
+        require(restoredCircuit.matches(CircuitRecipe.all().get(0)),
+            "serialized crafted wiring should still pass the requested truth table");
+        require(CircuitPackageRenderer.inputCount(restoredInventory.selected().graph()) == 2
+                && CircuitPackageRenderer.outputCount(restoredInventory.selected().graph()) == 1,
+            "crafted circuit thumbnails should calculate their pins from stored wiring");
+        require(restoredCircuit.failedCases(CircuitRecipe.all().get(0)) == 0,
+            "Mira's integrated order test should report zero failed cases for NAND");
+        require(restoredInventory.add("ABC", nand.snapshot())
+                && restoredInventory.groups().size() == 1,
+            "multiple circuits should be assignable to the same player-defined group");
         require(nand.outputValue(0, new boolean[]{false, false}),
             "OUT 0 should evaluate NAND high for input switches 0=0, 1=0");
         require(nand.outputValue(0, new boolean[]{true, false}),

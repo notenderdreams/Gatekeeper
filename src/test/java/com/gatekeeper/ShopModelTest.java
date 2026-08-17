@@ -4,6 +4,7 @@ import java.awt.Rectangle;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.Map;
 
 public final class ShopModelTest {
     public static void main(String[] args) {
@@ -39,11 +40,36 @@ public final class ShopModelTest {
         require(model.purchased(0) == 5 && model.purchased(1) == 5
                 && model.purchased(2) == 5,
             "opening-box grants should add five primitive gates to inventory");
+        require(model.consumeParts(Map.of(GateType.AND, 1, GateType.NOT, 1)),
+            "crafting a player graph should consume its actual placed gates");
+        require(model.purchased("AND") == 4 && model.purchased("NOT") == 4,
+            "placed components should leave the bag while stored in a crafted circuit");
+        model.grantParts(Map.of(GateType.AND, 1, GateType.NOT, 1));
+        require(model.purchased("AND") == 5 && model.purchased("NOT") == 5,
+            "unpacking a crafted circuit for editing should recover its components");
         require(model.craft("NAND", new GateType[]{GateType.AND, GateType.NOT}),
             "crafting should consume available primitive ingredients");
         require(model.purchased(0) == 4 && model.purchased(2) == 4
                 && model.purchased(3) == 1,
             "crafting should replace ingredients with one finished component");
+        require(model.produce("NAND", new GateType[]{GateType.AND, GateType.NOT}, 2),
+            "certified production should support batches");
+        require(model.purchased("AND") == 2 && model.purchased("NOT") == 2
+                && model.purchased("NAND") == 3,
+            "batch production should consume and grant the selected quantity atomically");
+        require(!model.produce("NAND", new GateType[]{GateType.AND, GateType.NOT}, 3),
+            "production should reject a batch when any primitive is short");
+        require(model.purchased("AND") == 2 && model.purchased("NAND") == 3,
+            "failed production should not consume partial materials");
+        require(model.consume("NAND", 2), "test setup should restore one crafted NAND");
+
+        ContractModel contracts = new ContractModel();
+        require(contracts.available(2).size() == 3,
+            "the first NAND, NOR, and XOR orders should appear before certification");
+        ContractModel.Contract nandOrder = contracts.available(2).get(0);
+        contracts.complete(nandOrder);
+        require(contracts.deliveries(nandOrder) == 1,
+            "verified order completion count should be tracked");
         model.select(3);
         model.increaseQuantity();
         model.increaseQuantity();
@@ -114,9 +140,9 @@ public final class ShopModelTest {
         require(idle.getRGB(add.x - 2, sampleY) == pressed.getRGB(add.x - 2, sampleY),
             "pressed effect should not draw outside the annotated button crop");
 
-        require(new Rectangle(74, 108, 38, 43).equals(InventoryRenderer.cardBounds(0)),
+        require(new Rectangle(74, 80, 38, 43).equals(InventoryRenderer.cardBounds(0)),
             "inventory should start its eight-slot row at the expected position");
-        require(new Rectangle(368, 108, 38, 43).equals(InventoryRenderer.cardBounds(7)),
+        require(new Rectangle(368, 80, 38, 43).equals(InventoryRenderer.cardBounds(7)),
             "inventory should reserve room for an eighth card in the same row");
         InventoryRenderer inventoryRenderer = new InventoryRenderer(
             node, card, port, GameAssets.loadPixelFont());

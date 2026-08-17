@@ -169,8 +169,28 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         workbenchWireEndImage, PIXEL_FONT);
     private final InventoryRenderer inventoryRenderer = new InventoryRenderer(
         workbenchNodeTextureImage, shopItemFrameImage, workbenchWireEndImage, PIXEL_FONT);
+    private final ProgressionRenderer progressionRenderer = new ProgressionRenderer();
+    private final ContractModel contractModel = new ContractModel();
+    private final ContractRenderer contractRenderer = new ContractRenderer(
+        workbenchNodeTextureImage, workbenchWireEndImage, PIXEL_FONT);
+    private final CraftedCircuitInventory craftedCircuitInventory = new CraftedCircuitInventory();
+    private final CraftCircuitRenderer craftCircuitRenderer = new CraftCircuitRenderer();
     private boolean shopOverlayVisible;
     private boolean inventoryVisible;
+    private boolean techTreeVisible;
+    private boolean productionVisible;
+    private boolean certificationVisible;
+    private boolean contractVisible;
+    private boolean craftCircuitVisible;
+    private String craftGroupDraft = "";
+    private String craftStatus = "";
+    private int craftGroupSuggestion = -1;
+    private boolean craftDraftIsSuggestion;
+    private int productionRecipe;
+    private int productionQuantity = 1;
+    private String productionStatus = "ENTER TO PRODUCE";
+    private int contractSelection;
+    private String contractStatus = "SELECT A DELIVERY";
     private ShopRenderer.Action pressedShopAction = ShopRenderer.Action.NONE;
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
         workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
@@ -230,6 +250,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
+        workbenchGraph.clear();
 
         if (SaveManager.hasSave()) {
             SaveData data = SaveManager.loadGame();
@@ -304,8 +325,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SHOP -> worldRenderer.drawShop(g);
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
                 nodeRadialMenu, mouseX, mouseY);
-            case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
-                g, chapter, notebookPage, ticks);
+            case NOTEBOOK -> {
+                if (techTreeVisible) notebookRenderer.drawTechTree(g, chapter);
+                else notebookPage = notebookRenderer.drawNotebook(g, chapter, notebookPage, ticks);
+            }
             case END -> notebookRenderer.drawEnding(g);
         }
         if (scene == GameScene.BOARD) {
@@ -320,8 +343,24 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction,
                 knownInventoryProductCount());
         }
-        if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount());
-        if (!disableHud && !shopOverlayVisible && !inventoryVisible
+        if (scene == GameScene.BOARD && productionVisible) {
+            progressionRenderer.drawProduction(g, recipes.get(productionRecipe), shopModel,
+                productionQuantity, productionStatus);
+        }
+        if (scene == GameScene.BOARD && certificationVisible) {
+            progressionRenderer.drawCertification(g, recipes.get(selectedRecipe));
+        }
+        if (scene == GameScene.SHOP && contractVisible) {
+            contractRenderer.draw(g, contractModel.available(chapter), contractSelection,
+                contractModel, craftedCircuitInventory, contractStatus);
+        }
+        if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount(),
+            craftedCircuitInventory, recipes);
+        if (scene == GameScene.BOARD && craftCircuitVisible) {
+            craftCircuitRenderer.draw(g, craftGroupDraft,
+                craftedCircuitInventory.groups(), craftStatus);
+        }
+        if (!disableHud && !shopOverlayVisible && !inventoryVisible && !contractVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
                 crafted, completedObjective, taskbarOnRight);
@@ -350,10 +389,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         keys.clear();
         Arrays.fill(crafted, false);
         shopModel.reset();
+        craftedCircuitInventory.clear();
+        contractModel.restore(null);
+        techTreeVisible = false;
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
         selectedRecipe = 0;
         notebookPage = 0;
         resetAutoTesterState();
         circuit.selectRecipe(recipes.get(0));
+        workbenchGraph.clear();
         playSound("knock");
         say("*knock knock*",
             "ALEX|Who's knocking at the door in the middle of the night? I should check.",
@@ -381,6 +428,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.BOARD && autoTester.isRunning()) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
         if (!exitPrompt && line == null && !shopOverlayVisible && !inventoryVisible
+            && !contractVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             boolean sideView = scene == GameScene.STREET;
             boolean shift = keys.contains(KeyEvent.VK_SHIFT);
@@ -564,8 +612,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             chapter = 2;
             say("ALEX|Mira, someone left a mystery box on my doorstep with these logic gates and a notebook.",
                 "MIRA|Logic gates! AND, OR, and NOT are the alphabet of electronics.",
-                "MIRA|Bring them to life! Build me a NAND, a NOR, and an XOR on your workbench.",
-                "MIRA|Use every switch setting. Match the notebook truth tables exactly.",
+                "MIRA|My order board needs a NAND, a NOR, and an XOR. Your workbench is completely freeform.",
+                "MIRA|Try every input switch setting yourself, then press B to craft the circuit.",
+                "MIRA|Give it any group name. At my order board, pair it with an order and I'll verify it.",
                 "ALEX|So a truth table is... a list of promises the circuit has to keep?",
                 "MIRA|Exactly. A circuit must keep every single one.");
             saveCurrentProgress();
@@ -578,7 +627,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Now try XNOR and IMPLY. The notebook has new pages.");
             saveCurrentProgress();
         } else if (chapter == 2) {
-            say("MIRA|I still need NAND, NOR, and XOR. Your board is at home.");
+            say("MIRA|I still need NAND, NOR, and XOR. Open my orders with C and submit one of your crafted circuits.");
         } else if (chapter == 3 && advancedComplete()) {
             completedObjective = "RETURN TO MIRA";
             chapter = 4;
@@ -597,7 +646,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         returnScene = scene;
         scene = GameScene.BOARD;
         playSound("ui-open");
-        selectRecipe(selectedRecipe);
+        boardMessage = "Build freely. Test with the switches, then press B to craft.";
+        boardMessageTimer = 240;
     }
 
     private void turnNotebookPage(int direction) {
@@ -611,24 +661,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
-        workbenchGraph.loadRecipe(recipes.get(selectedRecipe));
+        workbenchGraph.clear();
         playSound("ui-select");
-        boardMessage = crafted[selectedRecipe] ? "Already delivered. You can rebuild it." : "Build the requested device.";
+        boardMessage = "Blank canvas: build Mira's " + recipes.get(selectedRecipe).name + " request.";
         boardMessageTimer = 180;
     }
 
     private List<GateType> unlockedGateTypes() {
-        int availableRecipes = chapter >= 3 ? 5 : 3;
-        List<GateType> unlocked = new ArrayList<>();
-        for (GateType gate : GateType.values()) {
-            for (int recipeIndex = 0; recipeIndex < availableRecipes; recipeIndex++) {
-                if (Arrays.asList(recipes.get(recipeIndex).solution).contains(gate)) {
-                    unlocked.add(gate);
-                    break;
-                }
-            }
-        }
-        return unlocked;
+        return Arrays.asList(GateType.values());
     }
 
     private void openNodeRadialMenu() {
@@ -829,11 +869,158 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-error");
             return;
         }
+        boolean firstCertification = !crafted[selectedRecipe];
         crafted[selectedRecipe] = true;
-        boardMessage = completedRecipe.name + " COMPLETE! Added to inventory.";
+        certificationVisible = firstCertification;
+        productionRecipe = selectedRecipe;
+        boardMessage = completedRecipe.name + " CERTIFIED! Added to inventory.";
         playSound("success");
         saveCurrentProgress();
     }
+
+    private void craftCurrentCircuit() {
+        if (!workbenchGraph.isCompleteCircuit()) {
+            boardMessage = "Connect every gate input and wire one signal to OUT.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
+        if (craftedCircuitInventory.isFull()) {
+            boardMessage = "Crafted circuit storage is full.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
+        List<String> groups = craftedCircuitInventory.groups();
+        String selectedGroup = craftedCircuitInventory.selected() == null
+            ? "" : craftedCircuitInventory.selected().group();
+        craftGroupDraft = selectedGroup.isEmpty() && !groups.isEmpty()
+            ? groups.get(0) : selectedGroup;
+        craftGroupSuggestion = groups.indexOf(craftGroupDraft);
+        craftDraftIsSuggestion = !craftGroupDraft.isEmpty();
+        craftStatus = "";
+        craftCircuitVisible = true;
+        nodeRadialMenu.close();
+        keys.clear();
+        playSound("ui-open");
+    }
+
+    private void confirmCraftCircuit() {
+        String group = craftGroupDraft.trim();
+        if (group.isEmpty()) {
+            craftStatus = "ENTER A NAME OR GROUP";
+            playSound("ui-error");
+            return;
+        }
+        if (!shopModel.consumeParts(workbenchGraph.gateCounts())) {
+            craftStatus = "NOT ENOUGH COMPONENTS IN BAG";
+            playSound("ui-error");
+            return;
+        }
+        craftedCircuitInventory.add(group, workbenchGraph.snapshot());
+        workbenchGraph.clear();
+        craftCircuitVisible = false;
+        boardMessage = group + " crafted and stored in your bag.";
+        boardMessageTimer = 300;
+        playSound("success");
+        saveCurrentProgress();
+    }
+
+    private void cycleCraftGroup(int direction) {
+        List<String> groups = craftedCircuitInventory.groups();
+        if (groups.isEmpty()) return;
+        craftGroupSuggestion = (craftGroupSuggestion + direction + groups.size()) % groups.size();
+        craftGroupDraft = groups.get(craftGroupSuggestion);
+        craftDraftIsSuggestion = true;
+        craftStatus = "";
+        playSound("ui-select");
+    }
+
+    private void editSelectedCraftedCircuit() {
+        CraftedCircuitInventory.CraftedCircuit stored = craftedCircuitInventory.removeSelected();
+        if (stored == null) {
+            boardMessage = "Select a crafted circuit in your bag first.";
+            boardMessageTimer = 180;
+            playSound("ui-error");
+            return;
+        }
+        workbenchGraph.clear();
+        workbenchGraph.restore(stored.graph());
+        shopModel.grantParts(workbenchGraph.gateCounts());
+        boardMessage = stored.group() + " unpacked for editing. Craft it again when ready.";
+        boardMessageTimer = 240;
+        playSound("ui-confirm");
+        saveCurrentProgress();
+    }
+
+    private void submitSelectedOrder(List<ContractModel.Contract> contracts) {
+        if (contracts.isEmpty()) return;
+        CraftedCircuitInventory.CraftedCircuit submission = craftedCircuitInventory.selected();
+        if (submission == null) {
+            contractStatus = "FAILED: SELECT A CRAFTED CIRCUIT";
+            playSound("ui-error");
+            return;
+        }
+        contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
+        ContractModel.Contract contract = contracts.get(contractSelection);
+        CircuitRecipe target = recipes.get(contract.recipeIndex());
+        WorkbenchGraph testedGraph = new WorkbenchGraph(target);
+        testedGraph.restore(submission.graph());
+        int failed = testedGraph.failedCases(target);
+        if (failed > 0) {
+            contractStatus = "FAILED: " + failed + " / " + target.truth.length + " TEST CASES";
+            playSound("failure");
+            return;
+        }
+
+        crafted[contract.recipeIndex()] = true;
+        craftedCircuitInventory.removeSelected();
+        contractModel.complete(contract);
+        shopModel.credit(contract.reward());
+        completedObjective = basicComplete() && chapter == 2 ? "ALL THREE COMMISSIONS COMPLETE" : null;
+        contractStatus = "PASSED: " + target.name + "  +" + contract.reward() + "C";
+        playSound("success");
+        saveCurrentProgress();
+    }
+
+    private void openProduction() {
+        if (!crafted[selectedRecipe]) return;
+        productionRecipe = selectedRecipe;
+        productionQuantity = 1;
+        productionStatus = "ENTER TO PRODUCE";
+        productionVisible = true;
+        nodeRadialMenu.close();
+        keys.clear();
+        playSound("ui-open");
+    }
+
+    private void navigateProduction(int direction) {
+        int available = chapter >= 3 ? 5 : 3;
+        int next = productionRecipe;
+        for (int attempts = 0; attempts < available; attempts++) {
+            next = (next + direction + available) % available;
+            if (crafted[next]) {
+                productionRecipe = next;
+                productionQuantity = 1;
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-select");
+                return;
+            }
+        }
+    }
+
+    private void produceSelected() {
+        CircuitRecipe recipe = recipes.get(productionRecipe);
+        if (shopModel.produce(recipe.name, recipe.solution, productionQuantity)) {
+            productionStatus = "+" + productionQuantity + " " + recipe.name + " ADDED TO BAG";
+            playSound("success");
+            saveCurrentProgress();
+        } else {
+            productionStatus = "NOT ENOUGH PRIMITIVE COMPONENTS";
+            playSound("ui-error");
+        }
+    }
+
 
     private void say(String... lines) {
         dialogue.addAll(Arrays.asList(lines));
@@ -1025,6 +1212,100 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
+        if (craftCircuitVisible) {
+            if (key == KeyEvent.VK_ESCAPE) {
+                craftCircuitVisible = false;
+                craftStatus = "";
+                playSound("ui-close");
+            } else if (key == KeyEvent.VK_ENTER) {
+                confirmCraftCircuit();
+            } else if (key == KeyEvent.VK_BACK_SPACE) {
+                if (!craftGroupDraft.isEmpty()) {
+                    craftGroupDraft = craftDraftIsSuggestion ? ""
+                        : craftGroupDraft.substring(0, craftGroupDraft.length() - 1);
+                    craftDraftIsSuggestion = false;
+                    craftStatus = "";
+                    playSound("ui-click");
+                }
+            } else if (key == KeyEvent.VK_UP) {
+                cycleCraftGroup(-1);
+            } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_TAB) {
+                cycleCraftGroup(1);
+            } else if (firstPress && craftGroupDraft.length() < 18) {
+                char typed = Character.toUpperCase(event.getKeyChar());
+                if (Character.isLetterOrDigit(typed) || typed == ' '
+                    || typed == '-' || typed == '_') {
+                    if (craftDraftIsSuggestion) craftGroupDraft = "";
+                    craftGroupDraft += typed;
+                    craftDraftIsSuggestion = false;
+                    craftStatus = "";
+                    playSound("ui-click");
+                }
+            }
+            repaint();
+            return;
+        }
+        if (certificationVisible) {
+            if (key == KeyEvent.VK_P) {
+                certificationVisible = false;
+                openProduction();
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE
+                || key == KeyEvent.VK_ESCAPE) {
+                certificationVisible = false;
+                playSound("ui-close");
+            }
+            repaint();
+            return;
+        }
+        if (productionVisible) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_P) {
+                productionVisible = false;
+                playSound("ui-close");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                productionQuantity = Math.max(1, productionQuantity - 1);
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-click");
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                productionQuantity = Math.min(99, productionQuantity + 1);
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-click");
+            } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) {
+                navigateProduction(-1);
+            } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
+                navigateProduction(1);
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                produceSelected();
+            }
+            repaint();
+            return;
+        }
+        if (contractVisible) {
+            List<ContractModel.Contract> contracts = contractModel.available(chapter);
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_C) {
+                contractVisible = false;
+                playSound("ui-close");
+            } else if (!contracts.isEmpty()
+                && (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
+                    || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
+                int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
+                contractSelection = (contractSelection + direction + contracts.size()) % contracts.size();
+                contractStatus = "SELECT A DELIVERY";
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                craftedCircuitInventory.moveSelection(-1);
+                contractStatus = "SELECT AN ORDER AND CIRCUIT";
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                craftedCircuitInventory.moveSelection(1);
+                contractStatus = "SELECT AN ORDER AND CIRCUIT";
+                playSound("ui-select");
+            } else if (!contracts.isEmpty()
+                && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE)) {
+                submitSelectedOrder(contracts);
+            }
+            repaint();
+            return;
+        }
         if (shopOverlayVisible) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F) {
                 closeShopOverlay();
@@ -1048,6 +1329,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 inventoryVisible = false;
                 keys.clear();
                 playSound("ui-close");
+                repaint();
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                craftedCircuitInventory.moveSelection(-1);
+                playSound("ui-select");
+                repaint();
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                craftedCircuitInventory.moveSelection(1);
+                playSound("ui-select");
+                repaint();
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                inventoryVisible = false;
+                keys.clear();
+                playSound("ui-confirm");
                 repaint();
             }
             return;
@@ -1093,6 +1387,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             && line == null && near(240, 160)) {
             shopOverlayVisible = true;
             pressedShopAction = ShopRenderer.Action.NONE;
+            keys.clear();
+            playSound("ui-open");
+            repaint();
+            return;
+        }
+        if (scene == GameScene.SHOP && key == KeyEvent.VK_C && firstPress
+            && line == null && near(240, 160) && chapter >= 2) {
+            contractVisible = true;
+            contractSelection = 0;
+            contractStatus = "SELECT AN ORDER AND CIRCUIT";
             keys.clear();
             playSound("ui-open");
             repaint();
@@ -1160,6 +1464,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == GameScene.NOTEBOOK) {
                 scene = notebookReturnScene;
+                techTreeVisible = false;
                 playSound("ui-close");
             }
             else {
@@ -1169,14 +1474,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("book-open");
             }
         } else if (scene == GameScene.NOTEBOOK) {
-            if (key == KeyEvent.VK_ESCAPE) {
+            if (key == KeyEvent.VK_T) {
+                techTreeVisible = !techTreeVisible;
+                playSound("book-flip");
+            } else if (key == KeyEvent.VK_ESCAPE) {
                 scene = notebookReturnScene;
+                techTreeVisible = false;
                 playSound("ui-close");
             }
-            else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
-            else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
+            else if (!techTreeVisible && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A)) turnNotebookPage(-1);
+            else if (!techTreeVisible && (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
-            if (key == KeyEvent.VK_H && firstPress) {
+            if (key == KeyEvent.VK_B && firstPress) {
+                craftCurrentCircuit();
+            } else if (key == KeyEvent.VK_L && firstPress) {
+                editSelectedCraftedCircuit();
+            } else if (key == KeyEvent.VK_H && firstPress) {
                 openAutoTesterOverlay();
             } else if (nodeRadialMenu.isOpen()) {
                 if (key == KeyEvent.VK_ESCAPE) {
@@ -1263,6 +1576,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
+        if (certificationVisible || productionVisible || contractVisible
+            || craftCircuitVisible) return;
+
         if (shopOverlayVisible) {
             int product = shopRenderer.productAt(x, y, knownInventoryProductCount());
             if (product >= 0) {
@@ -1274,7 +1590,17 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        if (inventoryVisible) return;
+        if (inventoryVisible) {
+            for (int index = 0; index < craftedCircuitInventory.circuits().size(); index++) {
+                if (InventoryRenderer.craftedCardBounds(index).contains(x, y)) {
+                    craftedCircuitInventory.select(index);
+                    playSound("ui-select");
+                    repaint();
+                    break;
+                }
+            }
+            return;
+        }
 
         if (dialogueVisible()) {
             if (dialogueLineComplete()) nextLine();
@@ -1334,6 +1660,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.NOTEBOOK) {
+            if (techTreeVisible) return;
             if (inside(x, y, 270, 211, 22, 19)) turnNotebookPage(-1);
             else if (inside(x, y, 416, 211, 22, 19)) turnNotebookPage(1);
             else {
@@ -1468,6 +1795,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     @Override public void mouseReleased(MouseEvent event) {
+        if (certificationVisible || productionVisible || contractVisible
+            || craftCircuitVisible) return;
         if (shopOverlayVisible) {
             int[] point = logicalPoint(event);
             mouseX = point[0];
@@ -1921,11 +2250,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         ObjectiveRenderer.reset();
         exitPrompt = false;
         resetAutoTesterState();
+        techTreeVisible = false;
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
+        contractModel.restore(null);
+        craftedCircuitInventory.clear();
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
         shopModel.reset();
+        workbenchGraph.clear();
 
         if (preset == 0) {
             boxRetrieved = false;
@@ -2058,9 +2395,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         updateBedroomBackground();
         updateStreetBackground();
         resetAutoTesterState();
+        craftedCircuitInventory.clear();
+        techTreeVisible = false;
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
         selectedRecipe = 0;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
+        workbenchGraph.clear();
         setPlayerPosition(210, 157);
         facing = Facing.DOWN;
         walkDistance = 0;
@@ -2085,6 +2429,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.shopBalance = shopModel.balance();
         data.gateInventory = shopModel.purchased();
         data.gateInventoryInitialized = true;
+        data.contractDeliveries = contractModel.deliveries();
+        data.craftedCircuits = craftedCircuitInventory.saveData();
+        data.selectedCraftedCircuit = craftedCircuitInventory.selectedIndex();
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
@@ -2130,6 +2477,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.mothCount = data.mothCount;
         this.disableHud = data.disableHud;
         this.shopModel.restore(data.shopBalance, data.gateInventory);
+        this.contractModel.restore(data.contractDeliveries);
+        this.craftedCircuitInventory.restore(data.craftedCircuits,
+            data.selectedCraftedCircuit);
         if (!data.gateInventoryInitialized && data.boxOpened) grantStarterGates();
         updateBedroomBackground();
         updateStreetBackground();
@@ -2141,6 +2491,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             this.autoTester.toggleAttachment();
         }
         this.circuit.selectRecipe(recipes.get(0));
+        this.workbenchGraph.clear();
         this.dialogue.clear();
         this.line = null;
         this.completedObjective = null;

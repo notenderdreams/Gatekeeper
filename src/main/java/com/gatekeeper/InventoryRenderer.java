@@ -6,16 +6,17 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 /** Draws the character's gate inventory as a compact textured 3x2 grid. */
 final class InventoryRenderer {
-    private static final Rectangle PANEL = new Rectangle(54, 76, 372, 118);
+    private static final Rectangle PANEL = new Rectangle(54, 27, 372, 219);
     private static final int SLOT_COUNT = 8;
     private static final int CARD_W = 38;
     private static final int CARD_H = 43;
     private static final int CARD_GAP_X = 4;
     private static final int GRID_X = 74;
-    private static final int GRID_Y = 108;
+    private static final int GRID_Y = 80;
     private static final Color CREAM = new Color(246, 218, 157);
     private static final Color GOLD = new Color(255, 196, 37);
 
@@ -23,6 +24,7 @@ final class InventoryRenderer {
     private final BufferedImage cardTexture;
     private final Font font;
     private final ProductGateRenderer gateRenderer;
+    private final CircuitPackageRenderer circuitRenderer;
 
     InventoryRenderer(BufferedImage panelTexture, BufferedImage cardTexture,
                       BufferedImage portImage, Font font) {
@@ -30,9 +32,15 @@ final class InventoryRenderer {
         this.cardTexture = cardTexture;
         this.font = font;
         gateRenderer = new ProductGateRenderer(panelTexture, portImage, font);
+        circuitRenderer = new CircuitPackageRenderer(panelTexture, portImage, font);
     }
 
     void draw(Graphics2D graphics, ShopModel inventory, int knownProductCount) {
+        draw(graphics, inventory, knownProductCount, null, List.of());
+    }
+
+    void draw(Graphics2D graphics, ShopModel inventory, int knownProductCount,
+              CraftedCircuitInventory craftedCircuits, List<CircuitRecipe> recipes) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -57,10 +65,13 @@ final class InventoryRenderer {
         g.drawRect(PANEL.x + 5, PANEL.y + 5, PANEL.width - 11, PANEL.height - 11);
 
         g.setColor(CREAM);
-        centeredText(g, "COMPONENT INVENTORY", new Rectangle(PANEL.x, PANEL.y + 8,
+        centeredText(g, "INVENTORY", new Rectangle(PANEL.x, PANEL.y + 6,
             PANEL.width, 16), 12f);
         g.setColor(new Color(156, 111, 51));
-        g.drawLine(PANEL.x + 16, PANEL.y + 27, PANEL.x + PANEL.width - 16, PANEL.y + 27);
+        g.drawLine(PANEL.x + 16, PANEL.y + 25, PANEL.x + PANEL.width - 16, PANEL.y + 25);
+        g.setColor(new Color(190, 164, 112));
+        centeredText(g, "COMPONENTS", new Rectangle(PANEL.x + 12, 59,
+            80, 10), 7.5f);
 
         int visibleCount = Math.min(SLOT_COUNT,
             Math.min(Math.max(0, knownProductCount), inventory.products().size()));
@@ -68,8 +79,36 @@ final class InventoryRenderer {
             drawCard(g, inventory, slot, cardBounds(slot));
         }
 
+        g.setColor(new Color(156, 111, 51));
+        g.drawLine(PANEL.x + 16, 129, PANEL.x + PANEL.width - 16, 129);
         g.setColor(new Color(190, 164, 112));
-        centeredText(g, "I / ESC  CLOSE", new Rectangle(PANEL.x, PANEL.y + 99,
+        centeredText(g, "CRAFTED CIRCUITS", new Rectangle(PANEL.x + 12, 134, 106, 12), 7.5f);
+        if (craftedCircuits == null || craftedCircuits.circuits().isEmpty()) {
+            g.setColor(new Color(100, 104, 112));
+            centeredText(g, "NONE", new Rectangle(PANEL.x + 126, 134, 50, 12), 7.5f);
+        } else {
+            List<CraftedCircuitInventory.CraftedCircuit> circuits = craftedCircuits.circuits();
+            for (int index = 0; index < circuits.size(); index++) {
+                Rectangle card = craftedCardBounds(index);
+                boolean selected = index == craftedCircuits.selectedIndex();
+                g.setColor(selected ? new Color(86, 55, 34) : new Color(21, 24, 23));
+                g.fillRect(card.x, card.y, card.width, card.height);
+                g.setColor(selected ? GameConstants.YELLOW : new Color(108, 76, 35));
+                g.drawRect(card.x, card.y, card.width, card.height);
+                CraftedCircuitInventory.CraftedCircuit circuit = circuits.get(index);
+                circuitRenderer.draw(g, circuit,
+                    new Rectangle(card.x + 3, card.y + 2, card.width - 6, 23));
+                g.setColor(selected ? GOLD : CREAM);
+                String group = circuit.group().length() > 6
+                    ? circuit.group().substring(0, 5) + "~" : circuit.group();
+                centeredText(g, group,
+                    new Rectangle(card.x + 2, card.y + 27, card.width - 4, 12), 6f);
+            }
+        }
+
+        g.setColor(new Color(190, 164, 112));
+        centeredText(g, "LEFT/RIGHT SELECT   ENTER EQUIP   I/ESC CLOSE",
+            new Rectangle(PANEL.x, PANEL.y + 199,
             PANEL.width, 10), 7.5f);
         g.dispose();
     }
@@ -77,6 +116,11 @@ final class InventoryRenderer {
     static Rectangle cardBounds(int index) {
         return new Rectangle(GRID_X + index * (CARD_W + CARD_GAP_X),
             GRID_Y, CARD_W, CARD_H);
+    }
+
+    static Rectangle craftedCardBounds(int index) {
+        return new Rectangle(GRID_X + index * (CARD_W + CARD_GAP_X), 149,
+            CARD_W, CARD_H);
     }
 
     private void drawCard(Graphics2D g, ShopModel inventory, int index, Rectangle card) {

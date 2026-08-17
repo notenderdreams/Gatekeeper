@@ -85,6 +85,44 @@ final class NotebookRenderer {
         return notebookPage;
     }
 
+    void drawTechTree(Graphics2D g, int chapter) {
+        g.setColor(new Color(25, 15, 14));
+        g.fillRect(0, 0, W, H);
+        drawBookAssets(g);
+        g.setColor(new Color(52, 44, 40));
+        GamePanel.pixelText(g, "DESIGN MAP", 67, 39, 2);
+        g.setColor(new Color(110, 71, 57));
+        GamePanel.pixelText(g, "PRIMITIVE COMPONENTS", 67, 60, 1);
+        drawTreeNode(g, "AND", 67, 77, true, true);
+        drawTreeNode(g, "OR", 67, 109, true, true);
+        drawTreeNode(g, "NOT", 67, 141, true, true);
+
+        g.setColor(new Color(110, 71, 57));
+        GamePanel.pixelText(g, "CERTIFIED DESIGNS", 270, 39, 1);
+        for (int i = 0; i < recipes.size(); i++) {
+            int x = i < 3 ? 270 : 346;
+            int y = i < 3 ? 64 + i * 43 : 85 + (i - 3) * 55;
+            boolean known = i < (chapter >= 3 ? 5 : 3);
+            drawTreeNode(g, known ? recipes.get(i).name : "???", x, y, known, known && crafted[i]);
+            if (known) {
+                g.setColor(new Color(124, 106, 85));
+                GamePanel.pixelText(g, crafted[i] ? "CERTIFIED" : "MIRA TEST", x, y + 14, 1);
+            }
+        }
+        g.setColor(new Color(83, 67, 58));
+        GamePanel.pixelText(g, "T: PROJECT PAGES   N / ESC: CLOSE", 270, 241, 1);
+    }
+
+    private static void drawTreeNode(Graphics2D g, String label, int x, int y,
+                                     boolean known, boolean certified) {
+        g.setColor(known ? new Color(79, 59, 51) : new Color(91, 82, 72));
+        if (certified) g.fillRect(x - 4, y - 12, 68, 19);
+        else g.drawRect(x - 4, y - 12, 68, 19);
+        g.setColor(certified ? new Color(245, 232, 197)
+            : known ? new Color(153, 80, 50) : new Color(124, 106, 85));
+        GamePanel.pixelText(g, label, x + 3, y + 1, 1);
+    }
+
     private void beginPageFlip(int notebookPage, long ticks) {
         if (renderedPage < 0) {
             renderedPage = notebookPage;
