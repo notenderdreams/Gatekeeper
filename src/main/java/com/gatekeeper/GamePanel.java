@@ -183,9 +183,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean certificationVisible;
     private boolean contractVisible;
     private boolean craftCircuitVisible;
-    private String craftGroupDraft = "";
+    private String craftNameDraft = "";
     private String craftStatus = "";
-    private int craftGroupSuggestion = -1;
+    private int craftNameSuggestion = -1;
     private boolean craftDraftIsSuggestion;
     private int productionRecipe;
     private int productionQuantity = 1;
@@ -357,8 +357,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount(),
             craftedCircuitInventory, recipes);
         if (scene == GameScene.BOARD && craftCircuitVisible) {
-            craftCircuitRenderer.draw(g, craftGroupDraft,
-                craftedCircuitInventory.groups(), craftStatus);
+            craftCircuitRenderer.draw(g, craftNameDraft,
+                craftedCircuitInventory.names(), craftStatus);
         }
         if (!disableHud && !shopOverlayVisible && !inventoryVisible && !contractVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
@@ -618,7 +618,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Logic gates! AND, OR, and NOT are the alphabet of electronics.",
                 "MIRA|My order board needs a NAND, a NOR, and an XOR. Your workbench is completely freeform.",
                 "MIRA|Try every input switch setting yourself, then press B to craft the circuit.",
-                "MIRA|Give it any group name. At my order board, pair it with an order and I'll verify it.",
+                "MIRA|Give each circuit a short name. At my order board, pair it with an order and I'll verify it.",
                 "ALEX|So a truth table is... a list of promises the circuit has to keep?",
                 "MIRA|Exactly. A circuit must keep every single one.");
             saveCurrentProgress();
@@ -933,13 +933,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-error");
             return;
         }
-        List<String> groups = craftedCircuitInventory.groups();
-        String selectedGroup = craftedCircuitInventory.selected() == null
-            ? "" : craftedCircuitInventory.selected().group();
-        craftGroupDraft = selectedGroup.isEmpty() && !groups.isEmpty()
-            ? groups.get(0) : selectedGroup;
-        craftGroupSuggestion = groups.indexOf(craftGroupDraft);
-        craftDraftIsSuggestion = !craftGroupDraft.isEmpty();
+        List<String> names = craftedCircuitInventory.names();
+        String selectedName = craftedCircuitInventory.selected() == null
+            ? "" : craftedCircuitInventory.selected().name();
+        craftNameDraft = selectedName.isEmpty() && !names.isEmpty()
+            ? names.get(0) : selectedName;
+        craftNameSuggestion = names.indexOf(craftNameDraft);
+        craftDraftIsSuggestion = !craftNameDraft.isEmpty();
         craftStatus = "";
         craftCircuitVisible = true;
         nodeRadialMenu.close();
@@ -948,9 +948,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void confirmCraftCircuit() {
-        String group = craftGroupDraft.trim();
-        if (group.isEmpty()) {
-            craftStatus = "ENTER A NAME OR GROUP";
+        String name = craftNameDraft.trim();
+        if (name.isEmpty()) {
+            craftStatus = "ENTER A CIRCUIT NAME";
+            playSound("ui-error");
+            return;
+        }
+        if (name.length() > CraftedCircuitInventory.MAX_NAME_LENGTH) {
+            craftStatus = "NAME MUST BE 1-6 CHARACTERS";
             playSound("ui-error");
             return;
         }
@@ -959,20 +964,24 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-error");
             return;
         }
-        craftedCircuitInventory.add(group, workbenchGraph.snapshot());
+        if (!craftedCircuitInventory.add(name, workbenchGraph.snapshot())) {
+            craftStatus = "NAME MUST BE 1-6 CHARACTERS";
+            playSound("ui-error");
+            return;
+        }
         workbenchGraph.clear();
         craftCircuitVisible = false;
-        boardMessage = group + " crafted and stored in your bag.";
+        boardMessage = name + " crafted and stored in your bag.";
         boardMessageTimer = 300;
         playSound("success");
         saveCurrentProgress();
     }
 
-    private void cycleCraftGroup(int direction) {
-        List<String> groups = craftedCircuitInventory.groups();
-        if (groups.isEmpty()) return;
-        craftGroupSuggestion = (craftGroupSuggestion + direction + groups.size()) % groups.size();
-        craftGroupDraft = groups.get(craftGroupSuggestion);
+    private void cycleCraftName(int direction) {
+        List<String> names = craftedCircuitInventory.names();
+        if (names.isEmpty()) return;
+        craftNameSuggestion = (craftNameSuggestion + direction + names.size()) % names.size();
+        craftNameDraft = names.get(craftNameSuggestion);
         craftDraftIsSuggestion = true;
         craftStatus = "";
         playSound("ui-select");
@@ -989,7 +998,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         workbenchGraph.clear();
         workbenchGraph.restore(stored.graph());
         shopModel.grantParts(workbenchGraph.gateCounts());
-        boardMessage = stored.group() + " unpacked for editing. Craft it again when ready.";
+        boardMessage = stored.name() + " unpacked for editing. Craft it again when ready.";
         boardMessageTimer = 240;
         playSound("ui-confirm");
         saveCurrentProgress();
@@ -1267,23 +1276,24 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_ENTER) {
                 confirmCraftCircuit();
             } else if (key == KeyEvent.VK_BACK_SPACE) {
-                if (!craftGroupDraft.isEmpty()) {
-                    craftGroupDraft = craftDraftIsSuggestion ? ""
-                        : craftGroupDraft.substring(0, craftGroupDraft.length() - 1);
+                if (!craftNameDraft.isEmpty()) {
+                    craftNameDraft = craftDraftIsSuggestion ? ""
+                        : craftNameDraft.substring(0, craftNameDraft.length() - 1);
                     craftDraftIsSuggestion = false;
                     craftStatus = "";
                     playSound("ui-click");
                 }
             } else if (key == KeyEvent.VK_UP) {
-                cycleCraftGroup(-1);
+                cycleCraftName(-1);
             } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_TAB) {
-                cycleCraftGroup(1);
-            } else if (firstPress && craftGroupDraft.length() < 18) {
+                cycleCraftName(1);
+            } else if (firstPress && (craftDraftIsSuggestion
+                || craftNameDraft.length() < CraftedCircuitInventory.MAX_NAME_LENGTH)) {
                 char typed = Character.toUpperCase(event.getKeyChar());
                 if (Character.isLetterOrDigit(typed) || typed == ' '
                     || typed == '-' || typed == '_') {
-                    if (craftDraftIsSuggestion) craftGroupDraft = "";
-                    craftGroupDraft += typed;
+                    if (craftDraftIsSuggestion) craftNameDraft = "";
+                    craftNameDraft += typed;
                     craftDraftIsSuggestion = false;
                     craftStatus = "";
                     playSound("ui-click");

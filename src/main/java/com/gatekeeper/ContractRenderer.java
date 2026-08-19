@@ -58,9 +58,7 @@ final class ContractRenderer {
             Rectangle preview = new Rectangle(276, 82, 118, 76);
             circuitRenderer.draw(g, selectedCircuit, preview);
             g.setColor(INK);
-            String group = selectedCircuit.group().length() > 16
-                ? selectedCircuit.group().substring(0, 15) + "~" : selectedCircuit.group();
-            GamePanel.drawCenteredPixelText(g, group, 335, 174, 1);
+            GamePanel.drawCenteredPixelText(g, selectedCircuit.name(), 335, 174, 1);
             int current = inventory.selectedIndex() + 1;
             GamePanel.drawCenteredPixelText(g,
                 current + " / " + inventory.circuits().size(), 335, 190, 1);

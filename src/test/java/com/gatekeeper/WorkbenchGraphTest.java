@@ -117,7 +117,7 @@ public final class WorkbenchGraphTest {
         CraftedCircuitInventory restoredInventory = new CraftedCircuitInventory();
         restoredInventory.restore(encodedCircuits, 0);
         require(restoredInventory.selected() != null
-                && restoredInventory.selected().group().equals("ABC"),
+                && restoredInventory.selected().name().equals("ABC"),
             "crafted circuit selection should survive serialization");
         WorkbenchGraph restoredCircuit = new WorkbenchGraph(CircuitRecipe.all().get(0));
         restoredCircuit.restore(restoredInventory.selected().graph());
@@ -129,8 +129,10 @@ public final class WorkbenchGraphTest {
         require(restoredCircuit.failedCases(CircuitRecipe.all().get(0)) == 0,
             "Mira's integrated order test should report zero failed cases for NAND");
         require(restoredInventory.add("ABC", nand.snapshot())
-                && restoredInventory.groups().size() == 1,
-            "multiple circuits should be assignable to the same player-defined group");
+                && restoredInventory.names().size() == 1,
+            "multiple circuits should be assignable to the same player-defined name");
+        require(!restoredInventory.add("TOOLONG", nand.snapshot()),
+            "crafted circuit names must be limited to six characters");
         require(nand.outputValue(0, new boolean[]{false, false}),
             "OUT 0 should evaluate NAND high for input switches 0=0, 1=0");
         require(nand.outputValue(0, new boolean[]{true, false}),

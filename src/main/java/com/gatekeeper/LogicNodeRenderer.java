@@ -170,7 +170,12 @@ final class LogicNodeRenderer {
 
     private static void drawLabel(Graphics2D g, int x, int y, int height, String label) {
         Font oldFont = g.getFont();
-        g.setFont(oldFont.deriveFont(Font.PLAIN, 34f));
+        float fontSize = 34f;
+        g.setFont(oldFont.deriveFont(Font.PLAIN, fontSize));
+        while (fontSize > 14f && g.getFontMetrics().stringWidth(label) > BODY_WIDTH - 12) {
+            fontSize -= 1f;
+            g.setFont(oldFont.deriveFont(Font.PLAIN, fontSize));
+        }
         FontMetrics metrics = g.getFontMetrics();
         int textX = x + (BODY_WIDTH - metrics.stringWidth(label)) / 2;
         int baseline = y + (height - metrics.getHeight()) / 2 + metrics.getAscent();

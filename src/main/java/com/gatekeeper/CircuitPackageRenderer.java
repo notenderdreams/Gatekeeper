@@ -32,7 +32,7 @@ final class CircuitPackageRenderer {
         packageGraphics.scale(scale, scale);
         packageGraphics.setFont(font);
         nodeRenderer.draw(packageGraphics, 14, 14 + bodyHeight / 2,
-            "CIRCUIT", inputs, outputs);
+            circuit.name(), inputs, outputs);
         packageGraphics.dispose();
     }
 

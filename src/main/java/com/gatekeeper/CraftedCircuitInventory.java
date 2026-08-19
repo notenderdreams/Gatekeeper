@@ -7,8 +7,9 @@ import java.nio.charset.StandardCharsets;
 
 /** Stores the player's exact, unverified circuit builds separately from components. */
 final class CraftedCircuitInventory {
-    record CraftedCircuit(String group, WorkbenchGraph.Snapshot graph) {}
+    record CraftedCircuit(String name, WorkbenchGraph.Snapshot graph) {}
 
+    static final int MAX_NAME_LENGTH = 6;
     private static final int MAX_CIRCUITS = 8;
     private final List<CraftedCircuit> circuits = new ArrayList<>();
     private int selectedIndex = -1;
@@ -21,9 +22,11 @@ final class CraftedCircuitInventory {
     }
     boolean isFull() { return circuits.size() >= MAX_CIRCUITS; }
 
-    boolean add(String group, WorkbenchGraph.Snapshot graph) {
-        if (group == null || group.isBlank() || graph == null || isFull()) return false;
-        circuits.add(new CraftedCircuit(group.trim(), graph));
+    boolean add(String name, WorkbenchGraph.Snapshot graph) {
+        if (name == null || graph == null || isFull()) return false;
+        String trimmedName = name.trim();
+        if (trimmedName.isEmpty() || trimmedName.length() > MAX_NAME_LENGTH) return false;
+        circuits.add(new CraftedCircuit(trimmedName, graph));
         selectedIndex = circuits.size() - 1;
         return true;
     }
@@ -54,17 +57,17 @@ final class CraftedCircuitInventory {
         selectedIndex = -1;
     }
 
-    List<String> groups() {
-        return circuits.stream().map(CraftedCircuit::group).distinct().toList();
+    List<String> names() {
+        return circuits.stream().map(CraftedCircuit::name).distinct().toList();
     }
 
     String[] saveData() {
         String[] result = new String[circuits.size()];
         for (int index = 0; index < circuits.size(); index++) {
             CraftedCircuit circuit = circuits.get(index);
-            String group = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                circuit.group.getBytes(StandardCharsets.UTF_8));
-            result[index] = group + "@" + encode(circuit.graph);
+            String name = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                circuit.name.getBytes(StandardCharsets.UTF_8));
+            result[index] = name + "@" + encode(circuit.graph);
         }
         return result;
     }
@@ -75,15 +78,20 @@ final class CraftedCircuitInventory {
             for (String value : saved) {
                 try {
                     int split = value.indexOf('@');
-                    String storedGroup = value.substring(0, split);
-                    String group;
+                    String storedName = value.substring(0, split);
+                    String name;
                     try {
-                        group = new String(Base64.getUrlDecoder().decode(storedGroup),
+                        name = new String(Base64.getUrlDecoder().decode(storedName),
                             StandardCharsets.UTF_8);
                     } catch (IllegalArgumentException oldFormat) {
-                        group = "CIRCUIT " + (Integer.parseInt(storedGroup) + 1);
+                        name = "CKT" + (Integer.parseInt(storedName) + 1);
                     }
-                    circuits.add(new CraftedCircuit(group, decode(value.substring(split + 1))));
+                    name = name.trim();
+                    if (name.isEmpty()) name = "CKT" + (circuits.size() + 1);
+                    if (name.length() > MAX_NAME_LENGTH) {
+                        name = name.substring(0, MAX_NAME_LENGTH);
+                    }
+                    circuits.add(new CraftedCircuit(name, decode(value.substring(split + 1))));
                 } catch (RuntimeException ignored) { }
                 if (circuits.size() == MAX_CIRCUITS) break;
             }

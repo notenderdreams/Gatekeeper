@@ -99,9 +99,7 @@ final class InventoryRenderer {
                 circuitRenderer.draw(g, circuit,
                     new Rectangle(card.x + 3, card.y + 2, card.width - 6, 23));
                 g.setColor(selected ? GOLD : CREAM);
-                String group = circuit.group().length() > 6
-                    ? circuit.group().substring(0, 5) + "~" : circuit.group();
-                centeredText(g, group,
+                centeredText(g, circuit.name(),
                     new Rectangle(card.x + 2, card.y + 27, card.width - 4, 12), 6f);
             }
         }
