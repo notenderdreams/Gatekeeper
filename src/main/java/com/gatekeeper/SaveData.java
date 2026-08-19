@@ -9,6 +9,7 @@ public final class SaveData {
     public Facing facing;
     public boolean[] crafted = new boolean[5];
     public int notebookPage;
+    public String notebookNote = "";
     public boolean autoTesterAttached;
     public boolean catPresent;
     public int catX = GameConstants.STREET_CAT_X;

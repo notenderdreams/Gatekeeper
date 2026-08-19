@@ -73,6 +73,132 @@ final class NotebookComponents {
             rightCenter, rightPage.y + 181, 1);
     }
 
+    static void drawNote(Graphics2D g, String note, int cursor, boolean writing,
+                         long ticks, Rectangle leftPage, Rectangle rightPage) {
+        int leftCenter = leftPage.x + leftPage.width / 2;
+        int rightCenter = rightPage.x + rightPage.width / 2;
+        g.setColor(MUTED_INK);
+        GamePanel.drawCenteredPixelText(g, "PERSONAL NOTES", leftCenter,
+            leftPage.y + 24, 1);
+        GamePanel.drawCenteredPixelText(g, writing ? "ESC: DONE" : "ENTER: WRITE", rightCenter,
+            rightPage.y + 24, 1);
+        drawRule(g, leftPage.x + 13, leftPage.y + 31, leftPage.width - 26);
+        drawRule(g, rightPage.x + 13, rightPage.y + 31, rightPage.width - 26);
+
+        String value = note == null ? "" : note;
+        int caret = Math.max(0, Math.min(cursor, value.length()));
+        Rectangle[] pages = {leftPage, rightPage};
+        int page = 0;
+        int startX = pages[page].x + 13;
+        int maxX = pages[page].x + pages[page].width - 13;
+        int baseline = pages[page].y + 50;
+        int bottom = pages[page].y + pages[page].height - 25;
+        int x = startX;
+        int caretX = x;
+        int caretBaseline = baseline;
+        boolean caretPlaced = caret == 0;
+
+        g.setColor(INK);
+        for (int index = 0; index < value.length() && page < pages.length; index++) {
+            char character = value.charAt(index);
+            if (character == '\n') {
+                if (index == caret) {
+                    caretX = x;
+                    caretBaseline = baseline;
+                    caretPlaced = true;
+                }
+                int[] position = nextNoteLine(pages, page, baseline, 14);
+                page = position[0];
+                baseline = position[1];
+                if (page >= pages.length) break;
+                startX = pages[page].x + 13;
+                maxX = pages[page].x + pages[page].width - 13;
+                bottom = pages[page].y + pages[page].height - 25;
+                x = startX;
+                if (index + 1 == caret) {
+                    caretX = x;
+                    caretBaseline = baseline;
+                    caretPlaced = true;
+                }
+                continue;
+            }
+
+            if (character != ' '
+                && (index == 0 || value.charAt(index - 1) == ' '
+                    || value.charAt(index - 1) == '\n')) {
+                int wordEnd = index;
+                while (wordEnd < value.length() && value.charAt(wordEnd) != ' '
+                    && value.charAt(wordEnd) != '\n') {
+                    wordEnd++;
+                }
+                int wordWidth = GamePanel.pixelTextWidth(g,
+                    value.substring(index, wordEnd), 1);
+                if (x > startX && x + wordWidth > maxX) {
+                    int[] position = nextNoteLine(pages, page, baseline, 14);
+                    page = position[0];
+                    baseline = position[1];
+                    if (page >= pages.length) break;
+                    startX = pages[page].x + 13;
+                    maxX = pages[page].x + pages[page].width - 13;
+                    bottom = pages[page].y + pages[page].height - 25;
+                    x = startX;
+                }
+            }
+            int width = Math.max(1, GamePanel.pixelTextWidth(g,
+                Character.toString(character), 1));
+            if (x > startX && x + width > maxX) {
+                int[] position = nextNoteLine(pages, page, baseline, 14);
+                page = position[0];
+                baseline = position[1];
+                if (page >= pages.length) break;
+                startX = pages[page].x + 13;
+                maxX = pages[page].x + pages[page].width - 13;
+                bottom = pages[page].y + pages[page].height - 25;
+                x = startX;
+            }
+            if (baseline > bottom) break;
+            if (index == caret) {
+                caretX = x;
+                caretBaseline = baseline;
+                caretPlaced = true;
+            }
+            GamePanel.pixelText(g, Character.toString(character), x, baseline, 1);
+            x += width;
+            if (index + 1 == caret) {
+                caretX = x;
+                caretBaseline = baseline;
+                caretPlaced = true;
+            }
+        }
+
+        if (value.isEmpty()) {
+            g.setColor(new Color(116, 89, 63, 120));
+            GamePanel.pixelText(g, writing ? "START TYPING..." : "NO NOTES YET",
+                leftPage.x + 13,
+                leftPage.y + 50, 1);
+        }
+        if (writing && caretPlaced && (ticks / 30) % 2 == 0) {
+            g.setColor(ACCENT);
+            g.fillRect(caretX, caretBaseline - 11, 1, 13);
+        }
+
+        g.setColor(MUTED_INK);
+        GamePanel.drawCenteredPixelText(g, "1", leftCenter,
+            leftPage.y + leftPage.height - 6, 1);
+        GamePanel.drawCenteredPixelText(g, "2", rightCenter,
+            rightPage.y + rightPage.height - 6, 1);
+    }
+
+    private static int[] nextNoteLine(Rectangle[] pages, int page, int baseline,
+                                      int lineHeight) {
+        int nextBaseline = baseline + lineHeight;
+        int bottom = pages[page].y + pages[page].height - 25;
+        if (nextBaseline <= bottom) return new int[]{page, nextBaseline};
+        int nextPage = page + 1;
+        if (nextPage >= pages.length) return new int[]{nextPage, nextBaseline};
+        return new int[]{nextPage, pages[nextPage].y + 50};
+    }
+
     private static void drawTruthTable(Graphics2D g, CircuitRecipe recipe, int x, int y,
                                        int width) {
         int rowHeight = 15;

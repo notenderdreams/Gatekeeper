@@ -35,6 +35,8 @@ public final class SaveManager {
             }
             json.append("],\n");
             json.append("  \"notebookPage\": ").append(data.notebookPage).append(",\n");
+            json.append("  \"notebookNote\": \"")
+                .append(escapeJson(data.notebookNote)).append("\",\n");
             json.append("  \"autoTesterAttached\": ").append(data.autoTesterAttached).append(",\n");
             json.append("  \"catPresent\": ").append(data.catPresent).append(",\n");
             json.append("  \"catX\": ").append(data.catX).append(",\n");
@@ -100,6 +102,7 @@ public final class SaveManager {
             data.facing = parseEnum(content, "facing", Facing.class, Facing.DOWN);
             data.crafted = parseBooleanArray(content, "crafted", 5);
             data.notebookPage = parseInt(content, "notebookPage", 0);
+            data.notebookNote = parseJsonString(content, "notebookNote", "");
             data.autoTesterAttached = parseBoolean(content, "autoTesterAttached", false);
             data.catPresent = parseBoolean(content, "catPresent", false);
             data.catX = parseInt(content, "catX", GameConstants.STREET_CAT_X);
@@ -203,5 +206,52 @@ public final class SaveManager {
         Matcher valueMatcher = Pattern.compile("\"([^\"]*)\"").matcher(arrayMatcher.group(1));
         while (valueMatcher.find()) values.add(valueMatcher.group(1));
         return values.toArray(String[]::new);
+    }
+
+    private static String escapeJson(String value) {
+        if (value == null) return "";
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            switch (character) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> escaped.append(character);
+            }
+        }
+        return escaped.toString();
+    }
+
+    private static String parseJsonString(String json, String key, String fallback) {
+        Pattern pattern = Pattern.compile("\"" + key
+            + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+        Matcher matcher = pattern.matcher(json);
+        if (!matcher.find()) return fallback;
+        String escaped = matcher.group(1);
+        StringBuilder value = new StringBuilder(escaped.length());
+        boolean slash = false;
+        for (int index = 0; index < escaped.length(); index++) {
+            char character = escaped.charAt(index);
+            if (!slash && character == '\\') {
+                slash = true;
+                continue;
+            }
+            if (slash) {
+                value.append(switch (character) {
+                    case 'n' -> '\n';
+                    case 'r' -> '\r';
+                    case 't' -> '\t';
+                    default -> character;
+                });
+                slash = false;
+            } else {
+                value.append(character);
+            }
+        }
+        if (slash) value.append('\\');
+        return value.toString();
     }
 }

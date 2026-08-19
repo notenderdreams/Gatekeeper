@@ -141,6 +141,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int testerTargetRecipe;
     private int notebookPage;
     private NotebookRenderer.Section notebookSection = NotebookRenderer.Section.GATE_INFO;
+    private final NotebookNoteEditor notebookNoteEditor = new NotebookNoteEditor();
+    private boolean notebookNoteDirty;
+    private boolean notebookNoteWriting;
     private int playerX = 210;
     private int playerY = 157;
     private double precisePlayerX = 210;
@@ -324,7 +327,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
                 nodeRadialMenu, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
-                g, chapter, notebookSection, notebookPage);
+                g, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
+                notebookNoteEditor.cursor(), notebookNoteWriting, ticks);
             case END -> notebookRenderer.drawEnding(g);
         }
         if (scene == GameScene.BOARD) {
@@ -394,6 +398,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         selectedRecipe = 0;
         notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
+        notebookNoteEditor.setText("");
+        notebookNoteDirty = false;
+        notebookNoteWriting = false;
         resetAutoTesterState();
         circuit.selectRecipe(recipes.get(0));
         workbenchGraph.clear();
@@ -409,6 +416,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private void updateGame() {
         ticks++;
+        if (notebookNoteDirty && ticks % 120 == 0) saveNotebookNoteIfDirty();
         sound.setMusicMuted(scene == GameScene.DEV);
         sound.loop(MUSIC_LOOP);
         sound.updateMusic();
@@ -650,6 +658,44 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int available = notebookRenderer.pageCount(notebookSection, chapter);
         notebookPage = (notebookPage + direction + available) % available;
         playSound("book-flip");
+    }
+
+    private boolean editingNotebookNote() {
+        return scene == GameScene.NOTEBOOK
+            && notebookSection == NotebookRenderer.Section.NOTES
+            && notebookNoteWriting;
+    }
+
+    private boolean handleNotebookNoteKeyPressed(int key) {
+        if (!editingNotebookNote()) return false;
+        boolean changed = false;
+        switch (key) {
+            case KeyEvent.VK_ESCAPE -> {
+                saveNotebookNoteIfDirty();
+                notebookNoteWriting = false;
+                playSound("ui-confirm");
+            }
+            case KeyEvent.VK_BACK_SPACE -> changed = notebookNoteEditor.backspace();
+            case KeyEvent.VK_DELETE -> changed = notebookNoteEditor.delete();
+            case KeyEvent.VK_ENTER -> changed = notebookNoteEditor.insertNewLine();
+            case KeyEvent.VK_LEFT -> notebookNoteEditor.moveLeft();
+            case KeyEvent.VK_RIGHT -> notebookNoteEditor.moveRight();
+            case KeyEvent.VK_HOME -> notebookNoteEditor.moveHome();
+            case KeyEvent.VK_END -> notebookNoteEditor.moveEnd();
+            default -> {
+                // Printable characters arrive through keyTyped; consume their key press here
+                // so notebook and world shortcuts cannot fire while writing.
+            }
+        }
+        if (changed) notebookNoteDirty = true;
+        repaint();
+        return true;
+    }
+
+    private void saveNotebookNoteIfDirty() {
+        if (!notebookNoteDirty) return;
+        saveCurrentProgress();
+        notebookNoteDirty = false;
     }
 
     private void selectRecipe(int index) {
@@ -1127,6 +1173,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
         boolean firstPress = keys.add(key);
+        if (key == KeyEvent.VK_F1 && editingNotebookNote()) {
+            saveNotebookNoteIfDirty();
+            notebookNoteWriting = false;
+        }
         if (key == KeyEvent.VK_F1 && scene != GameScene.DEV) {
             devReturnScene = scene;
             devSection = 0;
@@ -1138,6 +1188,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-open");
             return;
         }
+        if (handleNotebookNoteKeyPressed(key)) return;
         if (scene == GameScene.DEV) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
@@ -1459,6 +1510,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == GameScene.NOTEBOOK) {
+                saveNotebookNoteIfDirty();
+                notebookNoteWriting = false;
                 scene = notebookReturnScene;
                 playSound("ui-close");
             }
@@ -1466,11 +1519,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 notebookReturnScene = scene;
                 notebookSection = NotebookRenderer.Section.GATE_INFO;
                 notebookPage = 0;
+                notebookNoteWriting = false;
                 scene = GameScene.NOTEBOOK;
                 playSound("book-open");
             }
         } else if (scene == GameScene.NOTEBOOK) {
-            if (key == KeyEvent.VK_ESCAPE) {
+            if (key == KeyEvent.VK_ENTER
+                && notebookSection == NotebookRenderer.Section.NOTES) {
+                notebookNoteWriting = true;
+                playSound("ui-click");
+                repaint();
+            } else if (key == KeyEvent.VK_ESCAPE) {
+                notebookNoteWriting = false;
                 scene = notebookReturnScene;
                 playSound("ui-close");
             }
@@ -1547,7 +1607,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         repaint();
     }
-    @Override public void keyTyped(KeyEvent event) {}
+    @Override public void keyTyped(KeyEvent event) {
+        if (!editingNotebookNote() || event.isControlDown() || event.isMetaDown()) return;
+        if (notebookNoteEditor.insert(event.getKeyChar())) {
+            notebookNoteDirty = true;
+            repaint();
+        }
+    }
 
     @Override public void mousePressed(MouseEvent event) {
         requestFocusInWindow();
@@ -1654,6 +1720,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (scene == GameScene.NOTEBOOK) {
             NotebookRenderer.Section selectedSection = notebookRenderer.sectionAt(x, y);
             if (selectedSection != null) {
+                if (notebookSection == NotebookRenderer.Section.NOTES
+                    && selectedSection != NotebookRenderer.Section.NOTES) {
+                    saveNotebookNoteIfDirty();
+                }
+                if (selectedSection != notebookSection) notebookNoteWriting = false;
                 notebookSection = selectedSection;
                 notebookPage = selectedSection == NotebookRenderer.Section.TRUTH_TABLES
                     ? clamp(selectedRecipe, 0,
@@ -2427,11 +2498,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.contractDeliveries = contractModel.deliveries();
         data.craftedCircuits = craftedCircuitInventory.saveData();
         data.selectedCraftedCircuit = craftedCircuitInventory.selectedIndex();
+        data.notebookNote = notebookNoteEditor.text();
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
             data.chapter = chapter;
-            data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
+            data.scene = scene == GameScene.BOARD ? returnScene
+                : scene == GameScene.NOTEBOOK ? notebookReturnScene : scene;
             data.playerX = playerX;
             data.playerY = playerY;
             data.facing = facing;
@@ -2457,6 +2530,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             System.arraycopy(data.crafted, 0, this.crafted, 0, crafted.length);
         }
         this.notebookPage = data.notebookPage;
+        this.notebookNoteEditor.setText(data.notebookNote);
+        this.notebookNoteDirty = false;
+        this.notebookNoteWriting = false;
         this.instantStart = data.instantStart;
         this.taskbarOnRight = data.taskbarOnRight;
         this.catAlwaysAppears = data.catAlwaysAppears;

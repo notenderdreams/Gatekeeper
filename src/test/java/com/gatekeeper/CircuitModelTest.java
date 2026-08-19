@@ -67,6 +67,7 @@ public final class CircuitModelTest {
         save.facing = Facing.RIGHT;
         save.crafted = new boolean[]{true, true, true, false, false};
         save.notebookPage = 2;
+        save.notebookNote = "Mira's NAND:\n\"both\" & \\ notes";
         save.autoTesterAttached = true;
         save.catPresent = true;
         save.catX = 45;
@@ -94,6 +95,8 @@ public final class CircuitModelTest {
         require(loaded.facing == Facing.RIGHT, "loaded facing should match");
         require(loaded.crafted[0] && loaded.crafted[1] && loaded.crafted[2] && !loaded.crafted[3], "loaded crafted array should match");
         require(loaded.notebookPage == 2, "loaded notebook page should be 2");
+        require(loaded.notebookNote.equals(save.notebookNote),
+            "multiline notebook note should persist exactly");
         require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
         require(loaded.catPresent, "loaded catPresent should be true");
         require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");

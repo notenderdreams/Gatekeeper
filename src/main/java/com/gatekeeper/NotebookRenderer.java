@@ -16,7 +16,7 @@ final class NotebookRenderer {
     enum Section {
         GATE_INFO,
         TRUTH_TABLES,
-        EMPTY
+        NOTES
     }
 
     private static final int SOURCE_WIDTH = 1355;
@@ -50,7 +50,8 @@ final class NotebookRenderer {
         this.highlightedNotebookImage = brightenAndSaturate(notebookImage);
     }
 
-    int drawNotebook(Graphics2D g, int chapter, Section section, int page) {
+    int drawNotebook(Graphics2D g, int chapter, Section section, int page,
+                     String note, int noteCursor, boolean noteWriting, long ticks) {
         drawNotebookArt(g);
         drawSelectedTab(g, section);
 
@@ -62,9 +63,8 @@ final class NotebookRenderer {
             case TRUTH_TABLES -> NotebookComponents.drawTruthTableSpread(
                 g, recipes.get(selectedPage), crafted[selectedPage], selectedPage,
                 pageCount(section, chapter), screenBounds(PAGE_LEFT), screenBounds(PAGE_RIGHT));
-            case EMPTY -> {
-                // This tab is intentionally an untouched pair of notebook pages.
-            }
+            case NOTES -> NotebookComponents.drawNote(g, note, noteCursor, noteWriting, ticks,
+                screenBounds(PAGE_LEFT), screenBounds(PAGE_RIGHT));
         }
 
         if (pageCount(section, chapter) > 1) {
@@ -77,7 +77,7 @@ final class NotebookRenderer {
         return switch (section) {
             case GATE_INFO -> GateType.values().length;
             case TRUTH_TABLES -> Math.min(recipes.size(), chapter >= 3 ? 5 : 3);
-            case EMPTY -> 1;
+            case NOTES -> 1;
         };
     }
 
