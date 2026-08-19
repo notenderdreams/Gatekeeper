@@ -89,9 +89,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage shopFrameImage = loadRawImage("/assets/items/shop/shop.png");
     private final BufferedImage shopItemFrameImage =
         loadRawImage("/assets/items/shop/shop-item.png");
-    private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
-    private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
-    private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
+    private final BufferedImage notebookOpenImage = loadRawImage("/assets/ui/notebook.png");
     private final BufferedImage erisIdleSprites = loadRawImage("/assets/characters/eris-idle.png");
     private final BufferedImage erisWalkSprites = loadRawImage("/assets/characters/eris-walk.png");
     private final BufferedImage erisInteractSprites = loadRawImage("/assets/characters/eris-interact.png");
@@ -142,6 +140,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int selectedRecipe;
     private int testerTargetRecipe;
     private int notebookPage;
+    private NotebookRenderer.Section notebookSection = NotebookRenderer.Section.GATE_INFO;
     private int playerX = 210;
     private int playerY = 157;
     private double precisePlayerX = 210;
@@ -177,7 +176,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final CraftCircuitRenderer craftCircuitRenderer = new CraftCircuitRenderer();
     private boolean shopOverlayVisible;
     private boolean inventoryVisible;
-    private boolean techTreeVisible;
     private boolean productionVisible;
     private boolean certificationVisible;
     private boolean contractVisible;
@@ -197,7 +195,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage,
         workbenchEndpointImage);
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
-        recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
+        recipes, crafted, notebookOpenImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomNoBoxImage != null ? bedroomNoBoxImage : (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal),
         ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground,
@@ -325,10 +323,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SHOP -> worldRenderer.drawShop(g);
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
                 nodeRadialMenu, mouseX, mouseY);
-            case NOTEBOOK -> {
-                if (techTreeVisible) notebookRenderer.drawTechTree(g, chapter);
-                else notebookPage = notebookRenderer.drawNotebook(g, chapter, notebookPage, ticks);
-            }
+            case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
+                g, chapter, notebookSection, notebookPage);
             case END -> notebookRenderer.drawEnding(g);
         }
         if (scene == GameScene.BOARD) {
@@ -391,12 +387,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         shopModel.reset();
         craftedCircuitInventory.clear();
         contractModel.restore(null);
-        techTreeVisible = false;
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
         craftCircuitVisible = false;
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
         resetAutoTesterState();
         circuit.selectRecipe(recipes.get(0));
@@ -651,7 +647,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void turnNotebookPage(int direction) {
-        int available = chapter >= 3 ? 5 : 3;
+        int available = notebookRenderer.pageCount(notebookSection, chapter);
         notebookPage = (notebookPage + direction + available) % available;
         playSound("book-flip");
     }
@@ -1464,26 +1460,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == GameScene.NOTEBOOK) {
                 scene = notebookReturnScene;
-                techTreeVisible = false;
                 playSound("ui-close");
             }
             else {
                 notebookReturnScene = scene;
-                notebookPage = selectedRecipe;
+                notebookSection = NotebookRenderer.Section.GATE_INFO;
+                notebookPage = 0;
                 scene = GameScene.NOTEBOOK;
                 playSound("book-open");
             }
         } else if (scene == GameScene.NOTEBOOK) {
-            if (key == KeyEvent.VK_T) {
-                techTreeVisible = !techTreeVisible;
-                playSound("book-flip");
-            } else if (key == KeyEvent.VK_ESCAPE) {
+            if (key == KeyEvent.VK_ESCAPE) {
                 scene = notebookReturnScene;
-                techTreeVisible = false;
                 playSound("ui-close");
             }
-            else if (!techTreeVisible && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A)) turnNotebookPage(-1);
-            else if (!techTreeVisible && (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) turnNotebookPage(1);
+            else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
+            else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
             if (key == KeyEvent.VK_B && firstPress) {
                 craftCurrentCircuit();
@@ -1660,16 +1652,19 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.NOTEBOOK) {
-            if (techTreeVisible) return;
-            if (inside(x, y, 270, 211, 22, 19)) turnNotebookPage(-1);
-            else if (inside(x, y, 416, 211, 22, 19)) turnNotebookPage(1);
-            else {
-                int available = chapter >= 3 ? 5 : 3;
-                for (int i = 0; i < available; i++) {
-                    if (inside(x, y, 314 + i * 16, 214, 11, 11)) {
-                        notebookPage = i;
-                        playSound("book-flip");
-                    }
+            NotebookRenderer.Section selectedSection = notebookRenderer.sectionAt(x, y);
+            if (selectedSection != null) {
+                notebookSection = selectedSection;
+                notebookPage = selectedSection == NotebookRenderer.Section.TRUTH_TABLES
+                    ? clamp(selectedRecipe, 0,
+                        notebookRenderer.pageCount(selectedSection, chapter) - 1)
+                    : 0;
+                playSound("ui-select");
+            } else {
+                int direction = notebookRenderer.pageDirectionAt(x, y);
+                if (direction != 0
+                    && notebookRenderer.pageCount(notebookSection, chapter) > 1) {
+                    turnNotebookPage(direction);
                 }
             }
             return;
@@ -2250,7 +2245,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         ObjectiveRenderer.reset();
         exitPrompt = false;
         resetAutoTesterState();
-        techTreeVisible = false;
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
@@ -2259,6 +2253,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         craftedCircuitInventory.clear();
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
         shopModel.reset();
@@ -2396,12 +2391,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         updateStreetBackground();
         resetAutoTesterState();
         craftedCircuitInventory.clear();
-        techTreeVisible = false;
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
         craftCircuitVisible = false;
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
         workbenchGraph.clear();

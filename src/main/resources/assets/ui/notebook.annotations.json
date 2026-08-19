@@ -1,0 +1,72 @@
+{
+  "image": "notebook.png",
+  "image_width": 1355,
+  "image_height": 1050,
+  "annotations": [
+    {
+      "id": 1,
+      "label": "PAGE_L",
+      "x": 75.0,
+      "y": 56.0,
+      "width": 538.0,
+      "height": 902.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 3,
+      "label": "Page_R",
+      "x": 725.0,
+      "y": 60.0,
+      "width": 522.0,
+      "height": 901.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 4,
+      "label": "BTN_1",
+      "x": 1274.0,
+      "y": 134.0,
+      "width": 49.0,
+      "height": 101.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 5,
+      "label": "BTN_2",
+      "x": 1275.0,
+      "y": 254.0,
+      "width": 49.0,
+      "height": 94.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 6,
+      "label": "BTN_3",
+      "x": 1274.0,
+      "y": 364.0,
+      "width": 54.0,
+      "height": 94.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    }
+  ]
+}

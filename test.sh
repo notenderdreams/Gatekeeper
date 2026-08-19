@@ -18,6 +18,8 @@ test -s "$PROJECT_DIR/src/main/resources/assets/items/tester/tester-buttons.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/tester/tester-navigation-buttons.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/shop/shop.png"
 test -s "$PROJECT_DIR/src/main/resources/assets/items/shop/shop-item.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/ui/notebook.png"
+test -s "$PROJECT_DIR/src/main/resources/assets/ui/notebook.annotations.json"
 
 mkdir -p "$TEST_BUILD_DIR"
 javac --release 17 -d "$TEST_BUILD_DIR" \

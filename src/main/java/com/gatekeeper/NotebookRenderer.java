@@ -2,187 +2,186 @@ package com.gatekeeper;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
 import static com.gatekeeper.GameConstants.*;
 
+/** Renders and maps interactions for the annotated open-notebook artwork. */
 final class NotebookRenderer {
-    private static final int FLIP_DURATION_TICKS = 24;
+    enum Section {
+        GATE_INFO,
+        TRUTH_TABLES,
+        EMPTY
+    }
+
+    private static final int SOURCE_WIDTH = 1355;
+    private static final int SOURCE_HEIGHT = 1050;
+    private static final double BOOK_SCALE = H / (double) SOURCE_HEIGHT;
+    private static final double BOOK_X = (W - SOURCE_WIDTH * BOOK_SCALE) / 2.0;
+
+    // Source-space regions from assets/ui/notebook.annotations.json.
+    private static final Rectangle PAGE_LEFT = new Rectangle(75, 56, 538, 902);
+    private static final Rectangle PAGE_RIGHT = new Rectangle(725, 60, 522, 901);
+    private static final Rectangle[] TAB_REGIONS = {
+        new Rectangle(1274, 134, 49, 101),
+        new Rectangle(1275, 254, 49, 94),
+        new Rectangle(1274, 364, 54, 94)
+    };
+    private static final Rectangle PREVIOUS_PAGE = new Rectangle(105, 892, 85, 55);
+    private static final Rectangle NEXT_PAGE = new Rectangle(1138, 892, 85, 55);
+
+    private static final Color PAGE_ACCENT = new Color(126, 68, 37);
+
     private final List<CircuitRecipe> recipes;
     private final boolean[] crafted;
-    private final BufferedImage coverImage;
-    private final BufferedImage leftPageImage;
-    private final BufferedImage rightPageImage;
-    private int renderedPage = -1;
-    private int flipDirection;
-    private long flipStartedAt = Long.MIN_VALUE;
+    private final BufferedImage notebookImage;
+    private final BufferedImage highlightedNotebookImage;
 
     NotebookRenderer(List<CircuitRecipe> recipes, boolean[] crafted,
-                     BufferedImage coverImage, BufferedImage leftPageImage,
-                     BufferedImage rightPageImage) {
+                     BufferedImage notebookImage) {
         this.recipes = recipes;
         this.crafted = crafted;
-        this.coverImage = coverImage;
-        this.leftPageImage = leftPageImage;
-        this.rightPageImage = rightPageImage;
+        this.notebookImage = notebookImage;
+        this.highlightedNotebookImage = brightenAndSaturate(notebookImage);
     }
 
-    int drawNotebook(Graphics2D g, int chapter, int notebookPage, long ticks) {
-        // The Travel Book assets provide the cover and both open pages.
-        g.setColor(new Color(25, 15, 14));
-        g.fillRect(0, 0, W, H);
-        g.setColor(new Color(57, 32, 23));
-        for (int y = 6; y < H; y += 14) g.drawLine(0, y, W, y + 4);
-        g.setColor(new Color(3, 4, 6, 145));
-        g.fillRect(31, 20, 425, 238);
-        drawBookAssets(g);
+    int drawNotebook(Graphics2D g, int chapter, Section section, int page) {
+        drawNotebookArt(g);
+        drawSelectedTab(g, section);
 
-        g.setColor(new Color(52, 44, 40));
-        GamePanel.pixelText(g, "ALEX'S LOGIC NOTES", 67, 35, 1);
-        g.setColor(new Color(110, 71, 57));
-        GamePanel.pixelText(g, "THE THREE BUILDING BLOCKS", 67, 47, 1);
-        NotebookComponents.drawGateCard(g, GateType.AND, 61, 55,
-            "BOTH must be 1", "00:0  01:0  10:0  11:1");
-        NotebookComponents.drawGateCard(g, GateType.OR, 61, 111,
-            "EITHER can be 1", "00:0  01:1  10:1  11:1");
-        NotebookComponents.drawGateCard(g, GateType.NOT, 61, 167,
-            "FLIPS the signal", "0 -> 1       1 -> 0");
-
-        int available = chapter >= 3 ? 5 : 3;
-        notebookPage = clamp(notebookPage, 0, available - 1);
-        beginPageFlip(notebookPage, ticks);
-        CircuitRecipe recipe = recipes.get(notebookPage);
-        g.setColor(new Color(110, 71, 57));
-        GamePanel.pixelText(g, "PROJECT " + (notebookPage + 1) + " / " + available, 270, 34, 1);
-        g.setColor(new Color(43, 39, 37));
-        GamePanel.pixelText(g, recipe.name, 270, 51, 1);
-        g.setColor(crafted[notebookPage] ? new Color(30, 116, 104) : new Color(159, 91, 48));
-        GamePanel.pixelText(g, crafted[notebookPage] ? "[ COMPLETE ]" : "[ TO BUILD ]", 360, 51, 1);
-        g.setColor(new Color(91, 72, 60));
-        GamePanel.drawWrapped(g, recipe.subtitle, 270, 65, 27);
-
-        NotebookComponents.drawTruthTable(g, recipe, 270, 91);
-        NotebookComponents.drawWiringPlan(g, recipe, 337, 91);
-
-        drawPageFlip(g, ticks);
-
-        g.setColor(new Color(79, 59, 51));
-        g.drawRect(270, 211, 22, 19);
-        g.drawRect(416, 211, 22, 19);
-        GamePanel.pixelText(g, "<", 278, 225, 1);
-        GamePanel.pixelText(g, ">", 424, 225, 1);
-        for (int i = 0; i < available; i++) {
-            int x = 316 + i * 16;
-            g.setColor(i == notebookPage ? new Color(153, 80, 50) : new Color(124, 106, 85));
-            if (crafted[i]) g.fillRect(x - 2, 216, 11, 11);
-            else g.drawRect(x - 2, 216, 11, 11);
-            g.setColor(i == notebookPage ? new Color(245, 232, 197) : new Color(66, 56, 50));
-            GamePanel.pixelText(g, Integer.toString(i + 1), x, 225, 1);
-        }
-        g.setColor(new Color(83, 67, 58));
-        GamePanel.pixelText(g, "ARROWS: PAGE   N / ESC: CLOSE", 270, 241, 1);
-        return notebookPage;
-    }
-
-    void drawTechTree(Graphics2D g, int chapter) {
-        g.setColor(new Color(25, 15, 14));
-        g.fillRect(0, 0, W, H);
-        drawBookAssets(g);
-        g.setColor(new Color(52, 44, 40));
-        GamePanel.pixelText(g, "DESIGN MAP", 67, 39, 2);
-        g.setColor(new Color(110, 71, 57));
-        GamePanel.pixelText(g, "PRIMITIVE COMPONENTS", 67, 60, 1);
-        drawTreeNode(g, "AND", 67, 77, true, true);
-        drawTreeNode(g, "OR", 67, 109, true, true);
-        drawTreeNode(g, "NOT", 67, 141, true, true);
-
-        g.setColor(new Color(110, 71, 57));
-        GamePanel.pixelText(g, "CERTIFIED DESIGNS", 270, 39, 1);
-        for (int i = 0; i < recipes.size(); i++) {
-            int x = i < 3 ? 270 : 346;
-            int y = i < 3 ? 64 + i * 43 : 85 + (i - 3) * 55;
-            boolean known = i < (chapter >= 3 ? 5 : 3);
-            drawTreeNode(g, known ? recipes.get(i).name : "???", x, y, known, known && crafted[i]);
-            if (known) {
-                g.setColor(new Color(124, 106, 85));
-                GamePanel.pixelText(g, crafted[i] ? "CERTIFIED" : "MIRA TEST", x, y + 14, 1);
+        int selectedPage = clamp(page, 0, pageCount(section, chapter) - 1);
+        switch (section) {
+            case GATE_INFO -> NotebookComponents.drawGateInfo(
+                g, GateType.values()[selectedPage], selectedPage, GateType.values().length,
+                screenBounds(PAGE_LEFT), screenBounds(PAGE_RIGHT));
+            case TRUTH_TABLES -> NotebookComponents.drawTruthTableSpread(
+                g, recipes.get(selectedPage), crafted[selectedPage], selectedPage,
+                pageCount(section, chapter), screenBounds(PAGE_LEFT), screenBounds(PAGE_RIGHT));
+            case EMPTY -> {
+                // This tab is intentionally an untouched pair of notebook pages.
             }
         }
-        g.setColor(new Color(83, 67, 58));
-        GamePanel.pixelText(g, "T: PROJECT PAGES   N / ESC: CLOSE", 270, 241, 1);
-    }
 
-    private static void drawTreeNode(Graphics2D g, String label, int x, int y,
-                                     boolean known, boolean certified) {
-        g.setColor(known ? new Color(79, 59, 51) : new Color(91, 82, 72));
-        if (certified) g.fillRect(x - 4, y - 12, 68, 19);
-        else g.drawRect(x - 4, y - 12, 68, 19);
-        g.setColor(certified ? new Color(245, 232, 197)
-            : known ? new Color(153, 80, 50) : new Color(124, 106, 85));
-        GamePanel.pixelText(g, label, x + 3, y + 1, 1);
-    }
-
-    private void beginPageFlip(int notebookPage, long ticks) {
-        if (renderedPage < 0) {
-            renderedPage = notebookPage;
-            return;
+        if (pageCount(section, chapter) > 1) {
+            drawPageControls(g);
         }
-        if (notebookPage == renderedPage) return;
-        flipDirection = Integer.compare(notebookPage, renderedPage);
-        flipStartedAt = ticks;
-        renderedPage = notebookPage;
+        return selectedPage;
     }
 
-    private void drawPageFlip(Graphics2D g, long ticks) {
-        long elapsed = ticks - flipStartedAt;
-        if (elapsed < 0 || elapsed >= FLIP_DURATION_TICKS) return;
-        float progress = elapsed / (float) FLIP_DURATION_TICKS;
-        if (flipDirection > 0) {
-            if (progress < 0.5f) {
-                int width = Math.max(1, Math.round(204 * (1.0f - progress * 2.0f)));
-                drawTurningPage(g, rightPageImage, 240, true, width);
-            } else {
-                int width = Math.max(1, Math.round(204 * ((progress - 0.5f) * 2.0f)));
-                drawTurningPage(g, leftPageImage, 240, false, width);
+    int pageCount(Section section, int chapter) {
+        return switch (section) {
+            case GATE_INFO -> GateType.values().length;
+            case TRUTH_TABLES -> Math.min(recipes.size(), chapter >= 3 ? 5 : 3);
+            case EMPTY -> 1;
+        };
+    }
+
+    Section sectionAt(int x, int y) {
+        for (int index = 0; index < TAB_REGIONS.length; index++) {
+            if (contains(TAB_REGIONS[index], x, y)) return Section.values()[index];
+        }
+        return null;
+    }
+
+    int pageDirectionAt(int x, int y) {
+        if (contains(PREVIOUS_PAGE, x, y)) return -1;
+        if (contains(NEXT_PAGE, x, y)) return 1;
+        return 0;
+    }
+
+    private void drawNotebookArt(Graphics2D graphics) {
+        graphics.setColor(new Color(11, 8, 6));
+        graphics.fillRect(0, 0, W, H);
+        if (notebookImage == null) return;
+
+        Graphics2D g = (Graphics2D) graphics.create();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(notebookImage, bookTransform(), null);
+        g.dispose();
+    }
+
+    private void drawSelectedTab(Graphics2D graphics, Section section) {
+        if (highlightedNotebookImage == null) return;
+        Rectangle tab = screenBounds(TAB_REGIONS[section.ordinal()]);
+        Graphics2D g = (Graphics2D) graphics.create();
+        Shape oldClip = g.getClip();
+        g.clip(tab);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(highlightedNotebookImage, bookTransform(), null);
+        g.setClip(oldClip);
+        g.dispose();
+    }
+
+    private static void drawPageControls(Graphics2D g) {
+        Rectangle previous = screenBounds(PREVIOUS_PAGE);
+        Rectangle next = screenBounds(NEXT_PAGE);
+        g.setColor(PAGE_ACCENT);
+        GamePanel.drawCenteredPixelText(g, "<", centerX(previous), previous.y + 13, 1);
+        GamePanel.drawCenteredPixelText(g, ">", centerX(next), next.y + 13, 1);
+    }
+
+    private static AffineTransform bookTransform() {
+        AffineTransform transform = AffineTransform.getTranslateInstance(BOOK_X, 0.0);
+        transform.scale(BOOK_SCALE, BOOK_SCALE);
+        return transform;
+    }
+
+    private static Rectangle screenBounds(Rectangle source) {
+        int left = (int) Math.floor(BOOK_X + source.x * BOOK_SCALE);
+        int top = (int) Math.floor(source.y * BOOK_SCALE);
+        int right = (int) Math.ceil(BOOK_X + (source.x + source.width) * BOOK_SCALE);
+        int bottom = (int) Math.ceil((source.y + source.height) * BOOK_SCALE);
+        return new Rectangle(left, top, right - left, bottom - top);
+    }
+
+    private static boolean contains(Rectangle source, int x, int y) {
+        double sourceX = (x - BOOK_X) / BOOK_SCALE;
+        double sourceY = y / BOOK_SCALE;
+        return sourceX >= source.x && sourceX < source.x + source.width
+            && sourceY >= source.y && sourceY < source.y + source.height;
+    }
+
+    private static BufferedImage brightenAndSaturate(BufferedImage source) {
+        if (source == null) return null;
+        BufferedImage adjusted = new BufferedImage(
+            source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < source.getHeight(); y++) {
+            for (int x = 0; x < source.getWidth(); x++) {
+                int argb = source.getRGB(x, y);
+                int alpha = (argb >>> 24) & 0xff;
+                double red = (argb >>> 16) & 0xff;
+                double green = (argb >>> 8) & 0xff;
+                double blue = argb & 0xff;
+                double luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+
+                // +30 saturation, then +1.0 exposure (one stop).
+                red = (luminance + (red - luminance) * 1.30) * 2.0;
+                green = (luminance + (green - luminance) * 1.30) * 2.0;
+                blue = (luminance + (blue - luminance) * 1.30) * 2.0;
+                adjusted.setRGB(x, y, (alpha << 24)
+                    | (clampChannel(red) << 16)
+                    | (clampChannel(green) << 8)
+                    | clampChannel(blue));
             }
-        } else if (progress < 0.5f) {
-            int width = Math.max(1, Math.round(204 * (1.0f - progress * 2.0f)));
-            drawTurningPage(g, leftPageImage, 240, false, width);
-        } else {
-            int width = Math.max(1, Math.round(204 * ((progress - 0.5f) * 2.0f)));
-            drawTurningPage(g, rightPageImage, 240, true, width);
         }
+        return adjusted;
     }
 
-    private void drawTurningPage(Graphics2D g, BufferedImage page, int spineX,
-                                 boolean opensRight, int width) {
-        if (page == null) return;
-        int x = opensRight ? spineX : spineX - width;
-        g.drawImage(page, x, 18, width, 228, null);
-        g.setColor(new Color(76, 39, 31, 90));
-        g.drawLine(spineX, 20, spineX, 244);
+    private static int clampChannel(double value) {
+        return (int) Math.round(Math.max(0.0, Math.min(255.0, value)));
     }
 
-    private void drawBookAssets(Graphics2D g) {
-        if (coverImage != null) {
-            g.drawImage(coverImage, 25, 13, 430, 239, null);
-        } else {
-            g.setColor(new Color(76, 39, 31));
-            g.fillRect(25, 13, 430, 239);
-        }
-        if (leftPageImage != null) {
-            g.drawImage(leftPageImage, 32, 18, 204, 228, null);
-        } else {
-            g.setColor(new Color(233, 222, 186));
-            g.fillRect(32, 18, 204, 228);
-        }
-        if (rightPageImage != null) {
-            g.drawImage(rightPageImage, 244, 18, 204, 228, null);
-        } else {
-            g.setColor(new Color(224, 211, 175));
-            g.fillRect(244, 18, 204, 228);
-        }
+    private static int centerX(Rectangle bounds) {
+        return bounds.x + bounds.width / 2;
     }
 
     void drawEnding(Graphics2D g) {
