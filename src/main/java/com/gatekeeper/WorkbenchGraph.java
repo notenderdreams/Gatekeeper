@@ -44,18 +44,40 @@ final class WorkbenchGraph {
         private int x;
         private int centerY;
         private final GateType gate;
+        private final String customName;
+        private final Snapshot customGraph;
 
         Node(int id, int x, int centerY, GateType gate) {
+            this(id, x, centerY, gate, null, null);
+        }
+
+        Node(int id, int x, int centerY, String customName, Snapshot customGraph) {
+            this(id, x, centerY, null, customName, customGraph);
+        }
+
+        private Node(int id, int x, int centerY, GateType gate,
+                     String customName, Snapshot customGraph) {
             this.id = id;
             this.x = x;
             this.centerY = centerY;
             this.gate = gate;
+            this.customName = customName;
+            this.customGraph = customGraph;
         }
 
         int id() { return id; }
         int x() { return x; }
         int centerY() { return centerY; }
         GateType gate() { return gate; }
+        boolean isCustom() { return customGraph != null; }
+        String label() { return isCustom() ? customName : gate.label; }
+        Snapshot customGraph() { return customGraph; }
+        int inputPorts() {
+            return isCustom() ? WorkbenchGraph.inputCount(customGraph) : gate.inputPorts;
+        }
+        int outputPorts() {
+            return isCustom() ? WorkbenchGraph.outputCount(customGraph) : gate.outputPorts;
+        }
 
         void moveTo(int nextX, int nextCenterY) {
             x = nextX;
@@ -87,7 +109,27 @@ final class WorkbenchGraph {
     }
 
     record RoutePoint(int x, int y) {}
-    record NodeData(int id, int x, int centerY, GateType gate) {}
+    record NodeData(int id, int x, int centerY, GateType gate,
+                    String customName, Snapshot customGraph) {
+        NodeData(int id, int x, int centerY, GateType gate) {
+            this(id, x, centerY, gate, null, null);
+        }
+
+        static NodeData custom(int id, int x, int centerY,
+                               String name, Snapshot graph) {
+            return new NodeData(id, x, centerY, null, name, graph);
+        }
+
+        NodeData {
+            if ((gate == null) == (customGraph == null)) {
+                throw new IllegalArgumentException(
+                    "A workbench node must be primitive or custom");
+            }
+            if (customGraph != null && (customName == null || customName.isBlank())) {
+                throw new IllegalArgumentException("A custom node needs a name");
+            }
+        }
+    }
     record WireData(int sourceId, int targetId, int targetPort, List<RoutePoint> corners) {
         WireData { corners = List.copyOf(corners); }
     }
@@ -137,6 +179,10 @@ final class WorkbenchGraph {
         loadRecipe(recipe);
     }
 
+    private WorkbenchGraph(Snapshot snapshot) {
+        restore(snapshot);
+    }
+
     void clear() {
         nodes.clear();
         wires.clear();
@@ -169,7 +215,10 @@ final class WorkbenchGraph {
 
     Snapshot snapshot() {
         List<NodeData> nodeData = nodes.stream()
-            .map(node -> new NodeData(node.id, node.x, node.centerY, node.gate)).toList();
+            .map(node -> node.isCustom()
+                ? NodeData.custom(node.id, node.x, node.centerY,
+                    node.customName, node.customGraph)
+                : new NodeData(node.id, node.x, node.centerY, node.gate)).toList();
         List<WireData> wireData = wires.stream()
             .map(wire -> new WireData(wire.sourceId, wire.targetId,
                 wire.targetPort, wire.corners)).toList();
@@ -183,7 +232,10 @@ final class WorkbenchGraph {
         clear();
         if (snapshot == null) return;
         for (NodeData data : snapshot.nodes) {
-            nodes.add(new Node(data.id, data.x, data.centerY, data.gate));
+            nodes.add(data.customGraph == null
+                ? new Node(data.id, data.x, data.centerY, data.gate)
+                : new Node(data.id, data.x, data.centerY,
+                    data.customName, data.customGraph));
             nextNodeId = Math.max(nextNodeId, data.id + 1);
         }
         for (WireData data : snapshot.wires) {
@@ -198,7 +250,7 @@ final class WorkbenchGraph {
     boolean isCompleteCircuit() {
         if (nodes.isEmpty() || wireTo(OUTPUT, 0) == null) return false;
         for (Node node : nodes) {
-            for (int port = 0; port < node.gate.inputPorts; port++) {
+            for (int port = 0; port < node.inputPorts(); port++) {
                 if (wireTo(node.id, port) == null) return false;
             }
         }
@@ -226,27 +278,27 @@ final class WorkbenchGraph {
     }
 
     int inputCount() {
-        boolean input0 = false;
-        boolean input1 = false;
-        for (Wire wire : wires) {
-            if (wire.sourceId == INPUT_0) input0 = true;
-            if (wire.sourceId == INPUT_1) input1 = true;
-        }
-        for (Junction junction : junctions) {
-            if (junction.upstreamSourceId == INPUT_0) input0 = true;
-            if (junction.upstreamSourceId == INPUT_1) input1 = true;
-        }
-        return (input0 ? 1 : 0) + (input1 ? 1 : 0);
+        return inputCount(snapshot());
     }
 
     int outputCount() {
-        return (int) wires.stream().filter(wire -> wire.targetId == OUTPUT)
-            .map(wire -> wire.targetPort).distinct().count();
+        return outputCount(snapshot());
+    }
+
+    static int inputCount(Snapshot graph) {
+        return inputSources(graph).size();
+    }
+
+    static int outputCount(Snapshot graph) {
+        if (graph == null) return 0;
+        return (int) graph.wires().stream()
+            .filter(wire -> wire.targetId() == OUTPUT)
+            .map(WireData::targetPort).distinct().count();
     }
 
     Map<GateType, Integer> gateCounts() {
         Map<GateType, Integer> result = new EnumMap<>(GateType.class);
-        for (Node node : nodes) result.merge(node.gate, 1, Integer::sum);
+        addGateCounts(snapshot(), result);
         return result;
     }
 
@@ -314,7 +366,7 @@ final class WorkbenchGraph {
             return false;
         }
         int height = LogicNodeRenderer.bodyHeight(
-            dragged.gate.inputPorts, dragged.gate.outputPorts);
+            dragged.inputPorts(), dragged.outputPorts());
         int nextX = clamp(snap(x - dragOffsetX),
             WORK_X, WORK_RIGHT - LogicNodeRenderer.BODY_WIDTH);
         int nextCenterY = clamp(snap(y - dragOffsetY),
@@ -331,6 +383,18 @@ final class WorkbenchGraph {
     }
 
     EditResult click(int x, int y, GateType gateToAdd) {
+        return click(x, y, gateToAdd, null, null);
+    }
+
+    EditResult click(int x, int y, String customName, Snapshot customGraph) {
+        if (customName == null || customName.isBlank() || customGraph == null) {
+            return EditResult.NONE;
+        }
+        return click(x, y, null, customName, customGraph);
+    }
+
+    private EditResult click(int x, int y, GateType gateToAdd,
+                             String customName, Snapshot customGraph) {
         if (pendingSourceId != null) {
             Target target = targetAt(x, y);
             if (target != null) return connectTo(target);
@@ -375,13 +439,19 @@ final class WorkbenchGraph {
         }
 
         if (insideWorkArea(x, y) && nodes.size() < MAX_NODES) {
+            int inputPorts = customGraph == null
+                ? gateToAdd.inputPorts : inputCount(customGraph);
+            int outputPorts = customGraph == null
+                ? gateToAdd.outputPorts : outputCount(customGraph);
             int bodyHeight = LogicNodeRenderer.bodyHeight(
-                gateToAdd.inputPorts, gateToAdd.outputPorts);
+                inputPorts, outputPorts);
             int bodyX = clamp(x - LogicNodeRenderer.BODY_WIDTH / 2,
                 WORK_X, WORK_RIGHT - LogicNodeRenderer.BODY_WIDTH);
             int centerY = clamp(y, WORK_Y + bodyHeight / 2,
                 WORK_BOTTOM - bodyHeight / 2);
-            Node added = addNode(bodyX, centerY, gateToAdd);
+            Node added = customGraph == null
+                ? addNode(bodyX, centerY, gateToAdd)
+                : addNode(bodyX, centerY, customName, customGraph);
             selectedNodeId = added.id;
             pendingSourceId = null;
             pendingTarget = null;
@@ -455,9 +525,10 @@ final class WorkbenchGraph {
         Junction junction = junction(sourceId);
         if (junction != null) return new int[]{junction.x, junction.y};
         Node source = node(sourceId);
-        if (source == null) return null;
+        if (source == null || source.outputPorts() == 0) return null;
         return new int[]{LogicNodeRenderer.outputPortX(source.x),
-            LogicNodeRenderer.outputPortY(source.centerY, source.gate, 0)};
+            LogicNodeRenderer.outputPortY(source.centerY,
+                source.inputPorts(), source.outputPorts(), 0)};
     }
 
     int[] targetPoint(int targetId, int targetPort) {
@@ -467,9 +538,10 @@ final class WorkbenchGraph {
             return new int[]{junction.x, junction.y};
         }
         Node target = node(targetId);
-        if (target == null || targetPort < 0 || targetPort >= target.gate.inputPorts) return null;
+        if (target == null || targetPort < 0 || targetPort >= target.inputPorts()) return null;
         return new int[]{LogicNodeRenderer.inputPortX(target.x),
-            LogicNodeRenderer.inputPortY(target.centerY, target.gate, targetPort)};
+            LogicNodeRenderer.inputPortY(target.centerY,
+                target.inputPorts(), target.outputPorts(), targetPort)};
     }
 
     private void addRecipeWire(int recipeSource, int targetIndex, int targetPort) {
@@ -503,14 +575,27 @@ final class WorkbenchGraph {
         Node source = node(sourceId);
         if (source == null || !evaluating.add(sourceId)) return false;
 
-        boolean first = inputPortValue(source, 0, externalInputs, memo, evaluating);
-        boolean value = switch (source.gate) {
-            case AND -> first
-                && inputPortValue(source, 1, externalInputs, memo, evaluating);
-            case OR -> first
-                || inputPortValue(source, 1, externalInputs, memo, evaluating);
-            case NOT -> !first;
-        };
+        boolean value;
+        if (source.isCustom()) {
+            boolean[] customInputs = new boolean[2];
+            List<Integer> customInputSources = inputSources(source.customGraph);
+            for (int port = 0; port < customInputSources.size(); port++) {
+                int inputIndex = customInputSources.get(port) == INPUT_1 ? 1 : 0;
+                customInputs[inputIndex] = inputPortValue(
+                    source, port, externalInputs, memo, evaluating);
+            }
+            value = new WorkbenchGraph(source.customGraph).outputValue(0, customInputs);
+        } else {
+            boolean first = inputPortValue(source, 0,
+                externalInputs, memo, evaluating);
+            value = switch (source.gate) {
+                case AND -> first
+                    && inputPortValue(source, 1, externalInputs, memo, evaluating);
+                case OR -> first
+                    || inputPortValue(source, 1, externalInputs, memo, evaluating);
+                case NOT -> !first;
+            };
+        }
         evaluating.remove(sourceId);
         memo.put(sourceId, value);
         return value;
@@ -541,6 +626,39 @@ final class WorkbenchGraph {
         Node node = new Node(nextNodeId++, x, centerY, gate);
         nodes.add(node);
         return node;
+    }
+
+    private Node addNode(int x, int centerY, String name, Snapshot graph) {
+        Node node = new Node(nextNodeId++, x, centerY, name, graph);
+        nodes.add(node);
+        return node;
+    }
+
+    private static List<Integer> inputSources(Snapshot graph) {
+        if (graph == null) return List.of();
+        boolean input0 = false;
+        boolean input1 = false;
+        for (WireData wire : graph.wires()) {
+            if (wire.sourceId() == INPUT_0) input0 = true;
+            if (wire.sourceId() == INPUT_1) input1 = true;
+        }
+        for (JunctionData junction : graph.junctions()) {
+            if (junction.upstreamSourceId() == INPUT_0) input0 = true;
+            if (junction.upstreamSourceId() == INPUT_1) input1 = true;
+        }
+        List<Integer> result = new ArrayList<>(2);
+        if (input0) result.add(INPUT_0);
+        if (input1) result.add(INPUT_1);
+        return result;
+    }
+
+    private static void addGateCounts(Snapshot graph,
+                                      Map<GateType, Integer> counts) {
+        if (graph == null) return;
+        for (NodeData node : graph.nodes()) {
+            if (node.customGraph() == null) counts.merge(node.gate(), 1, Integer::sum);
+            else addGateCounts(node.customGraph(), counts);
+        }
     }
 
     private Junction junction(int id) {
@@ -699,8 +817,11 @@ final class WorkbenchGraph {
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
             int portX = LogicNodeRenderer.outputPortX(node.x);
-            int portY = LogicNodeRenderer.outputPortY(node.centerY, node.gate, 0);
-            if (near(x, y, portX, portY)) return node.id;
+            if (node.outputPorts() > 0) {
+                int portY = LogicNodeRenderer.outputPortY(node.centerY,
+                    node.inputPorts(), node.outputPorts(), 0);
+                if (near(x, y, portX, portY)) return node.id;
+            }
         }
         if (near(x, y, INPUT_X, INPUT_0_Y)) return INPUT_0;
         if (near(x, y, INPUT_X, INPUT_1_Y)) return INPUT_1;
@@ -716,9 +837,10 @@ final class WorkbenchGraph {
         }
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
-            for (int port = 0; port < node.gate.inputPorts; port++) {
+            for (int port = 0; port < node.inputPorts(); port++) {
                 int portX = LogicNodeRenderer.inputPortX(node.x);
-                int portY = LogicNodeRenderer.inputPortY(node.centerY, node.gate, port);
+                int portY = LogicNodeRenderer.inputPortY(node.centerY,
+                    node.inputPorts(), node.outputPorts(), port);
                 if (near(x, y, portX, portY)) return new Target(node.id, port);
             }
         }
@@ -729,7 +851,7 @@ final class WorkbenchGraph {
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
             int height = LogicNodeRenderer.bodyHeight(
-                node.gate.inputPorts, node.gate.outputPorts);
+                node.inputPorts(), node.outputPorts());
             if (x >= node.x && x <= node.x + LogicNodeRenderer.BODY_WIDTH
                 && y >= node.centerY - height / 2 && y <= node.centerY + height / 2) {
                 return node;

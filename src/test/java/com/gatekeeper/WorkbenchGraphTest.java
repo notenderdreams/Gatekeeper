@@ -108,6 +108,47 @@ public final class WorkbenchGraphTest {
             "workspace codec should round-trip the active graph exactly");
         require(WorkbenchSnapshotCodec.decode("##").nodes().isEmpty(),
             "workspace codec should preserve an intentionally empty canvas");
+
+        WorkbenchGraph composite = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        composite.clear();
+        require(composite.click(820, 365, "NAND", savedNand)
+                == WorkbenchGraph.EditResult.ADDED,
+            "a crafted circuit should be placed as one custom node");
+        WorkbenchGraph.Node customNode = composite.nodes().get(0);
+        require(customNode.isCustom() && customNode.gate() == null
+                && customNode.label().equals("NAND"),
+            "the imported circuit should remain a named composite node");
+        require(customNode.inputPorts() == 2 && customNode.outputPorts() == 1,
+            "a composite node should expose its stored circuit ports");
+        for (int port = 0; port < customNode.inputPorts(); port++) {
+            int inputY = port == 0 ? WorkbenchGraph.INPUT_0_Y : WorkbenchGraph.INPUT_1_Y;
+            require(composite.click(WorkbenchGraph.INPUT_X, inputY, GateType.AND)
+                    == WorkbenchGraph.EditResult.WIRE_STARTED,
+                "an input terminal should start wiring into the custom node");
+            int[] customInput = composite.targetPoint(customNode.id(), port);
+            require(composite.click(customInput[0], customInput[1], GateType.AND)
+                    == WorkbenchGraph.EditResult.WIRED,
+                "each custom-node input should accept a wire");
+        }
+        int[] customOutput = composite.sourcePoint(customNode.id());
+        require(composite.click(customOutput[0], customOutput[1], GateType.AND)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "the custom-node output should start a wire");
+        require(composite.click(WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y,
+                GateType.AND) == WorkbenchGraph.EditResult.WIRED,
+            "the custom node should connect to the workspace output");
+        require(composite.matches(CircuitRecipe.all().get(0)),
+            "a NAND composite node should evaluate like its stored circuit");
+        require(composite.gateCounts().getOrDefault(GateType.AND, 0) == 1
+                && composite.gateCounts().getOrDefault(GateType.NOT, 0) == 1,
+            "crafting with a custom node should count its primitive components");
+        String encodedComposite = WorkbenchSnapshotCodec.encode(composite.snapshot());
+        WorkbenchGraph.Snapshot decodedComposite =
+            WorkbenchSnapshotCodec.decode(encodedComposite);
+        require(decodedComposite.equals(composite.snapshot())
+                && decodedComposite.nodes().get(0).customGraph().equals(savedNand),
+            "saved workspaces should round-trip nested custom nodes exactly");
+
         nand.clear();
         require(nand.nodes().isEmpty() && nand.wires().isEmpty(),
             "a commissioned project should support a genuinely empty canvas");

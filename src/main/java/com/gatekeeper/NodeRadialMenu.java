@@ -109,6 +109,7 @@ final class NodeRadialMenu {
     void draw(Graphics2D graphics, LogicNodeRenderer nodeRenderer,
               BufferedImage panelTexture,
               GateType activeGate,
+              CraftedCircuitInventory.CraftedCircuit activeCircuit,
               int pointerX, int pointerY) {
         if (!open || choices.isEmpty()) return;
         Graphics2D g = (Graphics2D) graphics.create();
@@ -136,7 +137,8 @@ final class NodeRadialMenu {
             Choice choice = choices.get(index);
             GateType gate = choice.gate();
             double centerDegrees = 90.0 - index * wedgeDegrees;
-            if (choice.equals(hovered) || (!choice.isCrafted() && gate == activeGate)) {
+            boolean active = isActive(choice, activeGate, activeCircuit);
+            if (choice.equals(hovered) || active) {
                 Arc2D wedge = new Arc2D.Double(
                     centerX - OUTER_RADIUS_X + 8, centerY - OUTER_RADIUS_Y + 9,
                     (OUTER_RADIUS_X - 8) * 2.0,
@@ -167,11 +169,18 @@ final class NodeRadialMenu {
                     -LogicNodeRenderer.BODY_WIDTH / 2, 0, gate);
             }
             nodeGraphics.dispose();
-            if (!choice.isCrafted() && gate == activeGate) {
+            if (active) {
                 g.setColor(BRASS);
+                int inputs = choice.isCrafted()
+                    ? CircuitPackageRenderer.inputCount(
+                        craftedCircuits.get(choice.craftedCircuitIndex()).graph())
+                    : gate.inputPorts;
+                int outputs = choice.isCrafted()
+                    ? CircuitPackageRenderer.outputCount(
+                        craftedCircuits.get(choice.craftedCircuitIndex()).graph())
+                    : gate.outputPorts;
                 int scaledHeight = (int) Math.round(
-                    LogicNodeRenderer.bodyHeight(
-                        gate.inputPorts, gate.outputPorts) * NODE_SCALE);
+                    LogicNodeRenderer.bodyHeight(inputs, outputs) * itemScale);
                 g.fillRect(nodeCenterX - 12,
                     nodeCenterY - scaledHeight / 2 - 8, 24, 3);
             }
@@ -207,15 +216,27 @@ final class NodeRadialMenu {
         g.setStroke(new BasicStroke(3f));
         g.drawOval(centerX - INNER_RADIUS_X, centerY - INNER_RADIUS_Y,
             INNER_RADIUS_X * 2, INNER_RADIUS_Y * 2);
-        String centerLabel = hovered != null && hovered.isCrafted()
-            ? craftedCircuits.get(hovered.craftedCircuitIndex()).name()
-            : activeGate.label;
+        String centerLabel = hovered == null
+            ? activeCircuit != null ? activeCircuit.name() : activeGate.label
+            : hovered.isCrafted()
+                ? craftedCircuits.get(hovered.craftedCircuitIndex()).name()
+                : hovered.gate().label;
         drawCentered(g, centerLabel, centerX, centerY - 3, 31f, BRASS);
-        drawCentered(g, hovered != null && hovered.isCrafted() ? "CRAFTED" : "ACTIVE",
+        drawCentered(g, hovered == null ? "ACTIVE"
+                : hovered.isCrafted() ? "CRAFTED" : "PRIMITIVE",
             centerX, centerY + 27, 16f,
             new Color(132, 112, 75));
 
         g.dispose();
+    }
+
+    private boolean isActive(Choice choice, GateType activeGate,
+                             CraftedCircuitInventory.CraftedCircuit activeCircuit) {
+        if (choice.isCrafted()) {
+            return activeCircuit != null && activeCircuit.equals(
+                craftedCircuits.get(choice.craftedCircuitIndex()));
+        }
+        return activeCircuit == null && choice.gate() == activeGate;
     }
 
     private void drawPanelTexture(Graphics2D graphics, BufferedImage texture) {

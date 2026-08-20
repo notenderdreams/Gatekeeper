@@ -74,13 +74,23 @@ final class LogicNodeRenderer {
     }
 
     static int inputPortY(int centerY, GateType gate, int portIndex) {
-        return portY(centerY, gate.inputPorts, portIndex,
-            bodyHeight(gate.inputPorts, gate.outputPorts));
+        return inputPortY(centerY, gate.inputPorts, gate.outputPorts, portIndex);
     }
 
     static int outputPortY(int centerY, GateType gate, int portIndex) {
-        return portY(centerY, gate.outputPorts, portIndex,
-            bodyHeight(gate.inputPorts, gate.outputPorts));
+        return outputPortY(centerY, gate.inputPorts, gate.outputPorts, portIndex);
+    }
+
+    static int inputPortY(int centerY, int inputPorts, int outputPorts,
+                          int portIndex) {
+        return portY(centerY, inputPorts, portIndex,
+            bodyHeight(inputPorts, outputPorts));
+    }
+
+    static int outputPortY(int centerY, int inputPorts, int outputPorts,
+                           int portIndex) {
+        return portY(centerY, outputPorts, portIndex,
+            bodyHeight(inputPorts, outputPorts));
     }
 
     private static int portY(int centerY, int count, int index, int height) {

@@ -56,6 +56,7 @@ final class WorkbenchRenderer {
     }
 
     void draw(Graphics2D graphics, WorkbenchGraph graph, GateType selectedGate,
+              CraftedCircuitInventory.CraftedCircuit selectedCircuit,
               NodeRadialMenu radialMenu, int logicalMouseX, int logicalMouseY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -76,7 +77,7 @@ final class WorkbenchRenderer {
         drawOutputs(g, graph);
         drawInputs(g);
         radialMenu.draw(g, nodeRenderer, nodeTextureImage,
-            selectedGate, pointerX, pointerY);
+            selectedGate, selectedCircuit, pointerX, pointerY);
         g.dispose();
     }
 
@@ -145,10 +146,15 @@ final class WorkbenchRenderer {
 
     private void drawNodePreview(Graphics2D g, WorkbenchGraph graph) {
         for (WorkbenchGraph.Node node : graph.nodes()) {
-            nodeRenderer.draw(g, node.x(), node.centerY(), node.gate());
+            if (node.isCustom()) {
+                nodeRenderer.draw(g, node.x(), node.centerY(), node.label(),
+                    node.inputPorts(), node.outputPorts());
+            } else {
+                nodeRenderer.draw(g, node.x(), node.centerY(), node.gate());
+            }
             if (Integer.valueOf(node.id()).equals(graph.selectedNodeId())) {
                 int height = LogicNodeRenderer.bodyHeight(
-                    node.gate().inputPorts, node.gate().outputPorts);
+                    node.inputPorts(), node.outputPorts());
                 int y = node.centerY() - height / 2;
                 g.setColor(new Color(107, 68, 25, 205));
                 g.setStroke(new BasicStroke(3));

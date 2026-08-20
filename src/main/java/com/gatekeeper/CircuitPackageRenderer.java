@@ -37,22 +37,10 @@ final class CircuitPackageRenderer {
     }
 
     static int inputCount(WorkbenchGraph.Snapshot graph) {
-        boolean first = false;
-        boolean second = false;
-        for (WorkbenchGraph.WireData wire : graph.wires()) {
-            if (wire.sourceId() == WorkbenchGraph.INPUT_0) first = true;
-            if (wire.sourceId() == WorkbenchGraph.INPUT_1) second = true;
-        }
-        for (WorkbenchGraph.JunctionData junction : graph.junctions()) {
-            if (junction.upstreamSourceId() == WorkbenchGraph.INPUT_0) first = true;
-            if (junction.upstreamSourceId() == WorkbenchGraph.INPUT_1) second = true;
-        }
-        return (first ? 1 : 0) + (second ? 1 : 0);
+        return WorkbenchGraph.inputCount(graph);
     }
 
     static int outputCount(WorkbenchGraph.Snapshot graph) {
-        return (int) graph.wires().stream()
-            .filter(wire -> wire.targetId() == WorkbenchGraph.OUTPUT)
-            .map(WorkbenchGraph.WireData::targetPort).distinct().count();
+        return WorkbenchGraph.outputCount(graph);
     }
 }

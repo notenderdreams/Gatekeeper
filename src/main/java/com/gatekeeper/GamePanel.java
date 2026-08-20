@@ -154,6 +154,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
+    private CraftedCircuitInventory.CraftedCircuit heldCustomCircuit;
     private boolean nodeWheelHeld;
     private String boardMessage = "Click empty space to add. Wire output to input. Backspace deletes.";
     private int boardMessageTimer;
@@ -325,6 +326,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case STREET -> worldRenderer.drawStreet(g);
             case SHOP -> worldRenderer.drawShop(g);
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
+                heldCustomCircuit,
                 nodeRadialMenu, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
@@ -390,6 +392,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         Arrays.fill(crafted, false);
         shopModel.reset();
         craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
         contractModel.restore(null);
         productionVisible = false;
         certificationVisible = false;
@@ -732,11 +735,15 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (!choice.isCrafted()) {
             heldGate = choice.gate();
+            heldCustomCircuit = null;
             playSound("ui-confirm");
             return;
         }
         craftedCircuitInventory.select(choice.craftedCircuitIndex());
-        editSelectedCraftedCircuit();
+        heldCustomCircuit = craftedCircuitInventory.selected();
+        boardMessage = heldCustomCircuit.name() + " selected. Click the canvas to place it.";
+        boardMessageTimer = 180;
+        playSound("ui-confirm");
     }
 
     private void recordOrAutoTest() {
@@ -1011,6 +1018,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-error");
             return;
         }
+        if (stored.equals(heldCustomCircuit)) heldCustomCircuit = null;
         workbenchGraph.clear();
         workbenchGraph.restore(stored.graph());
         shopModel.grantParts(workbenchGraph.gateCounts());
@@ -1042,6 +1050,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         crafted[contract.recipeIndex()] = true;
         craftedCircuitInventory.removeSelected();
+        if (submission.equals(heldCustomCircuit)) heldCustomCircuit = null;
         contractModel.complete(contract);
         shopModel.credit(contract.reward());
         completedObjective = basicComplete() && chapter == 2 ? "ALL THREE COMMISSIONS COMPLETE" : null;
@@ -1866,7 +1875,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        WorkbenchGraph.EditResult edit = workbenchGraph.click(canvasX, canvasY, heldGate);
+        WorkbenchGraph.EditResult edit = heldCustomCircuit == null
+            ? workbenchGraph.click(canvasX, canvasY, heldGate)
+            : workbenchGraph.click(canvasX, canvasY,
+                heldCustomCircuit.name(), heldCustomCircuit.graph());
         if (edit == WorkbenchGraph.EditResult.WIRE_STARTED) {
             beginWireDrag(canvasX, canvasY);
         }
@@ -2353,6 +2365,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         craftCircuitVisible = false;
         contractModel.restore(null);
         craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
         notebookSection = NotebookRenderer.Section.GATE_INFO;
@@ -2493,6 +2506,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         updateStreetBackground();
         resetAutoTesterState();
         craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
@@ -2584,6 +2598,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.contractModel.restore(data.contractDeliveries);
         this.craftedCircuitInventory.restore(data.craftedCircuits,
             data.selectedCraftedCircuit);
+        this.heldCustomCircuit = null;
         if (!data.gateInventoryInitialized && data.boxOpened) grantStarterGates();
         updateBedroomBackground();
         updateStreetBackground();

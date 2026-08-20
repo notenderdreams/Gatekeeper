@@ -1,6 +1,8 @@
 package com.gatekeeper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 /** Compact text serialization for saved workbench node-and-wire snapshots. */
@@ -13,7 +15,13 @@ final class WorkbenchSnapshotCodec {
         for (WorkbenchGraph.NodeData node : snapshot.nodes()) {
             appendSeparator(nodes, ';');
             nodes.append(node.id()).append(',').append(node.x()).append(',')
-                .append(node.centerY()).append(',').append(node.gate().name());
+                .append(node.centerY()).append(',');
+            if (node.customGraph() == null) {
+                nodes.append(node.gate().name());
+            } else {
+                nodes.append("CUSTOM,").append(encodeText(node.customName()))
+                    .append(',').append(encodeText(encode(node.customGraph())));
+            }
         }
         StringBuilder wires = new StringBuilder();
         for (WorkbenchGraph.WireData wire : snapshot.wires()) {
@@ -43,11 +51,22 @@ final class WorkbenchSnapshotCodec {
 
         List<WorkbenchGraph.NodeData> nodes = new ArrayList<>();
         for (String item : entries(sections[0])) {
-            String[] field = item.split(",");
-            if (field.length != 4) throw new IllegalArgumentException("Invalid workbench node");
-            nodes.add(new WorkbenchGraph.NodeData(Integer.parseInt(field[0]),
-                Integer.parseInt(field[1]), Integer.parseInt(field[2]),
-                GateType.valueOf(field[3])));
+            String[] field = item.split(",", -1);
+            if (field.length == 4) {
+                nodes.add(new WorkbenchGraph.NodeData(Integer.parseInt(field[0]),
+                    Integer.parseInt(field[1]), Integer.parseInt(field[2]),
+                    GateType.valueOf(field[3])));
+            } else if (field.length == 6 && field[3].equals("CUSTOM")) {
+                WorkbenchGraph.Snapshot customGraph = decode(decodeText(field[5]));
+                if (customGraph == null) {
+                    throw new IllegalArgumentException("Custom node graph is missing");
+                }
+                nodes.add(WorkbenchGraph.NodeData.custom(Integer.parseInt(field[0]),
+                    Integer.parseInt(field[1]), Integer.parseInt(field[2]),
+                    decodeText(field[4]), customGraph));
+            } else {
+                throw new IllegalArgumentException("Invalid workbench node");
+            }
         }
         List<WorkbenchGraph.WireData> wires = new ArrayList<>();
         for (String item : entries(sections[1])) {
@@ -84,5 +103,14 @@ final class WorkbenchSnapshotCodec {
 
     private static void appendSeparator(StringBuilder value, char separator) {
         if (!value.isEmpty()) value.append(separator);
+    }
+
+    private static String encodeText(String value) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(
+            value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String decodeText(String value) {
+        return new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
     }
 }
