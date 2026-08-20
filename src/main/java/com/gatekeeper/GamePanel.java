@@ -719,8 +719,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int logicalX = mouseX >= 0 ? mouseX : W / 2;
         int logicalY = mouseY >= 0 ? mouseY : H / 2;
         nodeRadialMenu.openAt(WorkbenchRenderer.canvasX(logicalX),
-            WorkbenchRenderer.canvasY(logicalY), unlockedGateTypes());
+            WorkbenchRenderer.canvasY(logicalY), unlockedGateTypes(),
+            craftedCircuitInventory.circuits());
         playSound("ui-open");
+    }
+
+    private void applyWheelChoice(NodeRadialMenu.Choice choice) {
+        if (choice == null) {
+            playSound("ui-close");
+            return;
+        }
+        if (!choice.isCrafted()) {
+            heldGate = choice.gate();
+            playSound("ui-confirm");
+            return;
+        }
+        craftedCircuitInventory.select(choice.craftedCircuitIndex());
+        editSelectedCraftedCircuit();
     }
 
     private void recordOrAutoTest() {
@@ -1606,15 +1621,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         int logicalX = mouseX >= 0 ? mouseX : W / 2;
         int logicalY = mouseY >= 0 ? mouseY : H / 2;
-        GateType chosen = nodeRadialMenu.releaseAt(
-            WorkbenchRenderer.canvasX(logicalX),
-            WorkbenchRenderer.canvasY(logicalY));
-        if (chosen != null) {
-            heldGate = chosen;
-            playSound("ui-confirm");
-        } else {
-            playSound("ui-close");
-        }
+        NodeRadialMenu.Choice chosen = nodeRadialMenu.choiceAt(
+            WorkbenchRenderer.canvasX(logicalX), WorkbenchRenderer.canvasY(logicalY));
+        nodeRadialMenu.close();
+        applyWheelChoice(chosen);
         repaint();
     }
     @Override public void keyTyped(KeyEvent event) {
@@ -1818,14 +1828,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         int canvasX = WorkbenchRenderer.canvasX(x);
         int canvasY = WorkbenchRenderer.canvasY(y);
         if (nodeRadialMenu.isOpen()) {
-            GateType chosen = nodeRadialMenu.gateAt(canvasX, canvasY);
+            NodeRadialMenu.Choice chosen = nodeRadialMenu.choiceAt(canvasX, canvasY);
             nodeRadialMenu.close();
-            if (chosen != null) {
-                heldGate = chosen;
-                playSound("ui-confirm");
-            } else {
-                playSound("ui-close");
-            }
+            applyWheelChoice(chosen);
             repaint();
             return;
         }

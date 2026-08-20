@@ -42,6 +42,18 @@ public final class NodeRadialMenuTest {
         require(menu.unlocked().size() == 1,
             "duplicate unlocked types should appear only once");
 
+        WorkbenchGraph craftedGraph = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        CraftedCircuitInventory crafted = new CraftedCircuitInventory();
+        require(crafted.add("NAND", craftedGraph.snapshot()),
+            "test circuit should be stored");
+        menu.openAt(700, 400, List.of(GateType.AND), crafted.circuits());
+        NodeRadialMenu.Choice craftedChoice = menu.choiceAt(700, 535);
+        require(craftedChoice != null && craftedChoice.isCrafted()
+                && craftedChoice.craftedCircuitIndex() == 0,
+            "crafted circuits should follow primitive gates in the wheel");
+        require(menu.gateAt(700, 535) == null,
+            "a crafted circuit choice must not be mistaken for a primitive gate");
+
         System.out.println("NodeRadialMenuTest: all checks passed");
     }
 

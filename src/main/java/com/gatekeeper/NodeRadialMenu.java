@@ -14,6 +14,11 @@ import java.util.List;
 
 /** Modeless circular picker for unlocked workbench node types. */
 final class NodeRadialMenu {
+    record Choice(GateType gate, int craftedCircuitIndex) {
+        static Choice gate(GateType gate) { return new Choice(gate, -1); }
+        static Choice crafted(int index) { return new Choice(null, index); }
+        boolean isCrafted() { return craftedCircuitIndex >= 0; }
+    }
     // The 1536x1024 source canvas is displayed at 480x270. These Y radii
     // compensate for that non-uniform scale so the wheel is circular on screen.
     static final int OUTER_RADIUS_X = 190;
@@ -33,6 +38,8 @@ final class NodeRadialMenu {
     private static final Color BRASS = new Color(225, 187, 105);
 
     private final List<GateType> unlocked = new ArrayList<>();
+    private final List<Choice> choices = new ArrayList<>();
+    private List<CraftedCircuitInventory.CraftedCircuit> craftedCircuits = List.of();
     private int centerX;
     private int centerY;
     private boolean open;
@@ -43,11 +50,24 @@ final class NodeRadialMenu {
     List<GateType> unlocked() { return List.copyOf(unlocked); }
 
     void openAt(int requestedX, int requestedY, List<GateType> available) {
+        openAt(requestedX, requestedY, available, List.of());
+    }
+
+    void openAt(int requestedX, int requestedY, List<GateType> available,
+                List<CraftedCircuitInventory.CraftedCircuit> crafted) {
         unlocked.clear();
+        choices.clear();
         for (GateType gate : available) {
-            if (!unlocked.contains(gate)) unlocked.add(gate);
+            if (!unlocked.contains(gate)) {
+                unlocked.add(gate);
+                choices.add(Choice.gate(gate));
+            }
         }
-        if (unlocked.isEmpty()) return;
+        craftedCircuits = crafted == null ? List.of() : List.copyOf(crafted);
+        for (int index = 0; index < craftedCircuits.size(); index++) {
+            choices.add(Choice.crafted(index));
+        }
+        if (choices.isEmpty()) return;
         centerX = clamp(requestedX,
             WorkbenchGraph.WORK_X + OUTER_RADIUS_X,
             WorkbenchGraph.WORK_RIGHT - OUTER_RADIUS_X);
@@ -70,7 +90,12 @@ final class NodeRadialMenu {
     }
 
     GateType gateAt(int x, int y) {
-        if (!open || unlocked.isEmpty()) return null;
+        Choice choice = choiceAt(x, y);
+        return choice == null ? null : choice.gate();
+    }
+
+    Choice choiceAt(int x, int y) {
+        if (!open || choices.isEmpty()) return null;
         int dx = x - centerX;
         int dy = y - centerY;
         double outerDistance = square(dx / (double) OUTER_RADIUS_X)
@@ -78,14 +103,14 @@ final class NodeRadialMenu {
         double innerDistance = square(dx / (double) INNER_RADIUS_X)
             + square(dy / (double) INNER_RADIUS_Y);
         if (innerDistance < 1.0 || outerDistance > 1.0) return null;
-        return unlocked.get(wedgeIndex(x, y));
+        return choices.get(wedgeIndex(x, y));
     }
 
     void draw(Graphics2D graphics, LogicNodeRenderer nodeRenderer,
               BufferedImage panelTexture,
               GateType activeGate,
               int pointerX, int pointerY) {
-        if (!open || unlocked.isEmpty()) return;
+        if (!open || choices.isEmpty()) return;
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
             RenderingHints.VALUE_ANTIALIAS_ON);
@@ -96,8 +121,8 @@ final class NodeRadialMenu {
         g.fillRect(WorkbenchGraph.WORK_X, WorkbenchGraph.WORK_Y,
             WorkbenchGraph.WORK_WIDTH, WorkbenchGraph.WORK_HEIGHT);
 
-        GateType hovered = gateAt(pointerX, pointerY);
-        double wedgeDegrees = 360.0 / unlocked.size();
+        Choice hovered = choiceAt(pointerX, pointerY);
+        double wedgeDegrees = 360.0 / choices.size();
 
         g.setColor(new Color(24, 16, 8, 105));
         g.fillOval(centerX - OUTER_RADIUS_X + 9, centerY - OUTER_RADIUS_Y + 12,
@@ -107,17 +132,18 @@ final class NodeRadialMenu {
             OUTER_RADIUS_X * 2, OUTER_RADIUS_Y * 2);
         drawPanelTexture(g, panelTexture);
 
-        for (int index = 0; index < unlocked.size(); index++) {
-            GateType gate = unlocked.get(index);
+        for (int index = 0; index < choices.size(); index++) {
+            Choice choice = choices.get(index);
+            GateType gate = choice.gate();
             double centerDegrees = 90.0 - index * wedgeDegrees;
-            if (gate == hovered || gate == activeGate) {
+            if (choice.equals(hovered) || (!choice.isCrafted() && gate == activeGate)) {
                 Arc2D wedge = new Arc2D.Double(
                     centerX - OUTER_RADIUS_X + 8, centerY - OUTER_RADIUS_Y + 9,
                     (OUTER_RADIUS_X - 8) * 2.0,
                     (OUTER_RADIUS_Y - 9) * 2.0,
                     centerDegrees - wedgeDegrees / 2.0, wedgeDegrees,
                     Arc2D.PIE);
-                g.setColor(gate == hovered ? PANEL_HOVER : PANEL_ACTIVE);
+                g.setColor(choice.equals(hovered) ? PANEL_HOVER : PANEL_ACTIVE);
                 g.fill(wedge);
             }
 
@@ -128,11 +154,20 @@ final class NodeRadialMenu {
                 - (int) Math.round(Math.sin(radians) * NODE_RADIUS_Y);
             Graphics2D nodeGraphics = (Graphics2D) g.create();
             nodeGraphics.translate(nodeCenterX, nodeCenterY);
-            nodeGraphics.scale(NODE_SCALE, NODE_SCALE);
-            nodeRenderer.draw(nodeGraphics,
-                -LogicNodeRenderer.BODY_WIDTH / 2, 0, gate);
+            double itemScale = choices.size() > 7 ? 0.55 : NODE_SCALE;
+            nodeGraphics.scale(itemScale, itemScale);
+            if (choice.isCrafted()) {
+                CraftedCircuitInventory.CraftedCircuit circuit =
+                    craftedCircuits.get(choice.craftedCircuitIndex());
+                nodeRenderer.draw(nodeGraphics, -LogicNodeRenderer.BODY_WIDTH / 2, 0,
+                    circuit.name(), CircuitPackageRenderer.inputCount(circuit.graph()),
+                    CircuitPackageRenderer.outputCount(circuit.graph()));
+            } else {
+                nodeRenderer.draw(nodeGraphics,
+                    -LogicNodeRenderer.BODY_WIDTH / 2, 0, gate);
+            }
             nodeGraphics.dispose();
-            if (gate == activeGate) {
+            if (!choice.isCrafted() && gate == activeGate) {
                 g.setColor(BRASS);
                 int scaledHeight = (int) Math.round(
                     LogicNodeRenderer.bodyHeight(
@@ -172,8 +207,12 @@ final class NodeRadialMenu {
         g.setStroke(new BasicStroke(3f));
         g.drawOval(centerX - INNER_RADIUS_X, centerY - INNER_RADIUS_Y,
             INNER_RADIUS_X * 2, INNER_RADIUS_Y * 2);
-        drawCentered(g, activeGate.label, centerX, centerY - 3, 31f, BRASS);
-        drawCentered(g, "ACTIVE", centerX, centerY + 27, 16f,
+        String centerLabel = hovered != null && hovered.isCrafted()
+            ? craftedCircuits.get(hovered.craftedCircuitIndex()).name()
+            : activeGate.label;
+        drawCentered(g, centerLabel, centerX, centerY - 3, 31f, BRASS);
+        drawCentered(g, hovered != null && hovered.isCrafted() ? "CRAFTED" : "ACTIVE",
+            centerX, centerY + 27, 16f,
             new Color(132, 112, 75));
 
         g.dispose();
@@ -221,10 +260,10 @@ final class NodeRadialMenu {
             Math.atan2((centerY - y) / (double) OUTER_RADIUS_Y,
                 (x - centerX) / (double) OUTER_RADIUS_X));
         pointerDegrees = normalize(pointerDegrees);
-        double wedgeDegrees = 360.0 / unlocked.size();
+        double wedgeDegrees = 360.0 / choices.size();
         return (int) Math.floor(normalize(
             90.0 + wedgeDegrees / 2.0 - pointerDegrees) / wedgeDegrees)
-            % unlocked.size();
+            % choices.size();
     }
 
     private static void drawCentered(Graphics2D g, String text, int centerX,
