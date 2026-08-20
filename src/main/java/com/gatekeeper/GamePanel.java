@@ -704,6 +704,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
         workbenchGraph.clear();
+        saveCurrentProgress();
         playSound("ui-select");
         boardMessage = "Blank canvas: build Mira's " + recipes.get(selectedRecipe).name + " request.";
         boardMessageTimer = 180;
@@ -1591,6 +1592,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     playSound("ui-back");
                 } else {
                     scene = returnScene;
+                    saveCurrentProgress();
                     playSound("ui-close");
                 }
             } else if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
@@ -1607,6 +1609,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     boardMessage = "Deleted selected node and its wires.";
                     boardMessageTimer = 120;
                     playSound("ui-close");
+                    saveCurrentProgress();
                 }
             }
         }
@@ -1847,6 +1850,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 || junction == WorkbenchGraph.EditResult.WIRE_STARTED) {
                 beginWireDrag(canvasX, canvasY);
                 playSound("ui-confirm");
+                if (junction == WorkbenchGraph.EditResult.JUNCTION_ADDED) {
+                    saveCurrentProgress();
+                }
             } else {
                 playSound("ui-error");
             }
@@ -1865,8 +1871,14 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             beginWireDrag(canvasX, canvasY);
         }
         switch (edit) {
-            case ADDED -> playSound("gate-place");
-            case WIRED -> playSound("ui-confirm");
+            case ADDED -> {
+                playSound("gate-place");
+                saveCurrentProgress();
+            }
+            case WIRED -> {
+                playSound("ui-confirm");
+                saveCurrentProgress();
+            }
             case WIRE_STARTED, WIRE_CORNER, SELECTED -> playSound("ui-select");
             case JUNCTION_ADDED -> playSound("ui-confirm");
             case INVALID_WIRE -> playSound("ui-error");
@@ -1907,6 +1919,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     WorkbenchRenderer.canvasY(mouseY));
                 if (edit == WorkbenchGraph.EditResult.WIRED) {
                     playSound("ui-confirm");
+                    saveCurrentProgress();
                 } else if (edit == WorkbenchGraph.EditResult.INVALID_WIRE) {
                     playSound("ui-error");
                 }
@@ -1916,7 +1929,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
-        if (workbenchGraph.endNodeDrag()) repaint();
+        if (workbenchGraph.endNodeDrag()) {
+            saveCurrentProgress();
+            repaint();
+        }
     }
     @Override public void mouseClicked(MouseEvent event) {}
     @Override public void mouseEntered(MouseEvent event) { requestFocusInWindow(); }
@@ -2529,6 +2545,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             data.catPresent = catPresent;
             data.catX = catX;
             data.catY = catY;
+            data.workspaceRecipe = selectedRecipe;
+            data.workspaceGraph = WorkbenchSnapshotCodec.encode(workbenchGraph.snapshot());
         }
         SaveManager.saveGame(data);
     }
@@ -2576,8 +2594,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();
         }
-        this.circuit.selectRecipe(recipes.get(0));
+        int maxRecipe = data.chapter >= 3 ? recipes.size() - 1 : 2;
+        this.selectedRecipe = clamp(data.workspaceRecipe, 0, maxRecipe);
+        this.circuit.selectRecipe(recipes.get(selectedRecipe));
         this.workbenchGraph.clear();
+        try {
+            WorkbenchGraph.Snapshot workspace = WorkbenchSnapshotCodec.decode(
+                data.workspaceGraph);
+            if (workspace != null) this.workbenchGraph.restore(workspace);
+        } catch (RuntimeException invalidWorkspace) {
+            System.err.println("Failed to restore workspace: "
+                + invalidWorkspace.getMessage());
+        }
         this.dialogue.clear();
         this.line = null;
         this.completedObjective = null;

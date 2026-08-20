@@ -31,6 +31,8 @@ public final class SaveData {
     public int[] contractDeliveries = new int[5];
     public String[] craftedCircuits = new String[0];
     public int selectedCraftedCircuit = -1;
+    public int workspaceRecipe;
+    public String workspaceGraph = "";
 
     public SaveData() {
         this.chapter = 0;

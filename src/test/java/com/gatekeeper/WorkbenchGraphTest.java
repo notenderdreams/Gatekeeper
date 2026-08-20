@@ -103,6 +103,11 @@ public final class WorkbenchGraphTest {
 
         WorkbenchGraph nand = new WorkbenchGraph(CircuitRecipe.all().get(0));
         WorkbenchGraph.Snapshot savedNand = nand.snapshot();
+        String encodedWorkspace = WorkbenchSnapshotCodec.encode(savedNand);
+        require(WorkbenchSnapshotCodec.decode(encodedWorkspace).equals(savedNand),
+            "workspace codec should round-trip the active graph exactly");
+        require(WorkbenchSnapshotCodec.decode("##").nodes().isEmpty(),
+            "workspace codec should preserve an intentionally empty canvas");
         nand.clear();
         require(nand.nodes().isEmpty() && nand.wires().isEmpty(),
             "a commissioned project should support a genuinely empty canvas");

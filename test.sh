@@ -31,6 +31,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitWireRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/LogicNodeRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/WorkbenchGraph.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/WorkbenchSnapshotCodec.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/TesterPlugLayout.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/NodeRadialMenu.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/SaveData.java \

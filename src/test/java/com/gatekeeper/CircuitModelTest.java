@@ -83,6 +83,8 @@ public final class CircuitModelTest {
         save.contractDeliveries = new int[]{2, 0, 1, 0, 0};
         save.craftedCircuits = new String[]{"0@0,500,365,AND##"};
         save.selectedCraftedCircuit = 0;
+        save.workspaceRecipe = 2;
+        save.workspaceGraph = WorkbenchSnapshotCodec.encode(autoGraph.snapshot());
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -116,6 +118,14 @@ public final class CircuitModelTest {
             "crafted player circuit data should persist");
         require(loaded.selectedCraftedCircuit == 0,
             "selected crafted circuit should persist");
+        require(loaded.workspaceRecipe == 2,
+            "selected workspace recipe should persist");
+        require(loaded.workspaceGraph.equals(save.workspaceGraph),
+            "active workspace graph should persist exactly");
+        WorkbenchGraph loadedWorkspace = new WorkbenchGraph(recipes.get(0));
+        loadedWorkspace.restore(WorkbenchSnapshotCodec.decode(loaded.workspaceGraph));
+        require(loadedWorkspace.snapshot().equals(autoGraph.snapshot()),
+            "loaded workspace should restore every node and wire");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");

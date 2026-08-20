@@ -78,7 +78,10 @@ public final class SaveManager {
             }
             json.append("],\n");
             json.append("  \"selectedCraftedCircuit\": ")
-                .append(data.selectedCraftedCircuit).append("\n");
+                .append(data.selectedCraftedCircuit).append(",\n");
+            json.append("  \"workspaceRecipe\": ").append(data.workspaceRecipe).append(",\n");
+            json.append("  \"workspaceGraph\": \"")
+                .append(escapeJson(data.workspaceGraph)).append("\"\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -124,6 +127,8 @@ public final class SaveManager {
             data.contractDeliveries = parseIntArray(content, "contractDeliveries", 5);
             data.craftedCircuits = parseStringArray(content, "craftedCircuits");
             data.selectedCraftedCircuit = parseInt(content, "selectedCraftedCircuit", -1);
+            data.workspaceRecipe = parseInt(content, "workspaceRecipe", 0);
+            data.workspaceGraph = parseJsonString(content, "workspaceGraph", "");
 
             return data;
         } catch (Exception e) {
