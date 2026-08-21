@@ -111,6 +111,25 @@ final class NodeRadialMenu {
               GateType activeGate,
               CraftedCircuitInventory.CraftedCircuit activeCircuit,
               int pointerX, int pointerY) {
+        draw(graphics, nodeRenderer, panelTexture, activeGate, activeCircuit, null, null, pointerX, pointerY);
+    }
+
+    void draw(Graphics2D graphics, LogicNodeRenderer nodeRenderer,
+              BufferedImage panelTexture,
+              GateType activeGate,
+              CraftedCircuitInventory.CraftedCircuit activeCircuit,
+              ShopModel inventory,
+              int pointerX, int pointerY) {
+        draw(graphics, nodeRenderer, panelTexture, activeGate, activeCircuit, inventory, null, pointerX, pointerY);
+    }
+
+    void draw(Graphics2D graphics, LogicNodeRenderer nodeRenderer,
+              BufferedImage panelTexture,
+              GateType activeGate,
+              CraftedCircuitInventory.CraftedCircuit activeCircuit,
+              ShopModel inventory,
+              WorkbenchGraph graph,
+              int pointerX, int pointerY) {
         if (!open || choices.isEmpty()) return;
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -169,18 +188,26 @@ final class NodeRadialMenu {
                     -LogicNodeRenderer.BODY_WIDTH / 2, 0, gate);
             }
             nodeGraphics.dispose();
+
+            int inputs = choice.isCrafted()
+                ? CircuitPackageRenderer.inputCount(
+                    craftedCircuits.get(choice.craftedCircuitIndex()).graph())
+                : gate.inputPorts;
+            int outputs = choice.isCrafted()
+                ? CircuitPackageRenderer.outputCount(
+                    craftedCircuits.get(choice.craftedCircuitIndex()).graph())
+                : gate.outputPorts;
+            int scaledHeight = (int) Math.round(
+                LogicNodeRenderer.bodyHeight(inputs, outputs) * itemScale);
+            int halfWidth = (int) Math.round(LogicNodeRenderer.BODY_WIDTH * itemScale / 2.0);
+
+            // Draw count badge next to the gate
+            int count = choiceCount(choice, inventory, graph);
+            String countText = "x" + count;
+            drawCountBadge(g, countText, nodeCenterX + halfWidth + 6, nodeCenterY, count > 0, choices.size() > 7);
+
             if (active) {
                 g.setColor(BRASS);
-                int inputs = choice.isCrafted()
-                    ? CircuitPackageRenderer.inputCount(
-                        craftedCircuits.get(choice.craftedCircuitIndex()).graph())
-                    : gate.inputPorts;
-                int outputs = choice.isCrafted()
-                    ? CircuitPackageRenderer.outputCount(
-                        craftedCircuits.get(choice.craftedCircuitIndex()).graph())
-                    : gate.outputPorts;
-                int scaledHeight = (int) Math.round(
-                    LogicNodeRenderer.bodyHeight(inputs, outputs) * itemScale);
                 g.fillRect(nodeCenterX - 12,
                     nodeCenterY - scaledHeight / 2 - 8, 24, 3);
             }
@@ -217,17 +244,73 @@ final class NodeRadialMenu {
         g.drawOval(centerX - INNER_RADIUS_X, centerY - INNER_RADIUS_Y,
             INNER_RADIUS_X * 2, INNER_RADIUS_Y * 2);
         String centerLabel = hovered == null
-            ? activeCircuit != null ? activeCircuit.name() : activeGate.label
+            ? activeCircuit != null ? activeCircuit.name() : (activeGate != null ? activeGate.label : "")
             : hovered.isCrafted()
                 ? craftedCircuits.get(hovered.craftedCircuitIndex()).name()
                 : hovered.gate().label;
         drawCentered(g, centerLabel, centerX, centerY - 3, 31f, BRASS);
-        drawCentered(g, hovered == null ? "ACTIVE"
-                : hovered.isCrafted() ? "CRAFTED" : "PRIMITIVE",
-            centerX, centerY + 27, 16f,
-            new Color(132, 112, 75));
+
+        Choice activeChoice = hovered != null ? hovered
+            : (activeCircuit != null ? Choice.crafted(craftedCircuits.indexOf(activeCircuit))
+                : (activeGate != null ? Choice.gate(activeGate) : null));
+        int activeCount = choiceCount(activeChoice, inventory, graph);
+        String subLabel = (hovered == null ? "ACTIVE" : hovered.isCrafted() ? "CRAFTED" : "PRIMITIVE")
+            + " (" + activeCount + ")";
+        drawCentered(g, subLabel, centerX, centerY + 27, 16f, new Color(150, 128, 85));
 
         g.dispose();
+    }
+
+    int choiceCount(Choice choice, ShopModel inventory) {
+        return choiceCount(choice, inventory, null);
+    }
+
+    int choiceCount(Choice choice, ShopModel inventory, WorkbenchGraph graph) {
+        if (choice == null) return 0;
+        if (choice.isCrafted()) {
+            if (choice.craftedCircuitIndex() >= 0 && choice.craftedCircuitIndex() < craftedCircuits.size()) {
+                String name = craftedCircuits.get(choice.craftedCircuitIndex()).name();
+                int total = (int) craftedCircuits.stream()
+                    .filter(c -> c.name().equalsIgnoreCase(name))
+                    .count();
+                int placed = (graph != null) ? (int) graph.nodes().stream()
+                    .filter(n -> n.isCustom() && n.customName().equalsIgnoreCase(name))
+                    .count() : 0;
+                return Math.max(0, total - placed);
+            }
+            return 1;
+        }
+        if (choice.gate() != null) {
+            int total = (inventory != null) ? inventory.purchased(choice.gate().label) : 0;
+            int placed = (graph != null) ? (int) graph.nodes().stream()
+                .filter(n -> !n.isCustom() && n.gate() == choice.gate())
+                .count() : 0;
+            return Math.max(0, total - placed);
+        }
+        return 0;
+    }
+
+    private static void drawCountBadge(Graphics2D g, String text, int x, int y, boolean inStock, boolean dense) {
+        Font oldFont = g.getFont();
+        float fontSize = dense ? 18f : 23f;
+        Font badgeFont = oldFont.deriveFont(Font.BOLD, fontSize);
+        g.setFont(badgeFont);
+        FontMetrics metrics = g.getFontMetrics(badgeFont);
+        int textWidth = metrics.stringWidth(text);
+        int pillW = textWidth + 14;
+        int pillH = dense ? 22 : 26;
+        int pillX = x;
+        int pillY = y - pillH / 2;
+
+        g.setColor(new Color(10, 13, 11, 240));
+        g.fillRoundRect(pillX, pillY, pillW, pillH, 8, 8);
+        g.setColor(inStock ? new Color(140, 112, 65) : new Color(160, 45, 45));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(pillX, pillY, pillW, pillH, 8, 8);
+
+        g.setColor(inStock ? BRASS : new Color(255, 85, 85));
+        g.drawString(text, pillX + (pillW - textWidth) / 2, pillY + (pillH - metrics.getHeight()) / 2 + metrics.getAscent());
+        g.setFont(oldFont);
     }
 
     private boolean isActive(Choice choice, GateType activeGate,

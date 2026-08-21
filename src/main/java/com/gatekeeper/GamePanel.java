@@ -327,7 +327,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             case SHOP -> worldRenderer.drawShop(g);
             case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
                 heldCustomCircuit,
-                nodeRadialMenu, mouseX, mouseY);
+                nodeRadialMenu, shopModel, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
                 g, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
                 notebookNoteEditor.cursor(), notebookNoteWriting, ticks);
@@ -1888,6 +1888,40 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-select");
             repaint();
             return;
+        }
+
+        if (heldCustomCircuit == null && heldGate != null) {
+            int total = shopModel.purchased(heldGate.label);
+            int placed = (int) workbenchGraph.nodes().stream()
+                .filter(n -> !n.isCustom() && n.gate() == heldGate)
+                .count();
+            if (total - placed <= 0 && workbenchGraph.nodeAt(canvasX, canvasY) == null
+                && workbenchGraph.sourceAt(canvasX, canvasY) == null
+                && workbenchGraph.targetAt(canvasX, canvasY) == null
+                && !workbenchGraph.hasPendingWire()) {
+                boardMessage = "No " + heldGate.label + " gates remaining in bag.";
+                boardMessageTimer = 120;
+                playSound("ui-error");
+                repaint();
+                return;
+            }
+        } else if (heldCustomCircuit != null) {
+            int total = (int) craftedCircuitInventory.circuits().stream()
+                .filter(c -> c.name().equalsIgnoreCase(heldCustomCircuit.name()))
+                .count();
+            int placed = (int) workbenchGraph.nodes().stream()
+                .filter(n -> n.isCustom() && n.customName().equalsIgnoreCase(heldCustomCircuit.name()))
+                .count();
+            if (total - placed <= 0 && workbenchGraph.nodeAt(canvasX, canvasY) == null
+                && workbenchGraph.sourceAt(canvasX, canvasY) == null
+                && workbenchGraph.targetAt(canvasX, canvasY) == null
+                && !workbenchGraph.hasPendingWire()) {
+                boardMessage = "No " + heldCustomCircuit.name() + " circuits remaining in bag.";
+                boardMessageTimer = 120;
+                playSound("ui-error");
+                repaint();
+                return;
+            }
         }
 
         WorkbenchGraph.EditResult edit = heldCustomCircuit == null

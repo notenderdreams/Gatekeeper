@@ -72,6 +72,7 @@ final class WorkbenchGraph {
         int centerY() { return centerY; }
         GateType gate() { return gate; }
         boolean isCustom() { return customGraph != null; }
+        String customName() { return customName; }
         String label() { return isCustom() ? customName : gate.label; }
         Snapshot customGraph() { return customGraph; }
         int inputPorts() {
@@ -987,7 +988,7 @@ final class WorkbenchGraph {
             : new RoutePoint(previous.x, snappedY);
     }
 
-    private Integer sourceAt(int x, int y) {
+    Integer sourceAt(int x, int y) {
         for (int index = junctions.size() - 1; index >= 0; index--) {
             Junction junction = junctions.get(index);
             if (near(x, y, junction.x, junction.y)) return junction.id;
@@ -1006,7 +1007,7 @@ final class WorkbenchGraph {
         return null;
     }
 
-    private Target targetAt(int x, int y) {
+    Target targetAt(int x, int y) {
         for (int index = junctions.size() - 1; index >= 0; index--) {
             Junction junction = junctions.get(index);
             if (near(x, y, junction.x, junction.y)) {
@@ -1025,7 +1026,7 @@ final class WorkbenchGraph {
         return near(x, y, OUTPUT_X, OUTPUT_Y) ? new Target(OUTPUT, 0) : null;
     }
 
-    private Node nodeAt(int x, int y) {
+    Node nodeAt(int x, int y) {
         for (int index = nodes.size() - 1; index >= 0; index--) {
             Node node = nodes.get(index);
             int height = LogicNodeRenderer.bodyHeight(

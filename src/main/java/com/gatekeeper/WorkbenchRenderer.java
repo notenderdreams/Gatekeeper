@@ -57,7 +57,8 @@ final class WorkbenchRenderer {
 
     void draw(Graphics2D graphics, WorkbenchGraph graph, GateType selectedGate,
               CraftedCircuitInventory.CraftedCircuit selectedCircuit,
-              NodeRadialMenu radialMenu, int logicalMouseX, int logicalMouseY) {
+              NodeRadialMenu radialMenu, ShopModel inventory,
+              int logicalMouseX, int logicalMouseY) {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
             RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
@@ -77,8 +78,14 @@ final class WorkbenchRenderer {
         drawOutputs(g, graph);
         drawInputs(g);
         radialMenu.draw(g, nodeRenderer, nodeTextureImage,
-            selectedGate, selectedCircuit, pointerX, pointerY);
+            selectedGate, selectedCircuit, inventory, graph, pointerX, pointerY);
         g.dispose();
+    }
+
+    void draw(Graphics2D graphics, WorkbenchGraph graph, GateType selectedGate,
+              CraftedCircuitInventory.CraftedCircuit selectedCircuit,
+              NodeRadialMenu radialMenu, int logicalMouseX, int logicalMouseY) {
+        draw(graphics, graph, selectedGate, selectedCircuit, radialMenu, null, logicalMouseX, logicalMouseY);
     }
 
     boolean toggleSwitchAt(int logicalX, int logicalY) {

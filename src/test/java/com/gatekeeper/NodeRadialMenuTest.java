@@ -54,6 +54,30 @@ public final class NodeRadialMenuTest {
         require(menu.gateAt(700, 535) == null,
             "a crafted circuit choice must not be mistaken for a primitive gate");
 
+        ShopModel shop = new ShopModel(ShopProduct.catalog(), 250);
+        shop.grant("AND", 5);
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.AND), shop) == 5,
+            "AND gate count should reflect purchased inventory");
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.OR), shop) == 0,
+            "OR gate count should be 0 when unpurchased");
+        require(menu.choiceCount(craftedChoice, shop) == 1,
+            "crafted circuit count should reflect crafted circuit inventory");
+
+        // Test count deduction when gates are placed on the workbench
+        WorkbenchGraph bench = new WorkbenchGraph(CircuitRecipe.all().get(0));
+        bench.clear();
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.AND), shop, bench) == 5,
+            "count should be 5 on empty workbench");
+        bench.click(500, 300, GateType.AND);
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.AND), shop, bench) == 4,
+            "count should decrease to 4 when 1 AND gate is placed");
+        bench.click(650, 300, GateType.AND);
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.AND), shop, bench) == 3,
+            "count should decrease to 3 when 2 AND gates are placed");
+        bench.deleteSelected();
+        require(menu.choiceCount(NodeRadialMenu.Choice.gate(GateType.AND), shop, bench) == 4,
+            "count should increase back to 4 when a placed gate is removed");
+
         System.out.println("NodeRadialMenuTest: all checks passed");
     }
 
