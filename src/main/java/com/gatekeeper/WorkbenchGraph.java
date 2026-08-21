@@ -1,11 +1,13 @@
 package com.gatekeeper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.EnumMap;
 
@@ -294,6 +296,182 @@ final class WorkbenchGraph {
         return (int) graph.wires().stream()
             .filter(wire -> wire.targetId() == OUTPUT)
             .map(WireData::targetPort).distinct().count();
+    }
+
+    static boolean isSameArchitecture(Snapshot a, Snapshot b) {
+        if (a == null || b == null) return false;
+        if (a.nodes().size() != b.nodes().size()) return false;
+        if (a.nodes().isEmpty()) return true;
+
+        Map<Object, Integer> typesA = new HashMap<>();
+        Map<Object, Integer> typesB = new HashMap<>();
+        for (NodeData n : a.nodes()) {
+            Object key = n.customGraph() != null ? "CUSTOM:" + n.customName() : n.gate();
+            typesA.put(key, typesA.getOrDefault(key, 0) + 1);
+        }
+        for (NodeData n : b.nodes()) {
+            Object key = n.customGraph() != null ? "CUSTOM:" + n.customName() : n.gate();
+            typesB.put(key, typesB.getOrDefault(key, 0) + 1);
+        }
+        if (!typesA.equals(typesB)) return false;
+
+        int outDriverA = resolveOutputDriver(a);
+        int outDriverB = resolveOutputDriver(b);
+        if (outDriverA == Integer.MIN_VALUE || outDriverB == Integer.MIN_VALUE) {
+            if (outDriverA != outDriverB) return false;
+        }
+
+        int n = a.nodes().size();
+        List<NodeData> nodesA = a.nodes();
+        List<NodeData> nodesB = b.nodes();
+
+        int[] mappingAtoB = new int[n];
+        Arrays.fill(mappingAtoB, -1);
+        boolean[] usedB = new boolean[n];
+
+        return findIsomorphism(0, nodesA, nodesB, a, b, outDriverA, outDriverB, mappingAtoB, usedB);
+    }
+
+    private static boolean findIsomorphism(int indexA, List<NodeData> nodesA, List<NodeData> nodesB,
+                                           Snapshot snapA, Snapshot snapB,
+                                           int outDriverA, int outDriverB,
+                                           int[] mappingAtoB, boolean[] usedB) {
+        if (indexA == nodesA.size()) {
+            return verifyMapping(nodesA, nodesB, snapA, snapB, outDriverA, outDriverB, mappingAtoB);
+        }
+
+        NodeData nodeA = nodesA.get(indexA);
+        for (int indexB = 0; indexB < nodesB.size(); indexB++) {
+            if (usedB[indexB]) continue;
+            NodeData nodeB = nodesB.get(indexB);
+
+            if (!sameNodeType(nodeA, nodeB)) continue;
+
+            mappingAtoB[indexA] = indexB;
+            usedB[indexB] = true;
+
+            if (findIsomorphism(indexA + 1, nodesA, nodesB, snapA, snapB, outDriverA, outDriverB, mappingAtoB, usedB)) {
+                return true;
+            }
+
+            usedB[indexB] = false;
+            mappingAtoB[indexA] = -1;
+        }
+        return false;
+    }
+
+    private static boolean sameNodeType(NodeData a, NodeData b) {
+        if (a.customGraph() != null || b.customGraph() != null) {
+            if (a.customGraph() == null || b.customGraph() == null) return false;
+            return Objects.equals(a.customName(), b.customName())
+                && isSameArchitecture(a.customGraph(), b.customGraph());
+        }
+        return a.gate() == b.gate();
+    }
+
+    private static boolean verifyMapping(List<NodeData> nodesA, List<NodeData> nodesB,
+                                         Snapshot snapA, Snapshot snapB,
+                                         int outDriverA, int outDriverB,
+                                         int[] mappingAtoB) {
+        int expectedOutB = mapDriver(outDriverA, nodesA, nodesB, mappingAtoB);
+        if (expectedOutB != outDriverB) return false;
+
+        for (int iA = 0; iA < nodesA.size(); iA++) {
+            NodeData nodeA = nodesA.get(iA);
+            int iB = mappingAtoB[iA];
+            NodeData nodeB = nodesB.get(iB);
+
+            int inputCount = nodeA.customGraph() != null
+                ? inputCount(nodeA.customGraph())
+                : (nodeA.gate() != null ? nodeA.gate().inputPorts : 0);
+
+            if (inputCount == 1) {
+                int dA0 = resolveDriver(snapA, nodeA.id(), 0);
+                int dB0 = resolveDriver(snapB, nodeB.id(), 0);
+                if (mapDriver(dA0, nodesA, nodesB, mappingAtoB) != dB0) return false;
+            } else if (inputCount == 2) {
+                int dA0 = resolveDriver(snapA, nodeA.id(), 0);
+                int dA1 = resolveDriver(snapA, nodeA.id(), 1);
+                int dB0 = resolveDriver(snapB, nodeB.id(), 0);
+                int dB1 = resolveDriver(snapB, nodeB.id(), 1);
+
+                int mappedA0 = mapDriver(dA0, nodesA, nodesB, mappingAtoB);
+                int mappedA1 = mapDriver(dA1, nodesA, nodesB, mappingAtoB);
+
+                boolean isCommutative = (nodeA.customGraph() == null
+                    && (nodeA.gate() == GateType.AND || nodeA.gate() == GateType.OR));
+
+                boolean directMatch = (mappedA0 == dB0 && mappedA1 == dB1);
+                boolean swappedMatch = isCommutative && (mappedA0 == dB1 && mappedA1 == dB0);
+
+                if (!directMatch && !swappedMatch) return false;
+            }
+        }
+        return true;
+    }
+
+    private static int mapDriver(int driverInA, List<NodeData> nodesA, List<NodeData> nodesB, int[] mappingAtoB) {
+        if (driverInA == INPUT_0 || driverInA == INPUT_1) {
+            return driverInA;
+        }
+        for (int iA = 0; iA < nodesA.size(); iA++) {
+            if (nodesA.get(iA).id() == driverInA) {
+                int iB = mappingAtoB[iA];
+                return nodesB.get(iB).id();
+            }
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    private static int resolveOutputDriver(Snapshot s) {
+        return resolveDriver(s, OUTPUT, 0);
+    }
+
+    private static int resolveDriver(Snapshot s, int targetId, int targetPort) {
+        WireData wire = null;
+        for (WireData w : s.wires()) {
+            if (w.targetId() == targetId && w.targetPort() == targetPort) {
+                wire = w;
+                break;
+            }
+        }
+        if (wire == null) return Integer.MIN_VALUE;
+
+        int curr = wire.sourceId();
+        Set<Integer> visited = new HashSet<>();
+        while (isJunction(s, curr)) {
+            if (!visited.add(curr)) return Integer.MIN_VALUE;
+            JunctionData junc = getJunction(s, curr);
+            WireData juncWire = null;
+            for (WireData w : s.wires()) {
+                if (w.targetId() == curr && w.targetPort() == 0) {
+                    juncWire = w;
+                    break;
+                }
+            }
+            if (juncWire != null) {
+                curr = juncWire.sourceId();
+            } else if (junc != null) {
+                curr = junc.upstreamSourceId();
+            } else {
+                break;
+            }
+        }
+        return curr;
+    }
+
+    private static boolean isJunction(Snapshot s, int id) {
+        for (JunctionData j : s.junctions()) {
+            if (j.id() == id) return true;
+        }
+        return false;
+    }
+
+    private static JunctionData getJunction(Snapshot s, int id) {
+        for (JunctionData j : s.junctions()) {
+            if (j.id() == id) return j;
+        }
+        return null;
     }
 
     Map<GateType, Integer> gateCounts() {

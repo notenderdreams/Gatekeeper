@@ -47,6 +47,8 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CraftedCircuitInventory.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ProductGateRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitPackageRenderer.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/CraftCircuitModel.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/CraftCircuitRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/InventoryRenderer.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
@@ -57,7 +59,9 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/TesterPlugLayoutTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/NodeRadialMenuTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/ShopModelTest.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/NotebookNoteEditorTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/NotebookNoteEditorTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitModelTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitRendererTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.AutoTesterTest
 java -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.AutoTesterRendererTest
@@ -67,3 +71,5 @@ java -cp "$TEST_BUILD_DIR" com.gatekeeper.TesterPlugLayoutTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.NodeRadialMenuTest
 java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.ShopModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.NotebookNoteEditorTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitModelTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitRendererTest
