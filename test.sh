@@ -27,6 +27,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/Facing.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameScene.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameConstants.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/DitherRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/GameAssets.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitWireRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/LogicNodeRenderer.java \
@@ -49,6 +50,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CircuitPackageRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CraftCircuitModel.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/CraftCircuitRenderer.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/ContractRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/InventoryRenderer.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
@@ -61,7 +63,9 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/ShopModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/NotebookNoteEditorTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitModelTest.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitRendererTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitRendererTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/ContractRendererTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/DitherRendererTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.AutoTesterTest
 java -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.AutoTesterRendererTest
@@ -73,3 +77,5 @@ java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resourc
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.NotebookNoteEditorTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitRendererTest
+java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.ContractRendererTest
+java -cp "$TEST_BUILD_DIR" com.gatekeeper.DitherRendererTest

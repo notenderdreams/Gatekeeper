@@ -50,6 +50,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         new int[] {236, 195, 260, 268}, 4);
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
+    private final BufferedImage playableSceneLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
     private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/backgrounds/bedroom-normal.png");
     private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/backgrounds/bedroom-cc.jpg");
@@ -132,6 +133,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
     private boolean disableHud = false;
+    private boolean colorDitherEnabled = true;
     private boolean instantStart = false;
     private boolean catAlwaysAppears = false;
     private GameScene devReturnScene = GameScene.TITLE;
@@ -191,6 +193,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int productionQuantity = 1;
     private String productionStatus = "ENTER TO PRODUCE";
     private int contractSelection;
+    private int contractPushAmount = 1;
     private String contractStatus = "SELECT A DELIVERY";
     private ShopRenderer.Action pressedShopAction = ShopRenderer.Action.NONE;
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
@@ -264,6 +267,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 starCount = data.starCount;
                 mothCount = data.mothCount;
                 disableHud = data.disableHud;
+                colorDitherEnabled = data.colorDitherEnabled;
                 worldRenderer.setStarCount(starCount);
                 worldRenderer.setMothCount(mothCount);
                 worldRenderer.setDisableHud(disableHud);
@@ -310,28 +314,51 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving, playerRunning,
             facing, walkDistance, keys, uiScale, catPresent, catX, catY);
+        boolean colorDitheredPlayfield = DitherRenderer.appliesTo(scene, colorDitherEnabled);
+        Graphics2D sceneGraphics = colorDitheredPlayfield ? playableSceneLayer.createGraphics() : g;
+        if (colorDitheredPlayfield) {
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,
+                RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            sceneGraphics.setFont(PIXEL_FONT.deriveFont(Font.PLAIN, PIXEL_FONT_BASE_SIZE));
+            sceneGraphics.setColor(VOID);
+            sceneGraphics.fillRect(0, 0, W, H);
+        }
         switch (scene) {
-            case TITLE -> MenuRenderer.drawTitle(g, getBedroomBackground(), ticks,
+            case TITLE -> MenuRenderer.drawTitle(sceneGraphics, getBedroomBackground(), ticks,
                 mouseX, mouseY, titleSelection);
-            case CONTROLS -> MenuRenderer.drawControls(g, getBedroomBackground(), mouseX, mouseY);
-            case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
+            case CONTROLS -> MenuRenderer.drawControls(sceneGraphics, getBedroomBackground(), mouseX, mouseY);
+            case SETTINGS -> MenuRenderer.drawSettings(sceneGraphics, ticks, mouseX, mouseY,
                 settingsSelection, sound, uiScale, taskbarOnRight);
-            case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, disableHud, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound, soundSceneSelection);
+            case DEV -> MenuRenderer.drawDeveloper(sceneGraphics, mouseX, mouseY, devSection, devSelection,
+                devFocusRight, calibratorEnabled, showCollisions, disableHud, instantStart, catAlwaysAppears,
+                colorDitherEnabled, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound,
+                soundSceneSelection);
             case INTRO -> {
-                g.setColor(Color.BLACK);
-                g.fillRect(0, 0, W, H);
+                sceneGraphics.setColor(Color.BLACK);
+                sceneGraphics.fillRect(0, 0, W, H);
             }
-            case BEDROOM -> worldRenderer.drawBedroom(g);
-            case STREET -> worldRenderer.drawStreet(g);
-            case SHOP -> worldRenderer.drawShop(g);
-            case BOARD -> workbenchRenderer.draw(g, workbenchGraph, heldGate,
+            case BEDROOM -> worldRenderer.drawBedroom(sceneGraphics);
+            case STREET -> worldRenderer.drawStreet(sceneGraphics);
+            case SHOP -> worldRenderer.drawShop(sceneGraphics);
+            case BOARD -> workbenchRenderer.draw(sceneGraphics, workbenchGraph, heldGate,
                 heldCustomCircuit,
                 nodeRadialMenu, shopModel, mouseX, mouseY);
             case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
-                g, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
+                sceneGraphics, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
                 notebookNoteEditor.cursor(), notebookNoteWriting, ticks);
-            case END -> notebookRenderer.drawEnding(g);
+            case END -> notebookRenderer.drawEnding(sceneGraphics);
+        }
+        if (colorDitheredPlayfield) {
+            sceneGraphics.dispose();
+            DitherRenderer.applyColorDither(playableSceneLayer, ticks);
+            g.drawImage(playableSceneLayer, 0, 0, null);
         }
         if (scene == GameScene.BOARD) {
             worldRenderer.drawPositionMarkers(g, 0);
@@ -354,7 +381,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.SHOP && contractVisible) {
             contractRenderer.draw(g, contractModel.available(chapter), contractSelection,
-                contractModel, craftedCircuitInventory, contractStatus);
+                contractModel, craftedCircuitInventory, shopModel, contractPushAmount, contractStatus, mouseX, mouseY);
         }
         if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount(),
             craftedCircuitInventory, recipes);
@@ -1017,34 +1044,96 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         saveCurrentProgress();
     }
 
-    private void submitSelectedOrder(List<ContractModel.Contract> contracts) {
-        if (contracts.isEmpty()) return;
-        CraftedCircuitInventory.CraftedCircuit submission = craftedCircuitInventory.selected();
-        if (submission == null) {
-            contractStatus = "FAILED: SELECT A CRAFTED CIRCUIT";
-            playSound("ui-error");
+    private void updateContractPushAmount(List<ContractModel.Contract> contracts) {
+        if (contracts == null || contracts.isEmpty()) {
+            contractPushAmount = 0;
             return;
         }
         contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
         ContractModel.Contract contract = contracts.get(contractSelection);
+        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+        int produced = shopModel.purchased(contract.product());
+        int totalAvailable = matchingCrafted + produced;
+        int remainingQuota = contractModel.remaining(contract);
+        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+        contractPushAmount = maxPush > 0 ? clamp(contractPushAmount, 1, maxPush) : (totalAvailable > 0 ? 1 : 0);
+    }
+
+    private void submitSelectedOrder(List<ContractModel.Contract> contracts) {
+        deliverSelectedContract(contracts, contractPushAmount);
+    }
+
+    private void deliverSelectedContract(List<ContractModel.Contract> contracts, int amount) {
+        if (contracts.isEmpty()) return;
+        contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
+        ContractModel.Contract contract = contracts.get(contractSelection);
         CircuitRecipe target = recipes.get(contract.recipeIndex());
-        WorkbenchGraph testedGraph = new WorkbenchGraph(target);
-        testedGraph.restore(submission.graph());
-        int failed = testedGraph.failedCases(target);
-        if (failed > 0) {
-            contractStatus = "FAILED: " + failed + " / " + target.truth.length + " TEST CASES";
-            playSound("failure");
+
+        List<CraftedCircuitInventory.CraftedCircuit> matchingCrafted = new ArrayList<>();
+        for (CraftedCircuitInventory.CraftedCircuit circuit : craftedCircuitInventory.circuits()) {
+            WorkbenchGraph tested = new WorkbenchGraph(target);
+            tested.restore(circuit.graph());
+            if (tested.failedCases(target) == 0) {
+                matchingCrafted.add(circuit);
+            }
+        }
+        int matchingCraftedCount = matchingCrafted.size();
+        int producedCount = shopModel.purchased(contract.product());
+        int totalAvailable = matchingCraftedCount + producedCount;
+
+        if (totalAvailable <= 0) {
+            contractStatus = "NO " + contract.product() + " CIRCUITS READY IN STOCK";
+            playSound("ui-error");
             return;
         }
 
+        int toDeliver = Math.max(1, Math.min(amount, totalAvailable));
+        int remainingQuota = contractModel.remaining(contract);
+        if (remainingQuota > 0) {
+            toDeliver = Math.min(toDeliver, remainingQuota);
+        }
+
+        if (toDeliver <= 0) {
+            contractStatus = "ORDER QUOTA ALREADY FULFILLED";
+            playSound("ui-error");
+            return;
+        }
+
+        int fromCrafted = Math.min(toDeliver, matchingCraftedCount);
+        int fromProduced = toDeliver - fromCrafted;
+
+        for (int i = 0; i < fromCrafted; i++) {
+            CraftedCircuitInventory.CraftedCircuit toRemove = matchingCrafted.get(i);
+            int idx = craftedCircuitInventory.circuits().indexOf(toRemove);
+            if (idx >= 0) {
+                craftedCircuitInventory.select(idx);
+                craftedCircuitInventory.removeSelected();
+                if (toRemove.equals(heldCustomCircuit)) heldCustomCircuit = null;
+            }
+        }
+
+        if (fromProduced > 0) {
+            shopModel.consume(contract.product(), fromProduced);
+        }
+
+        int payout = toDeliver * contract.unitReward();
+        shopModel.credit(payout);
+        contractModel.deliver(contract, toDeliver);
         crafted[contract.recipeIndex()] = true;
-        craftedCircuitInventory.removeSelected();
-        if (submission.equals(heldCustomCircuit)) heldCustomCircuit = null;
-        contractModel.complete(contract);
-        shopModel.credit(contract.reward());
-        completedObjective = basicComplete() && chapter == 2 ? "ALL THREE COMMISSIONS COMPLETE" : null;
-        contractStatus = "PASSED: " + target.name + "  +" + contract.reward() + "C";
+
+        if (basicComplete() && chapter == 2) {
+            completedObjective = "ALL THREE COMMISSIONS COMPLETE";
+        }
+
+        if (contractModel.isCompleted(contract)) {
+            contractStatus = "ORDER COMPLETE: " + contract.product() + " (+" + payout + "C)";
+        } else {
+            contractStatus = "DELIVERED " + toDeliver + "x " + contract.product() + " ("
+                + contractModel.deliveries(contract) + "/" + contract.requiredCount() + ") +" + payout + "C";
+        }
+
         playSound("success");
+        updateContractPushAmount(contracts);
         saveCurrentProgress();
     }
 
@@ -1225,7 +1314,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 adjustSelectedDevSound((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
-            } else if (devSection == 2 && devSelection == 5 && devFocusRight
+            } else if (devSection == 2 && devSelection == 6 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -25 : 25;
@@ -1233,7 +1322,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-click");
                 saveCurrentProgress();
-            } else if (devSection == 2 && devSelection == 6 && devFocusRight
+            } else if (devSection == 2 && devSelection == 7 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1;
@@ -1356,19 +1445,41 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
                 contractSelection = (contractSelection + direction + contracts.size()) % contracts.size();
-                contractStatus = "SELECT A DELIVERY";
+                contractStatus = "READY TO DELIVER";
+                updateContractPushAmount(contracts);
                 playSound("ui-select");
-            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
-                craftedCircuitInventory.moveSelection(-1);
-                contractStatus = "SELECT AN ORDER AND CIRCUIT";
-                playSound("ui-select");
-            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
-                craftedCircuitInventory.moveSelection(1);
-                contractStatus = "SELECT AN ORDER AND CIRCUIT";
-                playSound("ui-select");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A || key == KeyEvent.VK_MINUS) {
+                if (contractPushAmount > 1) {
+                    contractPushAmount--;
+                    playSound("ui-select");
+                }
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_EQUALS || key == KeyEvent.VK_PLUS) {
+                if (!contracts.isEmpty()) {
+                    ContractModel.Contract contract = contracts.get(contractSelection);
+                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                    int produced = shopModel.purchased(contract.product());
+                    int totalAvailable = matchingCrafted + produced;
+                    int remainingQuota = contractModel.remaining(contract);
+                    int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                    if (contractPushAmount < maxPush) {
+                        contractPushAmount++;
+                        playSound("ui-select");
+                    }
+                }
+            } else if (key == KeyEvent.VK_P) {
+                if (!contracts.isEmpty()) {
+                    ContractModel.Contract contract = contracts.get(contractSelection);
+                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                    int produced = shopModel.purchased(contract.product());
+                    int totalAvailable = matchingCrafted + produced;
+                    int remainingQuota = contractModel.remaining(contract);
+                    int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                    contractPushAmount = Math.max(0, maxPush);
+                    playSound("ui-select");
+                }
             } else if (!contracts.isEmpty()
                 && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE)) {
-                submitSelectedOrder(contracts);
+                deliverSelectedContract(contracts, contractPushAmount);
             }
             repaint();
             return;
@@ -1463,7 +1574,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             && line == null && near(240, 160) && chapter >= 2) {
             contractVisible = true;
             contractSelection = 0;
-            contractStatus = "SELECT AN ORDER AND CIRCUIT";
+            contractStatus = "READY TO DELIVER";
+            updateContractPushAmount(contractModel.available(chapter));
             keys.clear();
             playSound("ui-open");
             repaint();
@@ -1682,7 +1794,65 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        if (certificationVisible || productionVisible || contractVisible) return;
+        if (scene == GameScene.SHOP && contractVisible) {
+            List<ContractModel.Contract> contracts = contractModel.available(chapter);
+            ContractRenderer.Action action = contractRenderer.actionAt(x, y, contracts);
+            switch (action) {
+                case SELECT_ORDER -> {
+                    int idx = contractRenderer.orderIndexAt(x, y, contracts);
+                    if (idx >= 0 && idx < contracts.size()) {
+                        contractSelection = idx;
+                        contractStatus = "READY TO DELIVER";
+                        updateContractPushAmount(contracts);
+                        playSound("ui-select");
+                    }
+                }
+                case DECREASE_AMOUNT -> {
+                    if (contractPushAmount > 1) {
+                        contractPushAmount--;
+                        playSound("ui-select");
+                    }
+                }
+                case INCREASE_AMOUNT -> {
+                    if (!contracts.isEmpty()) {
+                        ContractModel.Contract contract = contracts.get(contractSelection);
+                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                        int produced = shopModel.purchased(contract.product());
+                        int totalAvailable = matchingCrafted + produced;
+                        int remainingQuota = contractModel.remaining(contract);
+                        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                        if (contractPushAmount < maxPush) {
+                            contractPushAmount++;
+                            playSound("ui-select");
+                        }
+                    }
+                }
+                case MAX_AMOUNT -> {
+                    if (!contracts.isEmpty()) {
+                        ContractModel.Contract contract = contracts.get(contractSelection);
+                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                        int produced = shopModel.purchased(contract.product());
+                        int totalAvailable = matchingCrafted + produced;
+                        int remainingQuota = contractModel.remaining(contract);
+                        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                        contractPushAmount = Math.max(0, maxPush);
+                        playSound("ui-select");
+                    }
+                }
+                case DELIVER -> {
+                    deliverSelectedContract(contracts, contractPushAmount);
+                }
+                case CLOSE -> {
+                    contractVisible = false;
+                    playSound("ui-close");
+                }
+                case NONE -> {}
+            }
+            repaint();
+            return;
+        }
+
+        if (certificationVisible || productionVisible) return;
 
         if (shopOverlayVisible) {
             int product = shopRenderer.productAt(x, y, knownInventoryProductCount());
@@ -1821,7 +1991,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 2) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 58 + i * 26;
+                    int oy = 56 + i * 24;
                     if (inside(x, y, 160, oy, 285, 22)) {
                         devFocusRight = true;
                         devSelection = i;
@@ -2056,7 +2226,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 2) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 58 + i * 26;
+                    int oy = 56 + i * 24;
                     if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
                         devFocusRight = true;
                         devSelection = i;
@@ -2269,6 +2439,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-confirm");
                 saveCurrentProgress();
             } else if (devSelection == 5) {
+                colorDitherEnabled = !colorDitherEnabled;
+                playSound("ui-confirm");
+                saveCurrentProgress();
+            } else if (devSelection == 6) {
                 int[] counts = {0, 25, 50, 75, 100, 150, 200};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -2278,7 +2452,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-            } else if (devSelection == 6) {
+            } else if (devSelection == 7) {
                 int[] counts = {0, 1, 2, 3, 5, 8, 12, 15, 20};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -2314,6 +2488,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (disableHud) {
             modified.add("    \"disable_hud\": \"ENABLED\"");
+        }
+        if (!colorDitherEnabled) {
+            modified.add("    \"color_dither\": \"DISABLED\"");
         }
         if (instantStart) {
             modified.add("    \"instant_start\": \"ENABLED\"");
@@ -2387,7 +2564,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        if (devSection == 2) return 7;
+        if (devSection == 2) return 8;
         if (devSection == 3) return 2;
         return 0;
     }
@@ -2592,6 +2769,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.starCount = starCount;
         data.mothCount = mothCount;
         data.disableHud = disableHud;
+        data.colorDitherEnabled = colorDitherEnabled;
         data.shopBalance = shopModel.balance();
         data.gateInventory = shopModel.purchased();
         data.gateInventoryInitialized = true;
@@ -2649,6 +2827,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.starCount = data.starCount;
         this.mothCount = data.mothCount;
         this.disableHud = data.disableHud;
+        this.colorDitherEnabled = data.colorDitherEnabled;
         this.shopModel.restore(data.shopBalance, data.gateInventory);
         this.contractModel.restore(data.contractDeliveries);
         this.craftedCircuitInventory.restore(data.craftedCircuits,

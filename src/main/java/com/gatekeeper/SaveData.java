@@ -25,6 +25,7 @@ public final class SaveData {
     public int mothCount = 3;
     public boolean taskbarOnRight = false;
     public boolean disableHud = false;
+    public boolean colorDitherEnabled = true;
     public int shopBalance = 250;
     public int[] gateInventory = new int[8];
     public boolean gateInventoryInitialized;

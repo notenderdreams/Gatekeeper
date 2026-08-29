@@ -52,6 +52,7 @@ public final class SaveManager {
             json.append("  \"mothCount\": ").append(data.mothCount).append(",\n");
             json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append(",\n");
             json.append("  \"disableHud\": ").append(data.disableHud).append(",\n");
+            json.append("  \"colorDitherEnabled\": ").append(data.colorDitherEnabled).append(",\n");
             json.append("  \"shopBalance\": ").append(data.shopBalance).append(",\n");
             json.append("  \"gateInventory\": [");
             if (data.gateInventory != null) {
@@ -121,6 +122,7 @@ public final class SaveManager {
             data.mothCount = parseInt(content, "mothCount", 3);
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
             data.disableHud = parseBoolean(content, "disableHud", false);
+            data.colorDitherEnabled = parseBoolean(content, "colorDitherEnabled", true);
             data.shopBalance = parseInt(content, "shopBalance", 250);
             data.gateInventory = parseIntArray(content, "gateInventory", 8);
             data.gateInventoryInitialized = content.contains("\"gateInventory\"");
