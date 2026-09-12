@@ -1,10 +1,13 @@
 package com.gatekeeper;
 
+import java.util.Arrays;
+
 /**
- * Drives the LogicLens' timed four-row truth-table sweep.
+ * Drives the LogicLens' timed four-row truth-table sweep over a workbench graph.
  *
  * <p>The workbench owns presentation and sound effects; this class owns only tester
- * attachment and test progression, making it usable by another board UI later.</p>
+ * attachment, observations, and test progression. The selected target describes
+ * expected behavior only; it never changes the graph being tested.</p>
  */
 final class AutoTester {
     private static final int FRAMES_PER_ROW = 36;
@@ -18,10 +21,14 @@ final class AutoTester {
     private int row = -1;
     private int frame;
     private int failures;
+    private CircuitRecipe target;
+    private final Boolean[] observations = new Boolean[4];
 
     boolean isAttached() { return attached; }
     boolean isRunning() { return running; }
     int currentRow() { return row; }
+    CircuitRecipe target() { return target; }
+    Boolean[] observations() { return observations.clone(); }
 
     void toggleAttachment() { attached = !attached; }
 
@@ -31,25 +38,28 @@ final class AutoTester {
         row = -1;
         frame = 0;
         failures = 0;
+        target = null;
+        Arrays.fill(observations, null);
     }
 
-    boolean start(CircuitModel circuit) {
-        if (running || !circuit.recipe().isComplete(circuit.placed())) return false;
+    boolean start(CircuitRecipe nextTarget) {
+        if (running || nextTarget == null) return false;
         running = true;
         row = 0;
         frame = 0;
         failures = 0;
-        circuit.clearObservations();
-        circuit.setInputs(false, false);
+        target = nextTarget;
+        Arrays.fill(observations, null);
         return true;
     }
 
-    Tick update(CircuitModel circuit) {
+    Tick update(WorkbenchGraph graph) {
         if (!running || ++frame < FRAMES_PER_ROW) return Tick.IDLE;
 
-        boolean actual = circuit.output();
-        circuit.recordCurrent();
-        if (actual != circuit.recipe().truth[row]) failures++;
+        boolean actual = graph.outputValue(0,
+            new boolean[] { row >= 2, row % 2 == 1 });
+        observations[row] = actual;
+        if (actual != target.truth[row]) failures++;
 
         if (row == 3) {
             running = false;
@@ -59,7 +69,22 @@ final class AutoTester {
 
         row++;
         frame = 0;
-        circuit.setInputs(row >= 2, row % 2 == 1);
         return new Tick(true, false, false);
+    }
+
+    boolean stop() {
+        if (!running) return false;
+        running = false;
+        row = -1;
+        frame = 0;
+        return true;
+    }
+
+    void clearResults() {
+        running = false;
+        row = -1;
+        frame = 0;
+        failures = 0;
+        Arrays.fill(observations, null);
     }
 }

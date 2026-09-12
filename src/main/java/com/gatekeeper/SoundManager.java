@@ -19,7 +19,13 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Small cached WAV player. Missing or unsupported audio never interrupts gameplay. */
 public final class SoundManager {
-    private static final long MUSIC_CROSSFADE_MICROS = 1_500_000L;
+    public enum MusicMode {
+        MENU, PLAYLIST
+    }
+
+    private static final long FADE_OUT_MICROS = 5_000_000L;
+    private static final long FADE_IN_MICROS = 4_000_000L;
+    private static final float AMBIENT_GAIN_MULTIPLIER = 2.5f;
     private static final Map<String, List<String>> SCENE_SOUNDS = buildSceneSounds();
     private final Map<String, Clip> clips = new HashMap<>();
     private final Map<String, Float> clipVolumeMultipliers = new HashMap<>();
@@ -34,9 +40,20 @@ public final class SoundManager {
     private final AtomicLong activePreviewRequest = new AtomicLong();
     private final AtomicReference<PreviewRequest> pendingPreview = new AtomicReference<>();
     private final AtomicBoolean previewWorkerScheduled = new AtomicBoolean();
+    private MusicMode currentMode;
+    private MusicMode desiredMode;
+    private String menuTrackPath;
+    private List<String> playlist = Collections.emptyList();
+    private int playlistIndex;
     private Clip music;
-    private Clip fadingMusic;
     private String musicPath;
+    private String targetTrackPath;
+    private float fadeMultiplier = 1.0f;
+    private boolean isFadingOut;
+    private boolean isFadingIn;
+    private long fadeStartTimeNano;
+    private long fadeDurationNanos;
+    private float fadeStartMultiplier = 1.0f;
     private Clip ambient;
     private String ambientPath;
     private Clip preview;
@@ -47,7 +64,7 @@ public final class SoundManager {
     private boolean musicUnavailable;
     private boolean ambientUnavailable;
     private float masterVolume = 1.0f;
-    private float musicVolume = 0.75f;
+    private float musicVolume = 0.40f;
     private float fxVolume = 0.85f;
 
     public void play(String resourcePath) {
@@ -170,49 +187,182 @@ public final class SoundManager {
 
     private record PreviewRequest(long id, String resourcePath, float gain) {}
 
-    public void loop(String resourcePath) {
-        if (previewing) return;
-        if (musicUnavailable) return;
-        if (music != null && resourcePath.equals(musicPath) && music.isRunning()) return;
-        stopMusic();
-        music = load(resourcePath);
-        if (music == null) {
-            musicUnavailable = true;
-            return;
+    public void playMenuMusic(String resourcePath) {
+        if (resourcePath == null) return;
+        this.menuTrackPath = resourcePath;
+        this.desiredMode = MusicMode.MENU;
+    }
+
+    public void playGamePlaylist(List<String> tracks) {
+        if (tracks == null || tracks.isEmpty()) return;
+        if (!this.playlist.equals(tracks)) {
+            this.playlist = List.copyOf(tracks);
         }
-        musicPath = resourcePath;
-        setGain(music, musicGain(masterVolume * musicVolume));
-        music.loop(Clip.LOOP_CONTINUOUSLY);
+        this.desiredMode = MusicMode.PLAYLIST;
+    }
+
+    public void loop(String resourcePath) {
+        playMenuMusic(resourcePath);
+    }
+
+    public void stopMenuMusic() {
+        if (currentMode == MusicMode.MENU || desiredMode == MusicMode.MENU) {
+            stopAmbient();
+            if (music != null) {
+                music.stop();
+                music.close();
+                music = null;
+                musicPath = null;
+            }
+            isFadingOut = false;
+            isFadingIn = false;
+            fadeMultiplier = 0.0f;
+        }
     }
 
     public void updateMusic() {
-        if (previewing) return;
-        if (music == null || fadingMusic != null || !music.isRunning()) return;
-        long remaining = music.getMicrosecondLength() - music.getMicrosecondPosition();
-        if (remaining <= 0 || remaining > MUSIC_CROSSFADE_MICROS) return;
-        fadingMusic = load(musicPath);
-        if (fadingMusic == null) return;
-        setGain(fadingMusic, musicGain(0.0f));
-        fadingMusic.loop(Clip.LOOP_CONTINUOUSLY);
-        setGain(music, musicGain(masterVolume * musicVolume));
-        musicCrossfadeStart = System.nanoTime();
-    }
+        if (previewing || musicUnavailable || desiredMode == null) return;
 
-    private long musicCrossfadeStart;
+        if (desiredMode != currentMode) {
+            if (currentMode == MusicMode.MENU && desiredMode == MusicMode.PLAYLIST) {
+                stopMenuMusic();
+                currentMode = desiredMode;
+            } else if (music != null && !isFadingOut) {
+                beginFadeOut(FADE_OUT_MICROS);
+            }
+        }
 
-    public void updateCrossfade() {
-        if (previewing) return;
-        if (fadingMusic == null) return;
-        float progress = Math.min(1.0f, (System.nanoTime() - musicCrossfadeStart) / 1_000_000_000.0f
-            / (MUSIC_CROSSFADE_MICROS / 1_000_000.0f));
-        float musicGain = masterVolume * musicVolume;
-        setGain(music, musicGain(musicGain * (1.0f - progress)));
-        setGain(fadingMusic, musicGain(musicGain * progress));
-        if (progress >= 1.0f) {
+        if (isFadingOut) {
+            float progress = Math.min(1.0f, (System.nanoTime() - fadeStartTimeNano) / (float) fadeDurationNanos);
+            fadeMultiplier = Math.max(0.0f, fadeStartMultiplier * (1.0f - progress));
+            setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
+            if (ambient != null && currentMode == MusicMode.MENU) {
+                setGain(ambient, ambientGain(masterVolume * musicVolume * fadeMultiplier));
+            }
+            if (progress >= 1.0f) {
+                music.stop();
+                music.close();
+                music = null;
+                if (currentMode == MusicMode.MENU) {
+                    stopAmbient();
+                }
+                isFadingOut = false;
+                fadeMultiplier = 0.0f;
+            }
+            return;
+        }
+
+        if (isFadingIn) {
+            float progress = Math.min(1.0f, (System.nanoTime() - fadeStartTimeNano) / (float) fadeDurationNanos);
+            fadeMultiplier = progress;
+            setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
+            if (ambient != null && currentMode == MusicMode.MENU) {
+                setGain(ambient, ambientGain(masterVolume * musicVolume * fadeMultiplier));
+            }
+            if (progress >= 1.0f) {
+                isFadingIn = false;
+                fadeMultiplier = 1.0f;
+            }
+            return;
+        }
+
+        if (music == null) {
+            String nextPath = selectNextTrackPath();
+            if (nextPath == null) return;
+            music = load(nextPath);
+            if (music == null) {
+                if (desiredMode == MusicMode.PLAYLIST && !playlist.isEmpty()) {
+                    playlistIndex = (playlistIndex + 1) % playlist.size();
+                }
+                return;
+            }
+            musicPath = nextPath;
+            currentMode = desiredMode;
+            beginFadeIn(FADE_IN_MICROS);
+            music.setFramePosition(0);
+            music.start();
+            return;
+        }
+
+        long length = music.getMicrosecondLength();
+        long pos = music.getMicrosecondPosition();
+        long remaining = length - pos;
+
+        if (remaining <= 0 || !music.isRunning()) {
             music.stop();
             music.close();
-            music = fadingMusic;
-            fadingMusic = null;
+            music = null;
+            fadeMultiplier = 0.0f;
+            if (currentMode == MusicMode.PLAYLIST && !playlist.isEmpty()) {
+                playlistIndex = (playlistIndex + 1) % playlist.size();
+            }
+        } else if (remaining <= FADE_OUT_MICROS) {
+            fadeMultiplier = Math.max(0.0f, remaining / (float) FADE_OUT_MICROS);
+            setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
+        } else {
+            fadeMultiplier = 1.0f;
+            setGain(music, musicGain(masterVolume * musicVolume));
+        }
+    }
+
+    public void updateCrossfade() {
+        // Handled within updateMusic()
+    }
+
+    public void switchToTrack(String resourcePath) {
+        if (resourcePath == null) return;
+        if (resourcePath.equals(musicPath) && !isFadingOut) return;
+        targetTrackPath = resourcePath;
+        if (playlist.contains(resourcePath)) {
+            playlistIndex = playlist.indexOf(resourcePath);
+        }
+        if (music != null) {
+            beginFadeOut(FADE_OUT_MICROS);
+        }
+    }
+
+    public MusicMode musicMode() { return currentMode; }
+    public String currentMusicPath() { return musicPath; }
+    public String targetTrackPath() { return targetTrackPath != null ? targetTrackPath : musicPath; }
+    public boolean isFadingOut() { return isFadingOut; }
+    public boolean isFadingIn() { return isFadingIn; }
+    public int playlistIndex() { return playlistIndex; }
+
+    private String selectNextTrackPath() {
+        if (targetTrackPath != null) {
+            String target = targetTrackPath;
+            targetTrackPath = null;
+            return target;
+        }
+        if (desiredMode == MusicMode.MENU) {
+            return menuTrackPath;
+        }
+        if (playlist.isEmpty()) return null;
+        if (playlistIndex < 0 || playlistIndex >= playlist.size()) {
+            playlistIndex = 0;
+        }
+        return playlist.get(playlistIndex);
+    }
+
+    private void beginFadeOut(long durationMicros) {
+        isFadingOut = true;
+        isFadingIn = false;
+        fadeStartTimeNano = System.nanoTime();
+        fadeDurationNanos = Math.max(1_000_000L, durationMicros * 1000L);
+        fadeStartMultiplier = fadeMultiplier;
+    }
+
+    private void beginFadeIn(long durationMicros) {
+        isFadingIn = true;
+        isFadingOut = false;
+        fadeStartTimeNano = System.nanoTime();
+        fadeDurationNanos = Math.max(1_000_000L, durationMicros * 1000L);
+        fadeMultiplier = 0.0f;
+        if (music != null) {
+            setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
+        }
+        if (ambient != null && currentMode == MusicMode.MENU) {
+            setGain(ambient, ambientGain(masterVolume * musicVolume * fadeMultiplier));
         }
     }
 
@@ -227,7 +377,8 @@ public final class SoundManager {
             return;
         }
         ambientPath = resourcePath;
-        setGain(ambient, gameplayGain(masterVolume * musicVolume));
+        float currentFade = (currentMode == MusicMode.MENU && (isFadingIn || isFadingOut)) ? fadeMultiplier : 1.0f;
+        setGain(ambient, ambientGain(masterVolume * musicVolume * currentFade));
         ambient.loop(Clip.LOOP_CONTINUOUSLY);
     }
 
@@ -238,8 +389,7 @@ public final class SoundManager {
     public void setMusicMuted(boolean muted) {
         if (musicMuted == muted) return;
         musicMuted = muted;
-        if (music != null) setGain(music, musicGain(masterVolume * musicVolume));
-        if (fadingMusic != null) setGain(fadingMusic, musicGain(masterVolume * musicVolume));
+        if (music != null) setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
     }
 
     public static String[] soundScenes() {
@@ -306,9 +456,11 @@ public final class SoundManager {
     }
 
     private void refreshVolumes() {
-        if (music != null) setGain(music, musicGain(masterVolume * musicVolume));
-        if (fadingMusic != null) setGain(fadingMusic, musicGain(masterVolume * musicVolume));
-        if (ambient != null) setGain(ambient, gameplayGain(masterVolume * musicVolume));
+        if (music != null) setGain(music, musicGain(masterVolume * musicVolume * fadeMultiplier));
+        if (ambient != null) {
+            float currentFade = (currentMode == MusicMode.MENU && (isFadingIn || isFadingOut)) ? fadeMultiplier : 1.0f;
+            setGain(ambient, ambientGain(masterVolume * musicVolume * currentFade));
+        }
         for (Map.Entry<String, Clip> entry : clips.entrySet()) {
             setClipGain(entry.getKey(), entry.getValue());
         }
@@ -321,11 +473,11 @@ public final class SoundManager {
     }
 
     private float gameplayGain(float gain) { return previewing ? 0.0f : gain; }
+    private float ambientGain(float gain) { return gameplayGain(gain * AMBIENT_GAIN_MULTIPLIER); }
     private float musicGain(float gain) { return musicMuted ? 0.0f : gameplayGain(gain); }
 
     private void muteGameplayAudio() {
         if (music != null) setGain(music, 0.0f);
-        if (fadingMusic != null) setGain(fadingMusic, 0.0f);
         if (ambient != null) setGain(ambient, 0.0f);
         for (Clip clip : clips.values()) setGain(clip, 0.0f);
     }
@@ -378,11 +530,12 @@ public final class SoundManager {
             music = null;
             musicPath = null;
         }
-        if (fadingMusic != null) {
-            fadingMusic.stop();
-            fadingMusic.close();
-            fadingMusic = null;
-        }
+        targetTrackPath = null;
+        desiredMode = null;
+        currentMode = null;
+        isFadingOut = false;
+        isFadingIn = false;
+        fadeMultiplier = 1.0f;
     }
 
     private static void setGain(Clip clip, float linearGain) {

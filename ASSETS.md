@@ -69,6 +69,15 @@ converted to an alpha PNG, and downsampled with nearest-neighbor filtering for t
 game's low-resolution reward screen. No text, logo, watermark, holograms, or futuristic
 controls.
 
+## Workbench node assets
+
+- `src/main/resources/assets/items/canvas/node-texture.png`: dark textured material used
+  inside the scalable logic-node body.
+- `src/main/resources/assets/items/canvas/wire-end.png`: directional metal port cap used
+  on both sides of a node; output ports mirror the source image.
+- `src/main/resources/assets/items/canvas/endpoint.png`: brass terminal used at the free
+  input and output ends of workbench cables.
+
 ## Mystery Box asset
 
 Saved as `src/main/resources/assets/box.png`.
@@ -88,9 +97,16 @@ audio map is implemented.
 - `ui-audio`: switches, clicks and interface feedback.
 - `music-jingles`: short CC0 musical stingers for title, crafting, success and ending.
 - `audio/music/solitude-main.m4a`: the user-provided ambient main theme.
-- `audio/music/solitude-main.wav`: its Java-compatible PCM conversion used at runtime.
-- `audio/ambience/road-ambience.mp3`: the user-provided Lantern Street ambience.
-- `audio/ambience/road-ambience.wav`: its Java-compatible runtime conversion, layered
+- `audio/music/solitude-main.wav`: continuous ambient main theme.
+- `audio/music/workbench-hours.wav`: lo-fi late-night workshop track.
+- `audio/music/after-hours.wav`: quiet, contemplative lo-fi track.
+- `audio/music/lantern-rain.wav`: rainy night Lantern Street lo-fi track.
+- `audio/music/silver-traces.wav`: nocturnal piano / PCB traces lo-fi track.
+- `audio/music/bedroom-glow.wav`: warm bedroom workshop rain lo-fi track.
+- `audio/music/truth-table-lullaby.wav`: mellow engineering notebook lo-fi track.
+- `audio/music/tin-roof-reverie.wav`: rhythmic rain-on-roof lo-fi track.
+- `audio/music/overnight-loop.wav`: extended 6.5-minute deep-focus crafting track.
+- `audio/ambience/road-ambience.wav`: user-provided Lantern Street ambience, layered
   only while Alex is on Lantern Street.
 - `audio/door knock.wav`: user-provided door knock sound, copied to `audio/game/knock.wav` for intro sequence playback.
 
@@ -99,5 +115,4 @@ the packs as Creative Commons CC0: `https://kenney.nl/assets/interface-sounds`,
 `https://kenney.nl/assets/rpg-audio`, `https://kenney.nl/assets/ui-audio`, and
 `https://kenney.nl/assets/music-jingles`.
 
-The earlier OpenGameArt loop remains downloaded as a fallback reference, but the game
-now uses the user-provided `solitude-main.wav` as its continuous ambient theme.
+The game uses the user-provided `solitude-main.wav` as its continuous ambient theme, with the new lo-fi track library available under `audio/music/`.

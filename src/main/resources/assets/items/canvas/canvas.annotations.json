@@ -1,0 +1,46 @@
+{
+  "image": "/Users/sajidalnahian/Desktop/canvas.png",
+  "image_width": 1536,
+  "image_height": 1024,
+  "annotations": [
+    {
+      "id": 1,
+      "label": "Input Switches",
+      "x": 213.0,
+      "y": 850.0,
+      "width": 919.0,
+      "height": 115.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 2,
+      "label": "Output LED",
+      "x": 52.0,
+      "y": 108.0,
+      "width": 85.0,
+      "height": 659.0,
+      "color": [
+        41,
+        121,
+        255
+      ]
+    },
+    {
+      "id": 3,
+      "label": "Node Canvas",
+      "x": 192.0,
+      "y": 47.0,
+      "width": 1293.0,
+      "height": 750.0,
+      "color": [
+        255,
+        0,
+        0
+      ]
+    }
+  ]
+}

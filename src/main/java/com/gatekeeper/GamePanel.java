@@ -15,6 +15,8 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,7 +37,7 @@ import static com.gatekeeper.GameAssets.loadStreetBackground;
 import static com.gatekeeper.GameConstants.*;
 
 @SuppressWarnings("serial")
-public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener {
+public final class GamePanel extends JPanel implements KeyListener, MouseListener, MouseMotionListener, MouseWheelListener {
     private static final int INTRO_DIALOGUE_TICK = 2 * 60;
     private static final Polygon BOX_COLLISION = new Polygon(
         new int[] {272, 310, 333, 338, 271},
@@ -48,6 +50,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         new int[] {236, 195, 260, 268}, 4);
     private static float uiScale = 1.0f;
     static final Font PIXEL_FONT = loadPixelFont();
+    private final BufferedImage playableSceneLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
     private final BufferedImage bedroomBackgroundNormal = loadBackground("/assets/backgrounds/bedroom-normal.png");
     private final BufferedImage bedroomBackgroundCc = loadBackground("/assets/backgrounds/bedroom-cc.jpg");
@@ -73,9 +76,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
     private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
-    private final BufferedImage notebookCoverImage = loadRawImage("/assets/ui/book-cover.png");
-    private final BufferedImage notebookLeftPageImage = loadRawImage("/assets/ui/book-page-left.png");
-    private final BufferedImage notebookRightPageImage = loadRawImage("/assets/ui/book-page-right.png");
+    private final BufferedImage workbenchCanvasImage = loadRawImage("/assets/items/canvas/canvas.png");
+    private final BufferedImage workbenchLightOffImage = loadRawImage("/assets/items/canvas/light-off.png");
+    private final BufferedImage workbenchSwitchImage = loadRawImage("/assets/items/canvas/switch.png");
+    private final BufferedImage workbenchLightOnImage = loadRawImage("/assets/items/canvas/light-on.png");
+    private final BufferedImage workbenchNodeTextureImage = loadRawImage("/assets/items/canvas/node-texture.png");
+    private final BufferedImage workbenchWireEndImage = loadRawImage("/assets/items/canvas/wire-end.png");
+    private final BufferedImage workbenchEndpointImage = loadRawImage("/assets/items/canvas/endpoint.png");
+    private final BufferedImage autoTesterPlugImage =
+        loadRawImage("/assets/items/canvas/tester-plug.png");
+    private final BufferedImage autoTesterFrameImage = loadRawImage("/assets/items/tester/tester.png");
+    private final BufferedImage autoTesterButtonSheet = loadRawImage("/assets/items/tester/tester-buttons.png");
+    private final BufferedImage autoTesterNavigationButtonSheet =
+        loadRawImage("/assets/items/tester/tester-navigation-buttons.png");
+    private final BufferedImage shopFrameImage = loadRawImage("/assets/items/shop/shop.png");
+    private final BufferedImage shopItemFrameImage =
+        loadRawImage("/assets/items/shop/shop-item.png");
+    private final BufferedImage notebookOpenImage = loadRawImage("/assets/ui/notebook.png");
     private final BufferedImage erisIdleSprites = loadRawImage("/assets/characters/eris-idle.png");
     private final BufferedImage erisWalkSprites = loadRawImage("/assets/characters/eris-walk.png");
     private final BufferedImage erisInteractSprites = loadRawImage("/assets/characters/eris-interact.png");
@@ -92,6 +109,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final List<CircuitRecipe> recipes = CircuitRecipe.all();
     private final boolean[] crafted = new boolean[5];
     private final CircuitModel circuit = new CircuitModel(recipes.get(0));
+    private final WorkbenchGraph workbenchGraph = new WorkbenchGraph(recipes.get(0));
+    private final NodeRadialMenu nodeRadialMenu = new NodeRadialMenu();
     private final SoundManager sound = new SoundManager();
     private final Random random = new Random();
     private boolean catPresent;
@@ -114,6 +133,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean calibratorEnabled = false;
     private boolean showCollisions = false;
     private boolean disableHud = false;
+    private boolean colorDitherEnabled = true;
     private boolean instantStart = false;
     private boolean catAlwaysAppears = false;
     private GameScene devReturnScene = GameScene.TITLE;
@@ -122,7 +142,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean settingsOpenedFromPause;
     private GameScene pausedScene = GameScene.BEDROOM;
     private int selectedRecipe;
+    private int testerTargetRecipe;
     private int notebookPage;
+    private NotebookRenderer.Section notebookSection = NotebookRenderer.Section.GATE_INFO;
+    private final NotebookNoteEditor notebookNoteEditor = new NotebookNoteEditor();
+    private boolean notebookNoteDirty;
+    private boolean notebookNoteWriting;
     private int playerX = 210;
     private int playerY = 157;
     private double precisePlayerX = 210;
@@ -133,13 +158,50 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private int walkDistance;
     private int lastFootstep;
     private GateType heldGate = GateType.AND;
-    private String boardMessage = "Left-click to place. Right-click a socket to remove.";
+    private CraftedCircuitInventory.CraftedCircuit heldCustomCircuit;
+    private boolean nodeWheelHeld;
+    private String boardMessage = "Click empty space to add. Wire output to input. Backspace deletes.";
     private int boardMessageTimer;
     private final AutoTester autoTester = new AutoTester();
+    private final AutoTesterRenderer autoTesterRenderer = new AutoTesterRenderer(
+        autoTesterFrameImage, autoTesterButtonSheet, autoTesterNavigationButtonSheet,
+        autoTesterPlugImage, PIXEL_FONT);
+    private boolean autoTesterOverlayVisible;
+    private boolean autoTesterRunFromOverlay;
+    private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+    private String autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
+    private final ShopModel shopModel = new ShopModel(ShopProduct.catalog(), 250);
+    private final ShopRenderer shopRenderer = new ShopRenderer(
+        shopFrameImage, shopItemFrameImage, workbenchNodeTextureImage,
+        workbenchWireEndImage, PIXEL_FONT);
+    private final InventoryRenderer inventoryRenderer = new InventoryRenderer(
+        workbenchNodeTextureImage, shopItemFrameImage, workbenchWireEndImage, PIXEL_FONT);
+    private final ProgressionRenderer progressionRenderer = new ProgressionRenderer();
+    private final ContractModel contractModel = new ContractModel();
+    private final ContractRenderer contractRenderer = new ContractRenderer(
+        workbenchNodeTextureImage, workbenchWireEndImage, PIXEL_FONT);
+    private final CraftedCircuitInventory craftedCircuitInventory = new CraftedCircuitInventory();
+    private final CraftCircuitRenderer craftCircuitRenderer = new CraftCircuitRenderer(PIXEL_FONT);
+    private final CraftCircuitModel craftCircuitModel = new CraftCircuitModel();
+    private boolean shopOverlayVisible;
+    private boolean inventoryVisible;
+    private boolean productionVisible;
+    private boolean certificationVisible;
+    private boolean contractVisible;
+    private boolean craftCircuitVisible;
+    private int productionRecipe;
+    private int productionQuantity = 1;
+    private String productionStatus = "ENTER TO PRODUCE";
+    private int contractSelection;
+    private int contractPushAmount = 1;
+    private String contractStatus = "SELECT A DELIVERY";
+    private ShopRenderer.Action pressedShopAction = ShopRenderer.Action.NONE;
     private final WorkbenchRenderer workbenchRenderer = new WorkbenchRenderer(
-        recipes, crafted, circuit, autoTester, logicLensImage);
+        workbenchCanvasImage, workbenchLightOffImage, workbenchSwitchImage,
+        workbenchLightOnImage, workbenchNodeTextureImage, workbenchWireEndImage,
+        workbenchEndpointImage);
     private final NotebookRenderer notebookRenderer = new NotebookRenderer(
-        recipes, crafted, notebookCoverImage, notebookLeftPageImage, notebookRightPageImage);
+        recipes, crafted, notebookOpenImage);
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomNoBoxImage != null ? bedroomNoBoxImage : (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal),
         ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground,
@@ -149,6 +211,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
     private int mouseX = -1;
     private int mouseY = -1;
+    private boolean wireDragActive;
+    private boolean wireDragMoved;
+    private int wireDragStartX;
+    private int wireDragStartY;
     private long ticks;
     private int introTimer = 0;
     private int introStage = 0;
@@ -188,6 +254,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         addKeyListener(this);
         addMouseListener(this);
         addMouseMotionListener(this);
+        addMouseWheelListener(this);
+        workbenchGraph.clear();
 
         if (SaveManager.hasSave()) {
             SaveData data = SaveManager.loadGame();
@@ -199,6 +267,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 starCount = data.starCount;
                 mothCount = data.mothCount;
                 disableHud = data.disableHud;
+                colorDitherEnabled = data.colorDitherEnabled;
                 worldRenderer.setStarCount(starCount);
                 worldRenderer.setMothCount(mothCount);
                 worldRenderer.setDisableHud(disableHud);
@@ -245,28 +314,82 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         worldRenderer.update(chapter, playerX, playerY, ticks, line, playerMoving, playerRunning,
             facing, walkDistance, keys, uiScale, catPresent, catX, catY);
-        switch (scene) {
-            case TITLE -> MenuRenderer.drawTitle(g, getBedroomBackground(), ticks,
-                mouseX, mouseY, titleSelection);
-            case CONTROLS -> MenuRenderer.drawControls(g, getBedroomBackground(), mouseX, mouseY);
-            case SETTINGS -> MenuRenderer.drawSettings(g, ticks, mouseX, mouseY,
-                settingsSelection, sound, uiScale, taskbarOnRight);
-            case DEV -> MenuRenderer.drawDeveloper(g, mouseX, mouseY, devSection, devSelection,
-                devFocusRight, calibratorEnabled, showCollisions, disableHud, instantStart, catAlwaysAppears, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound, soundSceneSelection);
-            case INTRO -> {
-                g.setColor(Color.BLACK);
-                g.fillRect(0, 0, W, H);
-            }
-            case BEDROOM -> worldRenderer.drawBedroom(g);
-            case STREET -> worldRenderer.drawStreet(g);
-            case SHOP -> worldRenderer.drawShop(g);
-            case BOARD -> workbenchRenderer.draw(g, chapter, selectedRecipe, heldGate,
-                boardMessageTimer, boardMessage, mouseX, mouseY);
-            case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
-                g, chapter, notebookPage, ticks);
-            case END -> notebookRenderer.drawEnding(g);
+        boolean colorDitheredPlayfield = DitherRenderer.appliesTo(scene, colorDitherEnabled);
+        Graphics2D sceneGraphics = colorDitheredPlayfield ? playableSceneLayer.createGraphics() : g;
+        if (colorDitheredPlayfield) {
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,
+                RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+            sceneGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            sceneGraphics.setFont(PIXEL_FONT.deriveFont(Font.PLAIN, PIXEL_FONT_BASE_SIZE));
+            sceneGraphics.setColor(VOID);
+            sceneGraphics.fillRect(0, 0, W, H);
         }
-        if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+        switch (scene) {
+            case TITLE -> MenuRenderer.drawTitle(sceneGraphics, getBedroomBackground(), ticks,
+                mouseX, mouseY, titleSelection);
+            case CONTROLS -> MenuRenderer.drawControls(sceneGraphics, getBedroomBackground(), mouseX, mouseY);
+            case SETTINGS -> MenuRenderer.drawSettings(sceneGraphics, ticks, mouseX, mouseY,
+                settingsSelection, sound, uiScale, taskbarOnRight);
+            case DEV -> MenuRenderer.drawDeveloper(sceneGraphics, mouseX, mouseY, devSection, devSelection,
+                devFocusRight, calibratorEnabled, showCollisions, disableHud, instantStart, catAlwaysAppears,
+                colorDitherEnabled, ccBedroomBackground, ccStreetBackground, starCount, mothCount, sound,
+                soundSceneSelection);
+            case INTRO -> {
+                sceneGraphics.setColor(Color.BLACK);
+                sceneGraphics.fillRect(0, 0, W, H);
+            }
+            case BEDROOM -> worldRenderer.drawBedroom(sceneGraphics);
+            case STREET -> worldRenderer.drawStreet(sceneGraphics);
+            case SHOP -> worldRenderer.drawShop(sceneGraphics);
+            case BOARD -> workbenchRenderer.draw(sceneGraphics, workbenchGraph, heldGate,
+                heldCustomCircuit,
+                nodeRadialMenu, shopModel, mouseX, mouseY);
+            case NOTEBOOK -> notebookPage = notebookRenderer.drawNotebook(
+                sceneGraphics, chapter, notebookSection, notebookPage, notebookNoteEditor.text(),
+                notebookNoteEditor.cursor(), notebookNoteWriting, ticks);
+            case END -> notebookRenderer.drawEnding(sceneGraphics);
+        }
+        if (colorDitheredPlayfield) {
+            sceneGraphics.dispose();
+            DitherRenderer.applyColorDither(playableSceneLayer, ticks);
+            g.drawImage(playableSceneLayer, 0, 0, null);
+        }
+        if (scene == GameScene.BOARD) {
+            worldRenderer.drawPositionMarkers(g, 0);
+        }
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            autoTesterRenderer.draw(g, testerTarget(), autoTester.observations(),
+                autoTester.currentRow(), mouseX, mouseY, pressedAutoTesterAction,
+                autoTesterUiStatus);
+        }
+        if (scene == GameScene.SHOP && shopOverlayVisible) {
+            shopRenderer.draw(g, shopModel, mouseX, mouseY, pressedShopAction,
+                knownInventoryProductCount());
+        }
+        if (scene == GameScene.BOARD && productionVisible) {
+            progressionRenderer.drawProduction(g, recipes.get(productionRecipe), shopModel,
+                productionQuantity, productionStatus);
+        }
+        if (scene == GameScene.BOARD && certificationVisible) {
+            progressionRenderer.drawCertification(g, recipes.get(selectedRecipe));
+        }
+        if (scene == GameScene.SHOP && contractVisible) {
+            contractRenderer.draw(g, contractModel.available(chapter), contractSelection,
+                contractModel, craftedCircuitInventory, shopModel, contractPushAmount, contractStatus, mouseX, mouseY);
+        }
+        if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount(),
+            craftedCircuitInventory, recipes);
+        if (scene == GameScene.BOARD && craftCircuitVisible) {
+            craftCircuitRenderer.draw(g, craftCircuitModel, mouseX, mouseY);
+        }
+        if (!disableHud && !shopOverlayVisible && !inventoryVisible && !contractVisible
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             ObjectiveRenderer.draw(g, chapter, boxRetrieved, boxOpened, workbenchInstalled,
                 crafted, completedObjective, taskbarOnRight);
         }
@@ -293,10 +416,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         completedObjective = null;
         keys.clear();
         Arrays.fill(crafted, false);
+        shopModel.reset();
+        craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
+        contractModel.restore(null);
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
-        autoTester.reset();
+        notebookNoteEditor.setText("");
+        notebookNoteDirty = false;
+        notebookNoteWriting = false;
+        resetAutoTesterState();
         circuit.selectRecipe(recipes.get(0));
+        workbenchGraph.clear();
         playSound("knock");
         say("*knock knock*",
             "ALEX|Who's knocking at the door in the middle of the night? I should check.",
@@ -307,14 +443,29 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         introTimer++;
     }
 
+    private boolean isMenuScene() {
+        return scene == GameScene.TITLE || scene == GameScene.CONTROLS || (!settingsOpenedFromPause && scene == GameScene.SETTINGS);
+    }
+
     private void updateGame() {
         ticks++;
-        sound.setMusicMuted(scene == GameScene.DEV);
-        sound.loop(MUSIC_LOOP);
+        if (notebookNoteDirty && ticks % 120 == 0) saveNotebookNoteIfDirty();
+        if (scene != GameScene.DEV) {
+            if (isMenuScene()) {
+                sound.playMenuMusic(MENU_MUSIC);
+            } else {
+                sound.playGamePlaylist(GAMEPLAY_PLAYLIST);
+            }
+        }
         sound.updateMusic();
         sound.updateCrossfade();
-        if (scene == GameScene.STREET) sound.loopAmbient(ROAD_AMBIENCE);
-        else sound.stopAmbient();
+        if (isMenuScene() || scene == GameScene.STREET) {
+            if (scene == GameScene.STREET || sound.musicMode() == SoundManager.MusicMode.MENU) {
+                sound.loopAmbient(ROAD_AMBIENCE);
+            }
+        } else if (!sound.isFadingOut() || sound.musicMode() != SoundManager.MusicMode.MENU) {
+            sound.stopAmbient();
+        }
         if (dialogueVisible()) lineAge++;
         if (scene == GameScene.INTRO) {
             updateIntroCutscene();
@@ -323,7 +474,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.BOARD && autoTester.isRunning()) updateAutoTest();
         if (boardMessageTimer > 0) boardMessageTimer--;
-        if (!exitPrompt && line == null
+        if (!exitPrompt && line == null && !shopOverlayVisible && !inventoryVisible
+            && !contractVisible
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
             boolean sideView = scene == GameScene.STREET;
             boolean shift = keys.contains(KeyEvent.VK_SHIFT);
@@ -428,11 +580,12 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 completedObjective = "OPEN THE MYSTERY BOX";
                 boxOpened = true;
                 if (chapter == 0) chapter = 1;
+                grantStarterGates();
                 updateBedroomBackground();
                 playSound("ui-open");
                 say(NOTEBOOK_ITEM_CARD,
                     WORKBENCH_ITEM_CARD,
-                    "ALEX|A box full of tiny black pieces... AND, OR, NOT.",
+                    "ALEX|There are 5 electrical components marked AND, 5 marked OR, and 5 marked NOT.",
                     "ALEX|And a notebook. The first pages have diagrams.",
                     "ALEX|After that? Just rows of zeroes and ones.");
                 saveCurrentProgress();
@@ -506,8 +659,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             chapter = 2;
             say("ALEX|Mira, someone left a mystery box on my doorstep with these logic gates and a notebook.",
                 "MIRA|Logic gates! AND, OR, and NOT are the alphabet of electronics.",
-                "MIRA|Bring them to life! Build me a NAND, a NOR, and an XOR on your workbench.",
-                "MIRA|Use every switch setting. Match the notebook truth tables exactly.",
+                "MIRA|My order board needs a NAND, a NOR, and an XOR. Your workbench is completely freeform.",
+                "MIRA|Try every input switch setting yourself, then press B to craft the circuit.",
+                "MIRA|Give each circuit a short name. At my order board, pair it with an order and I'll verify it.",
                 "ALEX|So a truth table is... a list of promises the circuit has to keep?",
                 "MIRA|Exactly. A circuit must keep every single one.");
             saveCurrentProgress();
@@ -520,7 +674,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Now try XNOR and IMPLY. The notebook has new pages.");
             saveCurrentProgress();
         } else if (chapter == 2) {
-            say("MIRA|I still need NAND, NOR, and XOR. Your board is at home.");
+            say("MIRA|I still need NAND, NOR, and XOR. Open my orders with C and submit one of your crafted circuits.");
         } else if (chapter == 3 && advancedComplete()) {
             completedObjective = "RETURN TO MIRA";
             chapter = 4;
@@ -539,22 +693,97 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         returnScene = scene;
         scene = GameScene.BOARD;
         playSound("ui-open");
-        selectRecipe(selectedRecipe);
+        boardMessage = "Build freely. Test with the switches, then press B to craft.";
+        boardMessageTimer = 240;
     }
 
     private void turnNotebookPage(int direction) {
-        int available = chapter >= 3 ? 5 : 3;
+        int available = notebookRenderer.pageCount(notebookSection, chapter);
         notebookPage = (notebookPage + direction + available) % available;
         playSound("book-flip");
     }
 
+    private boolean editingNotebookNote() {
+        return scene == GameScene.NOTEBOOK
+            && notebookSection == NotebookRenderer.Section.NOTES
+            && notebookNoteWriting;
+    }
+
+    private boolean handleNotebookNoteKeyPressed(int key) {
+        if (!editingNotebookNote()) return false;
+        boolean changed = false;
+        switch (key) {
+            case KeyEvent.VK_ESCAPE -> {
+                saveNotebookNoteIfDirty();
+                notebookNoteWriting = false;
+                playSound("ui-confirm");
+            }
+            case KeyEvent.VK_BACK_SPACE -> changed = notebookNoteEditor.backspace();
+            case KeyEvent.VK_DELETE -> changed = notebookNoteEditor.delete();
+            case KeyEvent.VK_ENTER -> changed = notebookNoteEditor.insertNewLine();
+            case KeyEvent.VK_LEFT -> notebookNoteEditor.moveLeft();
+            case KeyEvent.VK_RIGHT -> notebookNoteEditor.moveRight();
+            case KeyEvent.VK_HOME -> notebookNoteEditor.moveHome();
+            case KeyEvent.VK_END -> notebookNoteEditor.moveEnd();
+            default -> {
+                // Printable characters arrive through keyTyped; consume their key press here
+                // so notebook and world shortcuts cannot fire while writing.
+            }
+        }
+        if (changed) notebookNoteDirty = true;
+        repaint();
+        return true;
+    }
+
+    private void saveNotebookNoteIfDirty() {
+        if (!notebookNoteDirty) return;
+        saveCurrentProgress();
+        notebookNoteDirty = false;
+    }
+
     private void selectRecipe(int index) {
+        nodeRadialMenu.close();
         int max = chapter >= 3 ? 4 : 2;
         selectedRecipe = clamp(index, 0, max);
         circuit.selectRecipe(recipes.get(selectedRecipe));
+        workbenchGraph.clear();
+        saveCurrentProgress();
         playSound("ui-select");
-        boardMessage = crafted[selectedRecipe] ? "Already delivered. You can rebuild it." : "Build the requested device.";
+        boardMessage = "Blank canvas: build Mira's " + recipes.get(selectedRecipe).name + " request.";
         boardMessageTimer = 180;
+    }
+
+    private List<GateType> unlockedGateTypes() {
+        return Arrays.asList(GateType.values());
+    }
+
+    private void openNodeRadialMenu() {
+        workbenchGraph.endNodeDrag();
+        workbenchGraph.cancelWire();
+        int logicalX = mouseX >= 0 ? mouseX : W / 2;
+        int logicalY = mouseY >= 0 ? mouseY : H / 2;
+        nodeRadialMenu.openAt(WorkbenchRenderer.canvasX(logicalX),
+            WorkbenchRenderer.canvasY(logicalY), unlockedGateTypes(),
+            craftedCircuitInventory.circuits());
+        playSound("ui-open");
+    }
+
+    private void applyWheelChoice(NodeRadialMenu.Choice choice) {
+        if (choice == null) {
+            playSound("ui-close");
+            return;
+        }
+        if (!choice.isCrafted()) {
+            heldGate = choice.gate();
+            heldCustomCircuit = null;
+            playSound("ui-confirm");
+            return;
+        }
+        craftedCircuitInventory.select(choice.craftedCircuitIndex());
+        heldCustomCircuit = craftedCircuitInventory.selected();
+        boardMessage = heldCustomCircuit.name() + " selected. Click the canvas to place it.";
+        boardMessageTimer = 180;
+        playSound("ui-confirm");
     }
 
     private void recordOrAutoTest() {
@@ -591,23 +820,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private void autoTest() {
-        if (!circuit.recipe().isComplete(circuit.placed())) {
-            boardMessage = "LogicLens: incomplete circuit.";
-            playSound("ui-error");
-            boardMessageTimer = 180;
-            return;
-        }
-        if (!autoTester.start(circuit)) return;
+        if (!autoTester.start(recipes.get(selectedRecipe))) return;
+        autoTesterRunFromOverlay = false;
         boardMessage = "LogicLens: starting four-row sweep.";
         boardMessageTimer = 180;
         playSound("ui-open");
     }
 
     private void updateAutoTest() {
-        AutoTester.Tick tick = autoTester.update(circuit);
+        AutoTester.Tick tick = autoTester.update(workbenchGraph);
         if (tick.finished()) {
             boardMessageTimer = 240;
-            if (tick.passed()) {
+            if (autoTesterRunFromOverlay) {
+                autoTesterUiStatus = tick.passed()
+                    ? "PASS // " + autoTester.target().name
+                    : "FAIL // " + autoTester.target().name;
+                boardMessage = tick.passed()
+                    ? "LogicLens: current circuit matches " + autoTester.target().name + "."
+                    : "LogicLens: current circuit does not match " + autoTester.target().name + ".";
+                playSound(tick.passed() ? "success" : "failure");
+            } else if (tick.passed()) {
                 completeCurrent();
             } else {
                 boardMessage = "LogicLens: FAILED on one or more rows.";
@@ -616,6 +848,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (tick.advanced()) {
+            if (autoTesterRunFromOverlay) {
+                autoTesterUiStatus = "RUNNING // ROW "
+                    + (autoTester.currentRow() + 1) + " OF 4";
+            }
             boardMessage = "LogicLens: testing row " + (autoTester.currentRow() + 1) + " of 4.";
             boardMessageTimer = 180;
             playSound("ui-click");
@@ -637,12 +873,322 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         playSound(autoTester.isAttached() ? "ui-confirm" : "ui-close");
     }
 
+    private void openAutoTesterOverlay() {
+        if (!autoTesterUnlocked()) {
+            boardMessage = "The tester is not available yet. Talk to Mira.";
+            boardMessageTimer = 180;
+            playSound("ui-error");
+            repaint();
+            return;
+        }
+        nodeWheelHeld = false;
+        nodeRadialMenu.close();
+        cancelWireInteraction();
+        workbenchGraph.endNodeDrag();
+        autoTesterOverlayVisible = true;
+        autoTesterUiStatus = "TEST CONFIG // " + testerTarget().name;
+        playSound("ui-open");
+        repaint();
+    }
+
+    private void closeAutoTesterOverlay() {
+        autoTesterOverlayVisible = false;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        playSound("ui-close");
+        repaint();
+    }
+
+    private void navigateTesterRecipe(int direction) {
+        if (autoTester.isRunning()) {
+            autoTesterUiStatus = "STOP TEST BEFORE CHANGING CONFIG";
+            playSound("ui-error");
+            repaint();
+            return;
+        }
+        testerTargetRecipe = (testerTargetRecipe + direction + recipes.size()) % recipes.size();
+        autoTester.clearResults();
+        autoTesterRunFromOverlay = false;
+        autoTesterUiStatus = "TEST CONFIG // " + testerTarget().name;
+        playSound("ui-select");
+        repaint();
+    }
+
+    private CircuitRecipe testerTarget() {
+        return recipes.get(testerTargetRecipe);
+    }
+
+    private boolean autoTesterUnlocked() {
+        return chapter >= 3;
+    }
+
+    private void resetAutoTesterState() {
+        autoTester.reset();
+        testerTargetRecipe = 0;
+        autoTesterOverlayVisible = false;
+        autoTesterRunFromOverlay = false;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
+    }
+
+    private void handleAutoTesterAction(AutoTesterRenderer.Action action) {
+        switch (action) {
+            case RUN -> {
+                if (autoTester.start(testerTarget())) {
+                    autoTesterRunFromOverlay = true;
+                    autoTesterUiStatus = "RUNNING // ROW 1 OF 4";
+                    boardMessage = "LogicLens: testing the current circuit as "
+                        + testerTarget().name + ".";
+                    boardMessageTimer = 180;
+                    playSound("ui-open");
+                } else {
+                    autoTesterUiStatus = "TEST ALREADY RUNNING";
+                    playSound("ui-error");
+                }
+            }
+            case STOP -> {
+                boolean stopped = autoTester.stop();
+                autoTesterRunFromOverlay = false;
+                autoTesterUiStatus = stopped
+                    ? "STOPPED // " + testerTarget().name
+                    : "TESTER IDLE // " + testerTarget().name;
+                playSound(stopped ? "ui-close" : "ui-select");
+            }
+            case CLEAR -> {
+                autoTester.clearResults();
+                autoTesterRunFromOverlay = false;
+                autoTesterUiStatus = "READY // " + testerTarget().name;
+                playSound("ui-select");
+            }
+            case PREVIOUS -> navigateTesterRecipe(-1);
+            case NEXT -> navigateTesterRecipe(1);
+            case NONE -> { }
+        }
+        repaint();
+    }
+
     private void completeCurrent() {
+        CircuitRecipe completedRecipe = circuit.recipe();
+        if (!shopModel.craft(completedRecipe.name, completedRecipe.solution)) {
+            boardMessage = "Not enough primitive components in inventory.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
+        boolean firstCertification = !crafted[selectedRecipe];
         crafted[selectedRecipe] = true;
-        boardMessage = circuit.recipe().name + " COMPLETE! Take it to Mira.";
+        certificationVisible = firstCertification;
+        productionRecipe = selectedRecipe;
+        boardMessage = completedRecipe.name + " CERTIFIED! Added to inventory.";
         playSound("success");
         saveCurrentProgress();
     }
+
+    private void craftCurrentCircuit() {
+        if (!workbenchGraph.isCompleteCircuit()) {
+            boardMessage = "Connect every gate input and wire one signal to OUT.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
+        if (craftedCircuitInventory.isFull()) {
+            boardMessage = "Crafted circuit storage is full.";
+            boardMessageTimer = 240;
+            playSound("ui-error");
+            return;
+        }
+        String initialName = craftedCircuitInventory.selected() == null
+            ? "" : craftedCircuitInventory.selected().name();
+        craftCircuitModel.open(craftedCircuitInventory.circuits(), workbenchGraph.snapshot(), initialName);
+        craftCircuitVisible = true;
+        nodeRadialMenu.close();
+        keys.clear();
+        playSound("ui-open");
+    }
+
+    private void confirmCraftCircuit() {
+        String name = craftCircuitModel.draft().trim();
+        if (name.isEmpty()) {
+            craftCircuitModel.setStatus("ENTER A CIRCUIT NAME");
+            playSound("ui-error");
+            return;
+        }
+        if (name.length() > CraftedCircuitInventory.MAX_NAME_LENGTH) {
+            craftCircuitModel.setStatus("NAME MUST BE 1-6 CHARACTERS");
+            playSound("ui-error");
+            return;
+        }
+        if (!shopModel.consumeParts(workbenchGraph.gateCounts())) {
+            craftCircuitModel.setStatus("NOT ENOUGH COMPONENTS IN BAG");
+            playSound("ui-error");
+            return;
+        }
+        if (!craftedCircuitInventory.add(name, workbenchGraph.snapshot())) {
+            craftCircuitModel.setStatus("NAME MUST BE 1-6 CHARACTERS");
+            playSound("ui-error");
+            return;
+        }
+        workbenchGraph.clear();
+        craftCircuitVisible = false;
+        boardMessage = name + " crafted and stored in your bag.";
+        boardMessageTimer = 300;
+        playSound("success");
+        saveCurrentProgress();
+    }
+
+    private void cycleCraftName(int direction) {
+        craftCircuitModel.navigateSelection(direction);
+        playSound("ui-select");
+    }
+
+    private void editSelectedCraftedCircuit() {
+        CraftedCircuitInventory.CraftedCircuit stored = craftedCircuitInventory.removeSelected();
+        if (stored == null) {
+            boardMessage = "Select a crafted circuit in your bag first.";
+            boardMessageTimer = 180;
+            playSound("ui-error");
+            return;
+        }
+        if (stored.equals(heldCustomCircuit)) heldCustomCircuit = null;
+        workbenchGraph.clear();
+        workbenchGraph.restore(stored.graph());
+        shopModel.grantParts(workbenchGraph.gateCounts());
+        boardMessage = stored.name() + " unpacked for editing. Craft it again when ready.";
+        boardMessageTimer = 240;
+        playSound("ui-confirm");
+        saveCurrentProgress();
+    }
+
+    private void updateContractPushAmount(List<ContractModel.Contract> contracts) {
+        if (contracts == null || contracts.isEmpty()) {
+            contractPushAmount = 0;
+            return;
+        }
+        contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
+        ContractModel.Contract contract = contracts.get(contractSelection);
+        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+        int produced = shopModel.purchased(contract.product());
+        int totalAvailable = matchingCrafted + produced;
+        int remainingQuota = contractModel.remaining(contract);
+        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+        contractPushAmount = maxPush > 0 ? clamp(contractPushAmount, 1, maxPush) : (totalAvailable > 0 ? 1 : 0);
+    }
+
+    private void submitSelectedOrder(List<ContractModel.Contract> contracts) {
+        deliverSelectedContract(contracts, contractPushAmount);
+    }
+
+    private void deliverSelectedContract(List<ContractModel.Contract> contracts, int amount) {
+        if (contracts.isEmpty()) return;
+        contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
+        ContractModel.Contract contract = contracts.get(contractSelection);
+        CircuitRecipe target = recipes.get(contract.recipeIndex());
+
+        List<CraftedCircuitInventory.CraftedCircuit> matchingCrafted = new ArrayList<>();
+        for (CraftedCircuitInventory.CraftedCircuit circuit : craftedCircuitInventory.circuits()) {
+            WorkbenchGraph tested = new WorkbenchGraph(target);
+            tested.restore(circuit.graph());
+            if (tested.failedCases(target) == 0) {
+                matchingCrafted.add(circuit);
+            }
+        }
+        int matchingCraftedCount = matchingCrafted.size();
+        int producedCount = shopModel.purchased(contract.product());
+        int totalAvailable = matchingCraftedCount + producedCount;
+
+        if (totalAvailable <= 0) {
+            contractStatus = "NO " + contract.product() + " CIRCUITS READY IN STOCK";
+            playSound("ui-error");
+            return;
+        }
+
+        int toDeliver = Math.max(1, Math.min(amount, totalAvailable));
+        int remainingQuota = contractModel.remaining(contract);
+        if (remainingQuota > 0) {
+            toDeliver = Math.min(toDeliver, remainingQuota);
+        }
+
+        if (toDeliver <= 0) {
+            contractStatus = "ORDER QUOTA ALREADY FULFILLED";
+            playSound("ui-error");
+            return;
+        }
+
+        int fromCrafted = Math.min(toDeliver, matchingCraftedCount);
+        int fromProduced = toDeliver - fromCrafted;
+
+        for (int i = 0; i < fromCrafted; i++) {
+            CraftedCircuitInventory.CraftedCircuit toRemove = matchingCrafted.get(i);
+            int idx = craftedCircuitInventory.circuits().indexOf(toRemove);
+            if (idx >= 0) {
+                craftedCircuitInventory.select(idx);
+                craftedCircuitInventory.removeSelected();
+                if (toRemove.equals(heldCustomCircuit)) heldCustomCircuit = null;
+            }
+        }
+
+        if (fromProduced > 0) {
+            shopModel.consume(contract.product(), fromProduced);
+        }
+
+        int payout = toDeliver * contract.unitReward();
+        shopModel.credit(payout);
+        contractModel.deliver(contract, toDeliver);
+        crafted[contract.recipeIndex()] = true;
+
+        if (basicComplete() && chapter == 2) {
+            completedObjective = "ALL THREE COMMISSIONS COMPLETE";
+        }
+
+        if (contractModel.isCompleted(contract)) {
+            contractStatus = "ORDER COMPLETE: " + contract.product() + " (+" + payout + "C)";
+        } else {
+            contractStatus = "DELIVERED " + toDeliver + "x " + contract.product() + " ("
+                + contractModel.deliveries(contract) + "/" + contract.requiredCount() + ") +" + payout + "C";
+        }
+
+        playSound("success");
+        updateContractPushAmount(contracts);
+        saveCurrentProgress();
+    }
+
+    private void openProduction() {
+        if (!crafted[selectedRecipe]) return;
+        productionRecipe = selectedRecipe;
+        productionQuantity = 1;
+        productionStatus = "ENTER TO PRODUCE";
+        productionVisible = true;
+        nodeRadialMenu.close();
+        keys.clear();
+        playSound("ui-open");
+    }
+
+    private void navigateProduction(int direction) {
+        int available = chapter >= 3 ? 5 : 3;
+        int next = productionRecipe;
+        for (int attempts = 0; attempts < available; attempts++) {
+            next = (next + direction + available) % available;
+            if (crafted[next]) {
+                productionRecipe = next;
+                productionQuantity = 1;
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-select");
+                return;
+            }
+        }
+    }
+
+    private void produceSelected() {
+        CircuitRecipe recipe = recipes.get(productionRecipe);
+        if (shopModel.produce(recipe.name, recipe.solution, productionQuantity)) {
+            productionStatus = "+" + productionQuantity + " " + recipe.name + " ADDED TO BAG";
+            playSound("success");
+            saveCurrentProgress();
+        } else {
+            productionStatus = "NOT ENOUGH PRIMITIVE COMPONENTS";
+            playSound("ui-error");
+        }
+    }
+
 
     private void say(String... lines) {
         dialogue.addAll(Arrays.asList(lines));
@@ -752,7 +1298,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     @Override public void keyPressed(KeyEvent event) {
         int key = event.getKeyCode();
-        keys.add(key);
+        boolean firstPress = keys.add(key);
+        if (key == KeyEvent.VK_F1 && editingNotebookNote()) {
+            saveNotebookNoteIfDirty();
+            notebookNoteWriting = false;
+        }
         if (key == KeyEvent.VK_F1 && scene != GameScene.DEV) {
             devReturnScene = scene;
             devSection = 0;
@@ -764,6 +1314,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-open");
             return;
         }
+        if (handleNotebookNoteKeyPressed(key)) return;
         if (scene == GameScene.DEV) {
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F1) {
                 scene = devReturnScene;
@@ -773,11 +1324,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_TAB) {
                 devFocusRight = !devFocusRight;
                 playSound("ui-select");
-            } else if (devSection == 1 && devFocusRight
+            } else if (devSection == 2 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 adjustSelectedDevSound((key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1);
-            } else if (devSection == 2 && devSelection == 5 && devFocusRight
+            } else if (devSection == 3 && devSelection == 6 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -25 : 25;
@@ -785,7 +1336,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-click");
                 saveCurrentProgress();
-            } else if (devSection == 2 && devSelection == 6 && devFocusRight
+            } else if (devSection == 3 && devSelection == 7 && devFocusRight
                 && (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
                     || key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)) {
                 int step = (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) ? -1 : 1;
@@ -803,7 +1354,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
                 int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
                 if (!devFocusRight) {
-                    devSection = (devSection + direction + 4) % 4;
+                    devSection = (devSection + direction + 5) % 5;
                     devSelection = 0;
                 } else {
                     int max = devOptionCount();
@@ -834,7 +1385,160 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+        if (craftCircuitVisible) {
+            if (key == KeyEvent.VK_ESCAPE) {
+                craftCircuitVisible = false;
+                craftCircuitModel.setStatus("");
+                playSound("ui-close");
+            } else if (key == KeyEvent.VK_ENTER) {
+                confirmCraftCircuit();
+            } else if (key == KeyEvent.VK_BACK_SPACE) {
+                if (craftCircuitModel.backspace()) {
+                    playSound("ui-click");
+                }
+            } else if (key == KeyEvent.VK_UP) {
+                cycleCraftName(-1);
+            } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_TAB) {
+                cycleCraftName(1);
+            } else if (key == KeyEvent.VK_PAGE_UP) {
+                craftCircuitModel.scroll(-CraftCircuitModel.VISIBLE_ROWS);
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_PAGE_DOWN) {
+                craftCircuitModel.scroll(CraftCircuitModel.VISIBLE_ROWS);
+                playSound("ui-select");
+            } else if (firstPress) {
+                char typed = event.getKeyChar();
+                if (craftCircuitModel.typeChar(typed)) {
+                    playSound("ui-click");
+                }
+            }
+            repaint();
+            return;
+        }
+        if (certificationVisible) {
+            if (key == KeyEvent.VK_P) {
+                certificationVisible = false;
+                openProduction();
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE
+                || key == KeyEvent.VK_ESCAPE) {
+                certificationVisible = false;
+                playSound("ui-close");
+            }
+            repaint();
+            return;
+        }
+        if (productionVisible) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_P) {
+                productionVisible = false;
+                playSound("ui-close");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                productionQuantity = Math.max(1, productionQuantity - 1);
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-click");
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                productionQuantity = Math.min(99, productionQuantity + 1);
+                productionStatus = "ENTER TO PRODUCE";
+                playSound("ui-click");
+            } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) {
+                navigateProduction(-1);
+            } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
+                navigateProduction(1);
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                produceSelected();
+            }
+            repaint();
+            return;
+        }
+        if (contractVisible) {
+            List<ContractModel.Contract> contracts = contractModel.available(chapter);
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_C) {
+                contractVisible = false;
+                playSound("ui-close");
+            } else if (!contracts.isEmpty()
+                && (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
+                    || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
+                int direction = (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) ? -1 : 1;
+                contractSelection = (contractSelection + direction + contracts.size()) % contracts.size();
+                contractStatus = "READY TO DELIVER";
+                updateContractPushAmount(contracts);
+                playSound("ui-select");
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A || key == KeyEvent.VK_MINUS) {
+                if (contractPushAmount > 1) {
+                    contractPushAmount--;
+                    playSound("ui-select");
+                }
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_EQUALS || key == KeyEvent.VK_PLUS) {
+                if (!contracts.isEmpty()) {
+                    ContractModel.Contract contract = contracts.get(contractSelection);
+                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                    int produced = shopModel.purchased(contract.product());
+                    int totalAvailable = matchingCrafted + produced;
+                    int remainingQuota = contractModel.remaining(contract);
+                    int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                    if (contractPushAmount < maxPush) {
+                        contractPushAmount++;
+                        playSound("ui-select");
+                    }
+                }
+            } else if (key == KeyEvent.VK_P) {
+                if (!contracts.isEmpty()) {
+                    ContractModel.Contract contract = contracts.get(contractSelection);
+                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                    int produced = shopModel.purchased(contract.product());
+                    int totalAvailable = matchingCrafted + produced;
+                    int remainingQuota = contractModel.remaining(contract);
+                    int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                    contractPushAmount = Math.max(0, maxPush);
+                    playSound("ui-select");
+                }
+            } else if (!contracts.isEmpty()
+                && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE)) {
+                deliverSelectedContract(contracts, contractPushAmount);
+            }
+            repaint();
+            return;
+        }
+        if (shopOverlayVisible) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_F) {
+                closeShopOverlay();
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A
+                || key == KeyEvent.VK_MINUS) {
+                shopModel.decreaseQuantity();
+                playSound("ui-click");
+                repaint();
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D
+                || key == KeyEvent.VK_EQUALS || key == KeyEvent.VK_PLUS) {
+                shopModel.increaseQuantity();
+                playSound("ui-click");
+                repaint();
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                tradeSelectedShopItem();
+            }
+            return;
+        }
+        if (inventoryVisible) {
+            if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_I) {
+                inventoryVisible = false;
+                keys.clear();
+                playSound("ui-close");
+                repaint();
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                craftedCircuitInventory.moveSelection(-1);
+                playSound("ui-select");
+                repaint();
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                craftedCircuitInventory.moveSelection(1);
+                playSound("ui-select");
+                repaint();
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                inventoryVisible = false;
+                keys.clear();
+                playSound("ui-confirm");
+                repaint();
+            }
+            return;
+        }
+        if (calibratorEnabled && supportsPositionMarker(scene)) {
             if (key == KeyEvent.VK_BACK_SPACE) {
                 worldRenderer.undoCalibratedPoint();
                 repaint();
@@ -860,6 +1564,47 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (line != null && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE)) {
             if (dialogueLineComplete()) nextLine();
             else lineAge = Integer.MAX_VALUE / 2;
+            return;
+        }
+        if (key == KeyEvent.VK_I && firstPress && line == null
+            && (scene == GameScene.BEDROOM || scene == GameScene.STREET
+                || scene == GameScene.SHOP)) {
+            inventoryVisible = true;
+            keys.clear();
+            playSound("ui-open");
+            repaint();
+            return;
+        }
+        if (scene == GameScene.SHOP && key == KeyEvent.VK_F && firstPress
+            && line == null && near(240, 160)) {
+            shopOverlayVisible = true;
+            pressedShopAction = ShopRenderer.Action.NONE;
+            keys.clear();
+            playSound("ui-open");
+            repaint();
+            return;
+        }
+        if (scene == GameScene.SHOP && key == KeyEvent.VK_C && firstPress
+            && line == null && near(240, 160) && chapter >= 2) {
+            contractVisible = true;
+            contractSelection = 0;
+            contractStatus = "READY TO DELIVER";
+            updateContractPushAmount(contractModel.available(chapter));
+            keys.clear();
+            playSound("ui-open");
+            repaint();
+            return;
+        }
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            if ((key == KeyEvent.VK_H && firstPress) || key == KeyEvent.VK_ESCAPE) {
+                closeAutoTesterOverlay();
+            } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                navigateTesterRecipe(-1);
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                navigateTesterRecipe(1);
+            } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                handleAutoTesterAction(AutoTesterRenderer.Action.RUN);
+            }
             return;
         }
         if (scene == GameScene.TITLE) {
@@ -911,66 +1656,107 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             interact();
         } else if (chapter >= 1 && key == KeyEvent.VK_N) {
             if (scene == GameScene.NOTEBOOK) {
+                saveNotebookNoteIfDirty();
+                notebookNoteWriting = false;
                 scene = notebookReturnScene;
                 playSound("ui-close");
             }
             else {
                 notebookReturnScene = scene;
-                notebookPage = selectedRecipe;
+                notebookSection = NotebookRenderer.Section.GATE_INFO;
+                notebookPage = 0;
+                notebookNoteWriting = false;
                 scene = GameScene.NOTEBOOK;
                 playSound("book-open");
             }
         } else if (scene == GameScene.NOTEBOOK) {
-            if (key == KeyEvent.VK_ESCAPE) {
+            if (key == KeyEvent.VK_ENTER
+                && notebookSection == NotebookRenderer.Section.NOTES) {
+                notebookNoteWriting = true;
+                playSound("ui-click");
+                repaint();
+            } else if (key == KeyEvent.VK_ESCAPE) {
+                notebookNoteWriting = false;
                 scene = notebookReturnScene;
                 playSound("ui-close");
             }
             else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) turnNotebookPage(-1);
             else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) turnNotebookPage(1);
         } else if (scene == GameScene.BOARD) {
-            boolean isControlDown = (event.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
-                || (event.getModifiersEx() & KeyEvent.META_DOWN_MASK) != 0;
-            if (isControlDown && key == KeyEvent.VK_Z) {
-                if (event.isShiftDown()) {
-                    if (circuit.redo()) {
-                        boardMessage = "Redid gate action.";
-                        playSound("ui-select");
-                    }
+            if (key == KeyEvent.VK_B && firstPress) {
+                craftCurrentCircuit();
+            } else if (key == KeyEvent.VK_L && firstPress) {
+                editSelectedCraftedCircuit();
+            } else if (key == KeyEvent.VK_H && firstPress) {
+                openAutoTesterOverlay();
+            } else if (nodeRadialMenu.isOpen()) {
+                if (key == KeyEvent.VK_ESCAPE) {
+                    nodeWheelHeld = false;
+                    nodeRadialMenu.close();
+                    playSound("ui-close");
+                }
+                return;
+            }
+            if (key == KeyEvent.VK_E && firstPress) {
+                nodeWheelHeld = true;
+                openNodeRadialMenu();
+            } else if (key == KeyEvent.VK_Q) {
+                if (cancelWireInteraction()) {
+                    boardMessage = "Cancelled wire.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                    repaint();
+                }
+            } else if (key == KeyEvent.VK_ESCAPE) {
+                if (workbenchGraph.cancelWire()) {
+                    playSound("ui-back");
                 } else {
-                    if (circuit.undo()) {
-                        boardMessage = "Undid last gate action.";
-                        playSound("ui-back");
-                    }
+                    scene = returnScene;
+                    saveCurrentProgress();
+                    playSound("ui-close");
                 }
-                boardMessageTimer = 120;
-                return;
-            } else if (isControlDown && key == KeyEvent.VK_Y) {
-                if (circuit.redo()) {
-                    boardMessage = "Redid gate action.";
-                    playSound("ui-select");
+            } else if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
+                if (workbenchGraph.undoWireCorner()) {
+                    boardMessage = "Removed last wire corner.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                } else if (workbenchGraph.hasPendingWire()) {
+                    workbenchGraph.cancelWire();
+                    boardMessage = "Cancelled wire.";
+                    boardMessageTimer = 90;
+                    playSound("ui-back");
+                } else if (workbenchGraph.deleteSelected()) {
+                    boardMessage = "Deleted selected node and its wires.";
+                    boardMessageTimer = 120;
+                    playSound("ui-close");
+                    saveCurrentProgress();
                 }
-                boardMessageTimer = 120;
-                return;
             }
-            if (key == KeyEvent.VK_ESCAPE) {
-                scene = returnScene;
-                playSound("ui-close");
-            }
-            else if (key == KeyEvent.VK_H) toggleAutoTester();
-            else if (autoTester.isRunning()) return;
-            else if (key >= KeyEvent.VK_1 && key <= KeyEvent.VK_3) {
-                heldGate = GateType.values()[key - KeyEvent.VK_1];
-                playSound("ui-select");
-            }
-            else if (key == KeyEvent.VK_A) toggleInputA();
-            else if (key == KeyEvent.VK_B) toggleInputB();
-            else if (key == KeyEvent.VK_R) recordOrAutoTest();
-            else if (key == KeyEvent.VK_T || key == KeyEvent.VK_ENTER) verify();
         }
     }
 
-    @Override public void keyReleased(KeyEvent event) { keys.remove(event.getKeyCode()); }
-    @Override public void keyTyped(KeyEvent event) {}
+    @Override public void keyReleased(KeyEvent event) {
+        int key = event.getKeyCode();
+        keys.remove(key);
+        if (key != KeyEvent.VK_E || !nodeWheelHeld) return;
+        nodeWheelHeld = false;
+        if (scene != GameScene.BOARD || !nodeRadialMenu.isOpen()) return;
+
+        int logicalX = mouseX >= 0 ? mouseX : W / 2;
+        int logicalY = mouseY >= 0 ? mouseY : H / 2;
+        NodeRadialMenu.Choice chosen = nodeRadialMenu.choiceAt(
+            WorkbenchRenderer.canvasX(logicalX), WorkbenchRenderer.canvasY(logicalY));
+        nodeRadialMenu.close();
+        applyWheelChoice(chosen);
+        repaint();
+    }
+    @Override public void keyTyped(KeyEvent event) {
+        if (!editingNotebookNote() || event.isControlDown() || event.isMetaDown()) return;
+        if (notebookNoteEditor.insert(event.getKeyChar())) {
+            notebookNoteDirty = true;
+            repaint();
+        }
+    }
 
     @Override public void mousePressed(MouseEvent event) {
         requestFocusInWindow();
@@ -991,9 +1777,131 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
+        if (craftCircuitVisible) {
+            CraftCircuitRenderer.Action action = craftCircuitRenderer.actionAt(x, y);
+            if (action == CraftCircuitRenderer.Action.CRAFT) {
+                confirmCraftCircuit();
+            } else if (action == CraftCircuitRenderer.Action.CLOSE || action == CraftCircuitRenderer.Action.CANCEL) {
+                craftCircuitVisible = false;
+                craftCircuitModel.setStatus("");
+                playSound("ui-close");
+            } else if (action == CraftCircuitRenderer.Action.CLEAR) {
+                craftCircuitModel.clearDraft();
+                playSound("ui-click");
+            } else if (action == CraftCircuitRenderer.Action.SCROLL_UP) {
+                craftCircuitModel.scroll(-1);
+                playSound("ui-select");
+            } else if (action == CraftCircuitRenderer.Action.SCROLL_DOWN) {
+                craftCircuitModel.scroll(1);
+                playSound("ui-select");
+            } else {
+                int clickedIndex = craftCircuitRenderer.itemIndexAt(
+                    x, y, craftCircuitModel.filteredCandidates().size(), craftCircuitModel.scrollOffset());
+                if (clickedIndex >= 0) {
+                    craftCircuitModel.selectIndex(clickedIndex);
+                    playSound("ui-select");
+                } else {
+                    craftCircuitRenderer.handleScrollbarClick(x, y, craftCircuitModel);
+                }
+            }
+            repaint();
+            return;
+        }
+
+        if (scene == GameScene.SHOP && contractVisible) {
+            List<ContractModel.Contract> contracts = contractModel.available(chapter);
+            ContractRenderer.Action action = contractRenderer.actionAt(x, y, contracts);
+            switch (action) {
+                case SELECT_ORDER -> {
+                    int idx = contractRenderer.orderIndexAt(x, y, contracts);
+                    if (idx >= 0 && idx < contracts.size()) {
+                        contractSelection = idx;
+                        contractStatus = "READY TO DELIVER";
+                        updateContractPushAmount(contracts);
+                        playSound("ui-select");
+                    }
+                }
+                case DECREASE_AMOUNT -> {
+                    if (contractPushAmount > 1) {
+                        contractPushAmount--;
+                        playSound("ui-select");
+                    }
+                }
+                case INCREASE_AMOUNT -> {
+                    if (!contracts.isEmpty()) {
+                        ContractModel.Contract contract = contracts.get(contractSelection);
+                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                        int produced = shopModel.purchased(contract.product());
+                        int totalAvailable = matchingCrafted + produced;
+                        int remainingQuota = contractModel.remaining(contract);
+                        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                        if (contractPushAmount < maxPush) {
+                            contractPushAmount++;
+                            playSound("ui-select");
+                        }
+                    }
+                }
+                case MAX_AMOUNT -> {
+                    if (!contracts.isEmpty()) {
+                        ContractModel.Contract contract = contracts.get(contractSelection);
+                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+                        int produced = shopModel.purchased(contract.product());
+                        int totalAvailable = matchingCrafted + produced;
+                        int remainingQuota = contractModel.remaining(contract);
+                        int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
+                        contractPushAmount = Math.max(0, maxPush);
+                        playSound("ui-select");
+                    }
+                }
+                case DELIVER -> {
+                    deliverSelectedContract(contracts, contractPushAmount);
+                }
+                case CLOSE -> {
+                    contractVisible = false;
+                    playSound("ui-close");
+                }
+                case NONE -> {}
+            }
+            repaint();
+            return;
+        }
+
+        if (certificationVisible || productionVisible) return;
+
+        if (shopOverlayVisible) {
+            int product = shopRenderer.productAt(x, y, knownInventoryProductCount());
+            if (product >= 0) {
+                shopModel.select(product);
+                playSound("ui-select");
+            }
+            pressedShopAction = shopRenderer.actionAt(x, y);
+            repaint();
+            return;
+        }
+
+        if (inventoryVisible) {
+            for (int index = 0; index < craftedCircuitInventory.circuits().size(); index++) {
+                if (InventoryRenderer.craftedCardBounds(index).contains(x, y)) {
+                    craftedCircuitInventory.select(index);
+                    playSound("ui-select");
+                    repaint();
+                    break;
+                }
+            }
+            return;
+        }
+
         if (dialogueVisible()) {
             if (dialogueLineComplete()) nextLine();
             else lineAge = Integer.MAX_VALUE / 2;
+            return;
+        }
+
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            AutoTesterRenderer.Action action = autoTesterRenderer.actionAt(x, y);
+            pressedAutoTesterAction = action;
+            if (action != AutoTesterRenderer.Action.NONE) handleAutoTesterAction(action);
+            else repaint();
             return;
         }
 
@@ -1041,21 +1949,30 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (scene == GameScene.NOTEBOOK) {
-            if (inside(x, y, 270, 211, 22, 19)) turnNotebookPage(-1);
-            else if (inside(x, y, 416, 211, 22, 19)) turnNotebookPage(1);
-            else {
-                int available = chapter >= 3 ? 5 : 3;
-                for (int i = 0; i < available; i++) {
-                    if (inside(x, y, 314 + i * 16, 214, 11, 11)) {
-                        notebookPage = i;
-                        playSound("book-flip");
-                    }
+            NotebookRenderer.Section selectedSection = notebookRenderer.sectionAt(x, y);
+            if (selectedSection != null) {
+                if (notebookSection == NotebookRenderer.Section.NOTES
+                    && selectedSection != NotebookRenderer.Section.NOTES) {
+                    saveNotebookNoteIfDirty();
+                }
+                if (selectedSection != notebookSection) notebookNoteWriting = false;
+                notebookSection = selectedSection;
+                notebookPage = selectedSection == NotebookRenderer.Section.TRUTH_TABLES
+                    ? clamp(selectedRecipe, 0,
+                        notebookRenderer.pageCount(selectedSection, chapter) - 1)
+                    : 0;
+                playSound("ui-select");
+            } else {
+                int direction = notebookRenderer.pageDirectionAt(x, y);
+                if (direction != 0
+                    && notebookRenderer.pageCount(notebookSection, chapter) > 1) {
+                    turnNotebookPage(direction);
                 }
             }
             return;
         }
         if (scene == GameScene.DEV) {
-            String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS", "COLOR CORRECT"};
+            String[] sections = {"BREAKPOINTS", "MUSIC", "SOUNDS", "DEBUG TOOLS", "COLOR CORRECT"};
             for (int i = 0; i < sections.length; i++) {
                 int sy = 58 + i * 28;
                 if (inside(x, y, 25, sy, 118, 22)) {
@@ -1078,8 +1995,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 1) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 56 + i * 18;
-                    if (inside(x, y, 160, oy, 285, 17)) {
+                    int oy = 54 + i * 22;
+                    if (inside(x, y, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
                         activateDevSelection();
@@ -1088,8 +2005,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 2) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 58 + i * 26;
-                    if (inside(x, y, 160, oy, 285, 22)) {
+                    int oy = 56 + i * 18;
+                    if (inside(x, y, 160, oy, 285, 17)) {
                         devFocusRight = true;
                         devSelection = i;
                         activateDevSelection();
@@ -1097,6 +2014,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     }
                 }
             } else if (devSection == 3) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 56 + i * 24;
+                    if (inside(x, y, 160, oy, 285, 22)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        activateDevSelection();
+                        return;
+                    }
+                }
+            } else if (devSection == 4) {
                 for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(x, y, 160, oy, 285, 22)) {
@@ -1109,7 +2036,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             return;
         }
-        if (calibratorEnabled && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+        if (calibratorEnabled && supportsPositionMarker(scene)) {
             int cameraX = (scene == GameScene.STREET) ? worldRenderer.streetCameraX() : 0;
             int worldX = cameraX + x;
             int worldY = y;
@@ -1117,60 +2044,166 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             repaint();
             return;
         }
-        if (scene != GameScene.BOARD || line != null || autoTester.isRunning()) return;
-        boolean rightClick = event.getButton() == MouseEvent.BUTTON3;
-
-        int available = chapter >= 3 ? 5 : 3;
-        if (!rightClick) {
-            if (inside(x, y, 420, 15, 44, 14) || inside(x, y, 410, 15, 56, 20)) {
-                scene = returnScene;
-                playSound("ui-close");
-                return;
-            }
-            for (int i = 0; i < available; i++) {
-                if (inside(x, y, 126 + i * 52, 15, 46, 14)) {
-                    selectRecipe(i);
-                    return;
-                }
-            }
-            if (inside(x, y, 24, 90, 52, 16)) toggleInputA();
-            if (inside(x, y, 24, 138, 52, 16)) toggleInputB();
-            for (int i = 0; i < 3; i++) if (inside(x, y, 18 + i * 80, 226, 74, 28)) {
-                heldGate = GateType.values()[i];
-                playSound("ui-select");
-            }
+        if (scene != GameScene.BOARD || line != null
+            || event.getButton() != MouseEvent.BUTTON1) return;
+        int canvasX = WorkbenchRenderer.canvasX(x);
+        int canvasY = WorkbenchRenderer.canvasY(y);
+        if (nodeRadialMenu.isOpen()) {
+            NodeRadialMenu.Choice chosen = nodeRadialMenu.choiceAt(canvasX, canvasY);
+            nodeRadialMenu.close();
+            applyWheelChoice(chosen);
+            repaint();
+            return;
+        }
+        if (workbenchRenderer.toggleSwitchAt(x, y)) {
+            playSound("ui-click");
+            repaint();
+            return;
         }
 
-        int[][] layout = WorkbenchRenderer.socketLayout(circuit.recipe());
-        for (int i = 0; i < circuit.recipe().slotCount(); i++) {
-            if (inside(x, y, layout[i][0], layout[i][1], BOARD_SOCKET_W, BOARD_SOCKET_H)) {
-                if (rightClick) {
-                    if (circuit.placed()[i] == null) return;
-                    circuit.place(i, null);
-                    boardMessage = "Removed gate from socket " + (i + 1) + ".";
-                    playSound("ui-close");
-                } else {
-                    circuit.place(i, heldGate);
-                    boardMessage = heldGate.label + " placed in socket " + (i + 1) + ".";
-                    playSound("gate-place");
+        if (event.isShiftDown()) {
+            WorkbenchGraph.EditResult junction = workbenchGraph.addJunctionAt(
+                canvasX, canvasY);
+            if (junction == WorkbenchGraph.EditResult.JUNCTION_ADDED
+                || junction == WorkbenchGraph.EditResult.WIRE_STARTED) {
+                beginWireDrag(canvasX, canvasY);
+                playSound("ui-confirm");
+                if (junction == WorkbenchGraph.EditResult.JUNCTION_ADDED) {
+                    saveCurrentProgress();
                 }
+            } else {
+                playSound("ui-error");
+            }
+            repaint();
+            return;
+        }
+
+        if (workbenchGraph.beginNodeDrag(canvasX, canvasY)) {
+            playSound("ui-select");
+            repaint();
+            return;
+        }
+
+        if (heldCustomCircuit == null && heldGate != null) {
+            int total = shopModel.purchased(heldGate.label);
+            int placed = (int) workbenchGraph.nodes().stream()
+                .filter(n -> !n.isCustom() && n.gate() == heldGate)
+                .count();
+            if (total - placed <= 0 && workbenchGraph.nodeAt(canvasX, canvasY) == null
+                && workbenchGraph.sourceAt(canvasX, canvasY) == null
+                && workbenchGraph.targetAt(canvasX, canvasY) == null
+                && !workbenchGraph.hasPendingWire()) {
+                boardMessage = "No " + heldGate.label + " gates remaining in bag.";
                 boardMessageTimer = 120;
+                playSound("ui-error");
+                repaint();
+                return;
+            }
+        } else if (heldCustomCircuit != null) {
+            int total = (int) craftedCircuitInventory.circuits().stream()
+                .filter(c -> c.name().equalsIgnoreCase(heldCustomCircuit.name()))
+                .count();
+            int placed = (int) workbenchGraph.nodes().stream()
+                .filter(n -> n.isCustom() && n.customName().equalsIgnoreCase(heldCustomCircuit.name()))
+                .count();
+            if (total - placed <= 0 && workbenchGraph.nodeAt(canvasX, canvasY) == null
+                && workbenchGraph.sourceAt(canvasX, canvasY) == null
+                && workbenchGraph.targetAt(canvasX, canvasY) == null
+                && !workbenchGraph.hasPendingWire()) {
+                boardMessage = "No " + heldCustomCircuit.name() + " circuits remaining in bag.";
+                boardMessageTimer = 120;
+                playSound("ui-error");
+                repaint();
                 return;
             }
         }
-        if (rightClick) return;
-        if (inside(x, y, 277, 226, 60, 28)) {
-            if (chapter >= 3) toggleAutoTester();
-            else playSound("ui-close");
+
+        WorkbenchGraph.EditResult edit = heldCustomCircuit == null
+            ? workbenchGraph.click(canvasX, canvasY, heldGate)
+            : workbenchGraph.click(canvasX, canvasY,
+                heldCustomCircuit.name(), heldCustomCircuit.graph());
+        if (edit == WorkbenchGraph.EditResult.WIRE_STARTED) {
+            beginWireDrag(canvasX, canvasY);
         }
-        else if (inside(x, y, 342, 226, 58, 28)) recordOrAutoTest();
-        else if (inside(x, y, 405, 226, 58, 28)) verify();
+        switch (edit) {
+            case ADDED -> {
+                playSound("gate-place");
+                saveCurrentProgress();
+            }
+            case WIRED -> {
+                playSound("ui-confirm");
+                saveCurrentProgress();
+            }
+            case WIRE_STARTED, WIRE_CORNER, SELECTED -> playSound("ui-select");
+            case JUNCTION_ADDED -> playSound("ui-confirm");
+            case INVALID_WIRE -> playSound("ui-error");
+            case NONE -> { }
+        }
+        repaint();
     }
 
-    @Override public void mouseReleased(MouseEvent event) {}
+    @Override public void mouseReleased(MouseEvent event) {
+        if (certificationVisible || productionVisible || contractVisible
+            || craftCircuitVisible) return;
+        if (shopOverlayVisible) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            ShopRenderer.Action releasedAction = shopRenderer.actionAt(mouseX, mouseY);
+            ShopRenderer.Action action = pressedShopAction;
+            pressedShopAction = ShopRenderer.Action.NONE;
+            if (action == releasedAction) handleShopAction(action);
+            repaint();
+            return;
+        }
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+            repaint();
+            return;
+        }
+        if (scene == GameScene.BOARD && wireDragActive) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            if (wireDragMoved) {
+                WorkbenchGraph.EditResult edit = workbenchGraph.finishWireAt(
+                    WorkbenchRenderer.canvasX(mouseX),
+                    WorkbenchRenderer.canvasY(mouseY));
+                if (edit == WorkbenchGraph.EditResult.WIRED) {
+                    playSound("ui-confirm");
+                    saveCurrentProgress();
+                } else if (edit == WorkbenchGraph.EditResult.INVALID_WIRE) {
+                    playSound("ui-error");
+                }
+            }
+            wireDragActive = false;
+            wireDragMoved = false;
+            repaint();
+            return;
+        }
+        if (workbenchGraph.endNodeDrag()) {
+            saveCurrentProgress();
+            repaint();
+        }
+    }
     @Override public void mouseClicked(MouseEvent event) {}
+    @Override public void mouseWheelMoved(MouseWheelEvent event) {
+        if (craftCircuitVisible) {
+            craftCircuitModel.scroll(event.getWheelRotation());
+            repaint();
+        }
+    }
     @Override public void mouseEntered(MouseEvent event) { requestFocusInWindow(); }
-    @Override public void mouseExited(MouseEvent event) { mouseX = -1; mouseY = -1; }
+    @Override public void mouseExited(MouseEvent event) {
+        mouseX = -1;
+        mouseY = -1;
+        pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
+        pressedShopAction = ShopRenderer.Action.NONE;
+        repaint();
+    }
     @Override public void mouseMoved(MouseEvent event) {
         int[] point = logicalPoint(event);
         mouseX = point[0];
@@ -1188,7 +2221,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             int prevSelection = devSelection;
             boolean prevFocus = devFocusRight;
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 5; i++) {
                 int sy = 58 + i * 28;
                 if (inside(mouseX, mouseY, 25, sy, 118, 22)) {
                     devSection = i;
@@ -1208,8 +2241,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 1) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 56 + i * 18;
-                    if (inside(mouseX, mouseY, 160, oy, 285, 17)) {
+                    int oy = 54 + i * 22;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
                         break;
@@ -1217,14 +2250,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
             } else if (devSection == 2) {
                 for (int i = 0; i < devOptionCount(); i++) {
-                    int oy = 58 + i * 26;
-                    if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
+                    int oy = 56 + i * 18;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 17)) {
                         devFocusRight = true;
                         devSelection = i;
                         break;
                     }
                 }
             } else if (devSection == 3) {
+                for (int i = 0; i < devOptionCount(); i++) {
+                    int oy = 56 + i * 24;
+                    if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
+                        devFocusRight = true;
+                        devSelection = i;
+                        break;
+                    }
+                }
+            } else if (devSection == 4) {
                 for (int i = 0; i < devOptionCount(); i++) {
                     int oy = 58 + i * 26;
                     if (inside(mouseX, mouseY, 160, oy, 285, 22)) {
@@ -1255,7 +2297,97 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         repaint();
     }
-    @Override public void mouseDragged(MouseEvent event) { mouseMoved(event); }
+    @Override public void mouseDragged(MouseEvent event) {
+        if (scene == GameScene.BOARD && autoTesterOverlayVisible) {
+            mouseMoved(event);
+            return;
+        }
+        if (scene == GameScene.BOARD && nodeRadialMenu.isOpen()) {
+            mouseMoved(event);
+            return;
+        }
+        if (scene == GameScene.BOARD && workbenchGraph.isDraggingNode()) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            workbenchGraph.dragNodeTo(WorkbenchRenderer.canvasX(mouseX),
+                WorkbenchRenderer.canvasY(mouseY));
+            repaint();
+            return;
+        }
+        if (scene == GameScene.BOARD && wireDragActive) {
+            int[] point = logicalPoint(event);
+            mouseX = point[0];
+            mouseY = point[1];
+            int canvasX = WorkbenchRenderer.canvasX(mouseX);
+            int canvasY = WorkbenchRenderer.canvasY(mouseY);
+            int dx = canvasX - wireDragStartX;
+            int dy = canvasY - wireDragStartY;
+            if (dx * dx + dy * dy >= 12 * 12) wireDragMoved = true;
+            repaint();
+            return;
+        }
+        mouseMoved(event);
+    }
+
+    private void beginWireDrag(int canvasX, int canvasY) {
+        wireDragActive = true;
+        wireDragMoved = false;
+        wireDragStartX = canvasX;
+        wireDragStartY = canvasY;
+    }
+
+    private void handleShopAction(ShopRenderer.Action action) {
+        switch (action) {
+            case CLOSE -> closeShopOverlay();
+            case DECREASE -> {
+                shopModel.decreaseQuantity();
+                playSound("ui-click");
+            }
+            case INCREASE -> {
+                shopModel.increaseQuantity();
+                playSound("ui-click");
+            }
+            case BUY_SELL -> tradeSelectedShopItem();
+            case NONE -> { }
+        }
+    }
+
+    private void tradeSelectedShopItem() {
+        boolean traded = shopModel.trade();
+        playSound(traded ? "ui-confirm" : "ui-error");
+        if (traded) saveCurrentProgress();
+        repaint();
+    }
+
+    private void grantStarterGates() {
+        shopModel.grant("AND", 5);
+        shopModel.grant("OR", 5);
+        shopModel.grant("NOT", 5);
+    }
+
+    private int knownInventoryProductCount() {
+        if (!boxOpened) return 0;
+        if (chapter < 2) return 3;
+        if (chapter < 3) return 6;
+        return 8;
+    }
+
+    private void closeShopOverlay() {
+        shopOverlayVisible = false;
+        pressedShopAction = ShopRenderer.Action.NONE;
+        keys.clear();
+        playSound("ui-close");
+        repaint();
+    }
+
+    private boolean cancelWireInteraction() {
+        boolean cancelled = workbenchGraph.cancelWire();
+        if (wireDragActive) cancelled = true;
+        wireDragActive = false;
+        wireDragMoved = false;
+        return cancelled;
+    }
 
     private int[] logicalPoint(MouseEvent event) {
         double scale = Math.min(getWidth() / (double) W, getHeight() / (double) H);
@@ -1280,6 +2412,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 if (scene == GameScene.TITLE || scene == GameScene.INTRO) {
                     scene = GameScene.BEDROOM;
                 }
+                sound.stopMenuMusic();
                 playSound("ui-confirm");
             } else {
                 playSound("ui-error");
@@ -1287,6 +2420,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
         if (action == 1) {
+            sound.stopMenuMusic();
             playSound("ui-confirm");
             startIntroCutscene();
             return;
@@ -1312,12 +2446,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         if (devSection == 0) {
             loadDevPreset(devSelection);
         } else if (devSection == 1) {
+            String trackPath = ALL_MUSIC_TRACKS.get(devSelection);
+            sound.switchToTrack(trackPath);
+            playSound("ui-confirm");
+        } else if (devSection == 2) {
             if (devSelection == 0) {
                 String[] scenes = SoundManager.soundScenes();
                 soundSceneSelection = (soundSceneSelection + 1) % scenes.length;
                 playSound("ui-select");
             }
-        } else if (devSection == 2) {
+        } else if (devSection == 3) {
             if (devSelection == 0) {
                 calibratorEnabled = !calibratorEnabled;
                 playSound("ui-confirm");
@@ -1340,6 +2478,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-confirm");
                 saveCurrentProgress();
             } else if (devSelection == 5) {
+                colorDitherEnabled = !colorDitherEnabled;
+                playSound("ui-confirm");
+                saveCurrentProgress();
+            } else if (devSelection == 6) {
                 int[] counts = {0, 25, 50, 75, 100, 150, 200};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -1349,7 +2491,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 worldRenderer.setStarCount(starCount);
                 playSound("ui-confirm");
                 saveCurrentProgress();
-            } else if (devSelection == 6) {
+            } else if (devSelection == 7) {
                 int[] counts = {0, 1, 2, 3, 5, 8, 12, 15, 20};
                 int idx = 0;
                 for (int i = 0; i < counts.length; i++) {
@@ -1360,7 +2502,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("ui-confirm");
                 saveCurrentProgress();
             }
-        } else if (devSection == 3) {
+        } else if (devSection == 4) {
             if (devSelection == 0) {
                 ccBedroomBackground = !ccBedroomBackground;
                 worldRenderer.setBedroomBackground(ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal);
@@ -1385,6 +2527,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (disableHud) {
             modified.add("    \"disable_hud\": \"ENABLED\"");
+        }
+        if (!colorDitherEnabled) {
+            modified.add("    \"color_dither\": \"DISABLED\"");
         }
         if (instantStart) {
             modified.add("    \"instant_start\": \"ENABLED\"");
@@ -1454,12 +2599,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
     private int devOptionCount() {
         if (devSection == 0) return DEV_OPTION_COUNT;
-        if (devSection == 1) {
+        if (devSection == 1) return ALL_MUSIC_TRACKS.size();
+        if (devSection == 2) {
             return 1 + SoundManager.sceneSounds(
                 SoundManager.soundScenes()[soundSceneSelection]).length;
         }
-        if (devSection == 2) return 7;
-        if (devSection == 3) return 2;
+        if (devSection == 3) return 8;
+        if (devSection == 4) return 2;
         return 0;
     }
 
@@ -1484,11 +2630,21 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         completedObjective = null;
         ObjectiveRenderer.reset();
         exitPrompt = false;
-        autoTester.reset();
+        resetAutoTesterState();
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
+        contractModel.restore(null);
+        craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
         Arrays.fill(crafted, false);
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
+        shopModel.reset();
+        workbenchGraph.clear();
 
         if (preset == 0) {
             boxRetrieved = false;
@@ -1499,6 +2655,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             boxRetrieved = true;
             boxOpened = true;
             workbenchInstalled = true;
+            grantStarterGates();
         }
 
         switch (preset) {
@@ -1619,10 +2776,18 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         boxRetrieved = false;
         updateBedroomBackground();
         updateStreetBackground();
-        autoTester.reset();
+        resetAutoTesterState();
+        craftedCircuitInventory.clear();
+        heldCustomCircuit = null;
+        productionVisible = false;
+        certificationVisible = false;
+        contractVisible = false;
+        craftCircuitVisible = false;
         selectedRecipe = 0;
+        notebookSection = NotebookRenderer.Section.GATE_INFO;
         notebookPage = 0;
         circuit.selectRecipe(recipes.get(0));
+        workbenchGraph.clear();
         setPlayerPosition(210, 157);
         facing = Facing.DOWN;
         walkDistance = 0;
@@ -1644,11 +2809,20 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.starCount = starCount;
         data.mothCount = mothCount;
         data.disableHud = disableHud;
+        data.colorDitherEnabled = colorDitherEnabled;
+        data.shopBalance = shopModel.balance();
+        data.gateInventory = shopModel.purchased();
+        data.gateInventoryInitialized = true;
+        data.contractDeliveries = contractModel.deliveries();
+        data.craftedCircuits = craftedCircuitInventory.saveData();
+        data.selectedCraftedCircuit = craftedCircuitInventory.selectedIndex();
+        data.notebookNote = notebookNoteEditor.text();
 
         if (scene != GameScene.TITLE && scene != GameScene.CONTROLS
             && scene != GameScene.SETTINGS && scene != GameScene.DEV && scene != GameScene.INTRO) {
             data.chapter = chapter;
-            data.scene = (scene == GameScene.BOARD || scene == GameScene.NOTEBOOK) ? devReturnScene : scene;
+            data.scene = scene == GameScene.BOARD ? returnScene
+                : scene == GameScene.NOTEBOOK ? notebookReturnScene : scene;
             data.playerX = playerX;
             data.playerY = playerY;
             data.facing = facing;
@@ -1658,6 +2832,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             data.catPresent = catPresent;
             data.catX = catX;
             data.catY = catY;
+            data.workspaceRecipe = selectedRecipe;
+            data.workspaceGraph = WorkbenchSnapshotCodec.encode(workbenchGraph.snapshot());
         }
         SaveManager.saveGame(data);
     }
@@ -1674,6 +2850,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             System.arraycopy(data.crafted, 0, this.crafted, 0, crafted.length);
         }
         this.notebookPage = data.notebookPage;
+        this.notebookNoteEditor.setText(data.notebookNote);
+        this.notebookNoteDirty = false;
+        this.notebookNoteWriting = false;
         this.instantStart = data.instantStart;
         this.taskbarOnRight = data.taskbarOnRight;
         this.catAlwaysAppears = data.catAlwaysAppears;
@@ -1688,16 +2867,34 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.starCount = data.starCount;
         this.mothCount = data.mothCount;
         this.disableHud = data.disableHud;
+        this.colorDitherEnabled = data.colorDitherEnabled;
+        this.shopModel.restore(data.shopBalance, data.gateInventory);
+        this.contractModel.restore(data.contractDeliveries);
+        this.craftedCircuitInventory.restore(data.craftedCircuits,
+            data.selectedCraftedCircuit);
+        this.heldCustomCircuit = null;
+        if (!data.gateInventoryInitialized && data.boxOpened) grantStarterGates();
         updateBedroomBackground();
         updateStreetBackground();
         this.worldRenderer.setStarCount(starCount);
         this.worldRenderer.setMothCount(mothCount);
         this.worldRenderer.setDisableHud(disableHud);
-        this.autoTester.reset();
+        resetAutoTesterState();
         if (data.autoTesterAttached && !autoTester.isAttached()) {
             this.autoTester.toggleAttachment();
         }
-        this.circuit.selectRecipe(recipes.get(0));
+        int maxRecipe = data.chapter >= 3 ? recipes.size() - 1 : 2;
+        this.selectedRecipe = clamp(data.workspaceRecipe, 0, maxRecipe);
+        this.circuit.selectRecipe(recipes.get(selectedRecipe));
+        this.workbenchGraph.clear();
+        try {
+            WorkbenchGraph.Snapshot workspace = WorkbenchSnapshotCodec.decode(
+                data.workspaceGraph);
+            if (workspace != null) this.workbenchGraph.restore(workspace);
+        } catch (RuntimeException invalidWorkspace) {
+            System.err.println("Failed to restore workspace: "
+                + invalidWorkspace.getMessage());
+        }
         this.dialogue.clear();
         this.line = null;
         this.completedObjective = null;
@@ -1710,6 +2907,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     }
 
     private static int clamp(int value, int min, int max) { return Math.max(min, Math.min(max, value)); }
+
+    private static boolean supportsPositionMarker(GameScene targetScene) {
+        return targetScene == GameScene.BEDROOM
+            || targetScene == GameScene.STREET
+            || targetScene == GameScene.SHOP
+            || targetScene == GameScene.BOARD;
+    }
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }

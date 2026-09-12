@@ -35,6 +35,8 @@ public final class SaveManager {
             }
             json.append("],\n");
             json.append("  \"notebookPage\": ").append(data.notebookPage).append(",\n");
+            json.append("  \"notebookNote\": \"")
+                .append(escapeJson(data.notebookNote)).append("\",\n");
             json.append("  \"autoTesterAttached\": ").append(data.autoTesterAttached).append(",\n");
             json.append("  \"catPresent\": ").append(data.catPresent).append(",\n");
             json.append("  \"catX\": ").append(data.catX).append(",\n");
@@ -49,7 +51,38 @@ public final class SaveManager {
             json.append("  \"starCount\": ").append(data.starCount).append(",\n");
             json.append("  \"mothCount\": ").append(data.mothCount).append(",\n");
             json.append("  \"taskbarOnRight\": ").append(data.taskbarOnRight).append(",\n");
-            json.append("  \"disableHud\": ").append(data.disableHud).append("\n");
+            json.append("  \"disableHud\": ").append(data.disableHud).append(",\n");
+            json.append("  \"colorDitherEnabled\": ").append(data.colorDitherEnabled).append(",\n");
+            json.append("  \"shopBalance\": ").append(data.shopBalance).append(",\n");
+            json.append("  \"gateInventory\": [");
+            if (data.gateInventory != null) {
+                for (int i = 0; i < data.gateInventory.length; i++) {
+                    json.append(data.gateInventory[i]);
+                    if (i < data.gateInventory.length - 1) json.append(", ");
+                }
+            }
+            json.append("],\n");
+            json.append("  \"contractDeliveries\": [");
+            if (data.contractDeliveries != null) {
+                for (int i = 0; i < data.contractDeliveries.length; i++) {
+                    json.append(data.contractDeliveries[i]);
+                    if (i < data.contractDeliveries.length - 1) json.append(", ");
+                }
+            }
+            json.append("],\n");
+            json.append("  \"craftedCircuits\": [");
+            if (data.craftedCircuits != null) {
+                for (int i = 0; i < data.craftedCircuits.length; i++) {
+                    json.append('"').append(data.craftedCircuits[i]).append('"');
+                    if (i < data.craftedCircuits.length - 1) json.append(", ");
+                }
+            }
+            json.append("],\n");
+            json.append("  \"selectedCraftedCircuit\": ")
+                .append(data.selectedCraftedCircuit).append(",\n");
+            json.append("  \"workspaceRecipe\": ").append(data.workspaceRecipe).append(",\n");
+            json.append("  \"workspaceGraph\": \"")
+                .append(escapeJson(data.workspaceGraph)).append("\"\n");
             json.append("}\n");
 
             Files.writeString(SAVE_FILE_PATH, json.toString(), StandardCharsets.UTF_8);
@@ -73,6 +106,7 @@ public final class SaveManager {
             data.facing = parseEnum(content, "facing", Facing.class, Facing.DOWN);
             data.crafted = parseBooleanArray(content, "crafted", 5);
             data.notebookPage = parseInt(content, "notebookPage", 0);
+            data.notebookNote = parseJsonString(content, "notebookNote", "");
             data.autoTesterAttached = parseBoolean(content, "autoTesterAttached", false);
             data.catPresent = parseBoolean(content, "catPresent", false);
             data.catX = parseInt(content, "catX", GameConstants.STREET_CAT_X);
@@ -88,6 +122,15 @@ public final class SaveManager {
             data.mothCount = parseInt(content, "mothCount", 3);
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
             data.disableHud = parseBoolean(content, "disableHud", false);
+            data.colorDitherEnabled = parseBoolean(content, "colorDitherEnabled", true);
+            data.shopBalance = parseInt(content, "shopBalance", 250);
+            data.gateInventory = parseIntArray(content, "gateInventory", 8);
+            data.gateInventoryInitialized = content.contains("\"gateInventory\"");
+            data.contractDeliveries = parseIntArray(content, "contractDeliveries", 5);
+            data.craftedCircuits = parseStringArray(content, "craftedCircuits");
+            data.selectedCraftedCircuit = parseInt(content, "selectedCraftedCircuit", -1);
+            data.workspaceRecipe = parseInt(content, "workspaceRecipe", 0);
+            data.workspaceGraph = parseJsonString(content, "workspaceGraph", "");
 
             return data;
         } catch (Exception e) {
@@ -146,5 +189,76 @@ public final class SaveManager {
             }
         }
         return result;
+    }
+
+    private static int[] parseIntArray(String json, String key, int length) {
+        int[] result = new int[length];
+        Pattern pattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+        Matcher matcher = pattern.matcher(json);
+        if (matcher.find()) {
+            String[] parts = matcher.group(1).split(",");
+            for (int i = 0; i < Math.min(length, parts.length); i++) {
+                try { result[i] = Integer.parseInt(parts[i].trim()); }
+                catch (Exception ignored) { result[i] = 0; }
+            }
+        }
+        return result;
+    }
+
+    private static String[] parseStringArray(String json, String key) {
+        Pattern arrayPattern = Pattern.compile("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+        Matcher arrayMatcher = arrayPattern.matcher(json);
+        if (!arrayMatcher.find()) return new String[0];
+        java.util.List<String> values = new java.util.ArrayList<>();
+        Matcher valueMatcher = Pattern.compile("\"([^\"]*)\"").matcher(arrayMatcher.group(1));
+        while (valueMatcher.find()) values.add(valueMatcher.group(1));
+        return values.toArray(String[]::new);
+    }
+
+    private static String escapeJson(String value) {
+        if (value == null) return "";
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            switch (character) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> escaped.append(character);
+            }
+        }
+        return escaped.toString();
+    }
+
+    private static String parseJsonString(String json, String key, String fallback) {
+        Pattern pattern = Pattern.compile("\"" + key
+            + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+        Matcher matcher = pattern.matcher(json);
+        if (!matcher.find()) return fallback;
+        String escaped = matcher.group(1);
+        StringBuilder value = new StringBuilder(escaped.length());
+        boolean slash = false;
+        for (int index = 0; index < escaped.length(); index++) {
+            char character = escaped.charAt(index);
+            if (!slash && character == '\\') {
+                slash = true;
+                continue;
+            }
+            if (slash) {
+                value.append(switch (character) {
+                    case 'n' -> '\n';
+                    case 'r' -> '\r';
+                    case 't' -> '\t';
+                    default -> character;
+                });
+                slash = false;
+            } else {
+                value.append(character);
+            }
+        }
+        if (slash) value.append('\\');
+        return value.toString();
     }
 }

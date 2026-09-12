@@ -31,22 +31,20 @@ public final class CircuitModelTest {
         incomplete.recordCurrent();
         require(!incomplete.allRowsRecorded(), "incomplete circuits must not record");
 
-        CircuitModel autoModel = new CircuitModel(recipes.get(0));
-        for (int i = 0; i < autoModel.recipe().solution.length; i++) {
-            autoModel.place(i, autoModel.recipe().solution[i]);
-        }
+        WorkbenchGraph autoGraph = new WorkbenchGraph(recipes.get(0));
         AutoTester tester = new AutoTester();
         tester.toggleAttachment();
         require(tester.isAttached(), "LogicLens should attach");
-        require(tester.start(autoModel), "LogicLens should start on a complete circuit");
+        require(tester.start(recipes.get(0)), "LogicLens should start with a target config");
         int completedRows = 0;
         while (tester.isRunning()) {
-            AutoTester.Tick tick = tester.update(autoModel);
+            AutoTester.Tick tick = tester.update(autoGraph);
             if (tick.advanced() || tick.finished()) completedRows++;
             if (tick.finished()) require(tick.passed(), "LogicLens should pass a correct circuit");
         }
         require(completedRows == 4, "LogicLens should sweep every truth-table row");
-        require(autoModel.matchesTruthTable(), "LogicLens should record matching observations");
+        require(Boolean.FALSE.equals(tester.observations()[3]),
+            "LogicLens should record the workbench's final observation");
 
         CircuitRecipe xor = recipes.get(2);
         require(xor.solution.length == 5 && xor.solution[4] == GateType.OR,
@@ -69,6 +67,7 @@ public final class CircuitModelTest {
         save.facing = Facing.RIGHT;
         save.crafted = new boolean[]{true, true, true, false, false};
         save.notebookPage = 2;
+        save.notebookNote = "Mira's NAND:\n\"both\" & \\ notes";
         save.autoTesterAttached = true;
         save.catPresent = true;
         save.catX = 45;
@@ -79,6 +78,13 @@ public final class CircuitModelTest {
         save.mothCount = 8;
         save.taskbarOnRight = true;
         save.disableHud = true;
+        save.shopBalance = 178;
+        save.gateInventory = new int[]{3, 1, 4, 1, 5, 9, 2, 6};
+        save.contractDeliveries = new int[]{2, 0, 1, 0, 0};
+        save.craftedCircuits = new String[]{"0@0,500,365,AND##"};
+        save.selectedCraftedCircuit = 0;
+        save.workspaceRecipe = 2;
+        save.workspaceGraph = WorkbenchSnapshotCodec.encode(autoGraph.snapshot());
 
         require(SaveManager.saveGame(save), "saveGame should return true");
         require(SaveManager.hasSave(), "hasSave should return true after saving");
@@ -91,6 +97,8 @@ public final class CircuitModelTest {
         require(loaded.facing == Facing.RIGHT, "loaded facing should match");
         require(loaded.crafted[0] && loaded.crafted[1] && loaded.crafted[2] && !loaded.crafted[3], "loaded crafted array should match");
         require(loaded.notebookPage == 2, "loaded notebook page should be 2");
+        require(loaded.notebookNote.equals(save.notebookNote),
+            "multiline notebook note should persist exactly");
         require(loaded.autoTesterAttached, "loaded autoTesterAttached should be true");
         require(loaded.catPresent, "loaded catPresent should be true");
         require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");
@@ -100,6 +108,24 @@ public final class CircuitModelTest {
         require(loaded.mothCount == 8, "loaded mothCount should match");
         require(loaded.taskbarOnRight, "loaded taskbarOnRight should be true");
         require(loaded.disableHud, "loaded disableHud should be true");
+        require(loaded.shopBalance == 178, "loaded shop balance should match");
+        require(loaded.gateInventory[0] == 3 && loaded.gateInventory[7] == 6,
+            "loaded gate inventory should match");
+        require(loaded.contractDeliveries[0] == 2 && loaded.contractDeliveries[2] == 1,
+            "loaded contract delivery counts should match");
+        require(loaded.craftedCircuits.length == 1
+                && loaded.craftedCircuits[0].startsWith("0@"),
+            "crafted player circuit data should persist");
+        require(loaded.selectedCraftedCircuit == 0,
+            "selected crafted circuit should persist");
+        require(loaded.workspaceRecipe == 2,
+            "selected workspace recipe should persist");
+        require(loaded.workspaceGraph.equals(save.workspaceGraph),
+            "active workspace graph should persist exactly");
+        WorkbenchGraph loadedWorkspace = new WorkbenchGraph(recipes.get(0));
+        loadedWorkspace.restore(WorkbenchSnapshotCodec.decode(loaded.workspaceGraph));
+        require(loadedWorkspace.snapshot().equals(autoGraph.snapshot()),
+            "loaded workspace should restore every node and wire");
 
         SaveManager.deleteSave();
         require(!SaveManager.hasSave(), "hasSave should be false after deleteSave");

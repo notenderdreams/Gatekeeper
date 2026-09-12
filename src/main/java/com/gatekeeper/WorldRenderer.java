@@ -167,7 +167,7 @@ final class WorldRenderer {
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
             }
-            drawCalibratedPoints(g, 0);
+            drawPositionMarkers(g, 0);
             return;
         }
         // Layered night-time room: wallpaper, moonlit window, floor and rug.
@@ -275,7 +275,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
         }
-        drawCalibratedPoints(g, 0);
+        drawPositionMarkers(g, 0);
     }
 
     void drawStreet(Graphics2D g) {
@@ -341,7 +341,7 @@ final class WorldRenderer {
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.STREET, playerX, playerY, cameraX);
         }
-        drawCalibratedPoints(g, cameraX);
+        drawPositionMarkers(g, cameraX);
     }
 
     private void drawStreetPlayer(Graphics2D g, int screenX) {
@@ -448,7 +448,7 @@ final class WorldRenderer {
         DevLog.log(sb.toString());
     }
 
-    private void drawCalibratedPoints(Graphics2D g, int cameraX) {
+    void drawPositionMarkers(Graphics2D g, int cameraX) {
         for (CalibratedPoint p : calibratedPoints) {
             int screenX = p.worldX - cameraX;
             int screenY = p.worldY;
@@ -598,13 +598,14 @@ final class WorldRenderer {
             drawMaskedShopkeeper(g, 240, 136, 102);
             drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
             drawHud(g, "MIRA'S ELECTRONICS");
-            if (near(240, 160)) prompt(g, "E  TALK TO MIRA");
+            if (near(240, 160)) prompt(g, chapter >= 2
+                ? "E TALK   F SHOP   C ORDERS" : "E  TALK     F  SHOP");
             else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
 
             if (showCollisions) {
                 drawCollisionOverlay(g, GameScene.SHOP, playerX, playerY, 0);
             }
-            drawCalibratedPoints(g, 0);
+            drawPositionMarkers(g, 0);
             return;
         }
         // A warm, crowded neighborhood electronics shop.
@@ -677,7 +678,8 @@ final class WorldRenderer {
         drawShopkeeper(g, 240, 120);
         drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
         drawHud(g, "MIRA'S ELECTRONICS");
-        if (near(240, 155)) prompt(g, "E  TALK TO MIRA");
+        if (near(240, 155)) prompt(g, chapter >= 2
+            ? "E TALK   F SHOP   C ORDERS" : "E  TALK     F  SHOP");
         if (playerX < 45) prompt(g, "E  GO OUTSIDE");
     }
 
@@ -687,6 +689,7 @@ final class WorldRenderer {
         g.fillRect(0, 0, W, 20);
         g.setColor(INK);
         GamePanel.pixelText(g, location, 8, 14, 1);
+        GamePanel.pixelText(g, "I: BAG", 344, 14, 1);
         if (chapter >= 1) GamePanel.pixelText(g, "N: NOTEBOOK", 393, 14, 1);
     }
 

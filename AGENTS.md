@@ -6,6 +6,7 @@
 - Run the focused checks with `./test.sh`.
 - Compile and run the game with `gradle lwjgl3:run --no-daemon --console=plain` when a visual verification is needed.
 - Preserve the existing pixel-art presentation and keep rendering components outside `GamePanel`; the panel should coordinate state, input, updates, and renderer assembly.
+- Before working on canvas layout, rendering, hit regions, controls, nodes, wires, overlays, or interactions, read `src/main/resources/assets/items/canvas/canvas.annotations.json` and treat its annotated regions and image dimensions as the source of truth.
 - Maintain developer panel (`F1`) quick-scene breakpoints strictly sorted in order of story and game progress (`FRESH BEDROOM` -> `BOARD PROGRESSION` -> `STREET` -> `SHOP` -> `FIRST 3 COMPLETE` -> `AUTO TESTER HOME` -> `ADVANCED CHAPTER` -> `ENDING`).
 
 ## Codebase context with Graphify
