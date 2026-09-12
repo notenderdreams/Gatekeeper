@@ -65,6 +65,22 @@ public final class WorkbenchGraphTest {
             "a node should not wire into itself");
         require(graph.cancelWire(), "Escape action should cancel an unfinished wire");
 
+        require(graph.click(WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_0_Y, GateType.AND)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "clicking an input terminal should start a wire");
+        require(graph.click(WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y, GateType.AND)
+                == WorkbenchGraph.EditResult.INVALID_WIRE,
+            "connecting input 0 directly to output should be disabled");
+        require(graph.cancelWire(), "Escape action should cancel an unfinished wire");
+
+        require(graph.click(WorkbenchGraph.INPUT_X, WorkbenchGraph.INPUT_1_Y, GateType.AND)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "clicking input 1 should start a wire");
+        require(graph.finishWireAt(WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y)
+                == WorkbenchGraph.EditResult.INVALID_WIRE,
+            "dragging input 1 directly to output should be disabled");
+        require(graph.cancelWire(), "Escape action should cancel an unfinished wire");
+
         int[] routeStart = graph.sourcePoint(source.id());
         graph.click(routeStart[0], routeStart[1], GateType.AND);
         require(graph.click(930, 730, GateType.AND)
@@ -238,6 +254,14 @@ public final class WorkbenchGraphTest {
             "dragging from a junction should connect when released on an input");
         require(branched.pendingSourceId() == null,
             "finishing a junction drag should clear the active wire source");
+
+        require(branched.click(junction.x(), junction.y(), GateType.OR)
+                == WorkbenchGraph.EditResult.WIRE_STARTED,
+            "clicking the input-driven junction should start a wire");
+        require(branched.finishWireAt(WorkbenchGraph.OUTPUT_X, WorkbenchGraph.OUTPUT_Y)
+                == WorkbenchGraph.EditResult.INVALID_WIRE,
+            "connecting an input-driven junction directly to output should be disabled");
+        require(branched.cancelWire(), "cancelling wire from junction should succeed");
 
         require(branched.click(800, 700, GateType.NOT)
                 == WorkbenchGraph.EditResult.ADDED,

@@ -251,7 +251,8 @@ final class WorkbenchGraph {
     }
 
     boolean isCompleteCircuit() {
-        if (nodes.isEmpty() || wireTo(OUTPUT, 0) == null) return false;
+        Wire outWire = wireTo(OUTPUT, 0);
+        if (nodes.isEmpty() || outWire == null || isInputSource(outWire.sourceId)) return false;
         for (Node node : nodes) {
             for (int port = 0; port < node.inputPorts(); port++) {
                 if (wireTo(node.id, port) == null) return false;
@@ -845,8 +846,28 @@ final class WorkbenchGraph {
         return null;
     }
 
+    private static boolean isInput(int id) {
+        return id == INPUT_0 || id == INPUT_1;
+    }
+
+    private boolean isInputSource(int sourceId) {
+        Set<Integer> visited = new HashSet<>();
+        int curr = sourceId;
+        while (true) {
+            if (isInput(curr)) return true;
+            if (!visited.add(curr)) return false;
+            Junction junction = junction(curr);
+            if (junction == null) return false;
+            Wire incoming = wireTo(junction.id, 0);
+            curr = incoming == null ? junction.upstreamSourceId : incoming.sourceId;
+        }
+    }
+
     private EditResult connectTo(Target target) {
         if (pendingSourceId == target.nodeId) return EditResult.INVALID_WIRE;
+        if (target.nodeId == OUTPUT && isInputSource(pendingSourceId)) {
+            return EditResult.INVALID_WIRE;
+        }
         wires.removeIf(wire -> wire.targetId == target.nodeId
             && wire.targetPort == target.port);
         wires.add(new Wire(pendingSourceId, target.nodeId, target.port,
@@ -862,6 +883,9 @@ final class WorkbenchGraph {
         Target target = pendingTarget;
         if (target == null) return EditResult.NONE;
         if (sourceId == target.nodeId) return EditResult.INVALID_WIRE;
+        if (target.nodeId == OUTPUT && isInputSource(sourceId)) {
+            return EditResult.INVALID_WIRE;
+        }
         wires.removeIf(wire -> wire.targetId == target.nodeId
             && wire.targetPort == target.port);
         List<RoutePoint> corners = new ArrayList<>(pendingCorners);
