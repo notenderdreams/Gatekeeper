@@ -60,6 +60,7 @@ final class WorldRenderer {
     private boolean boxOpened = false;
     private boolean workbenchInstalled = false;
     private boolean disableHud = false;
+    private String activePrompt;
     private final Starfield starfield = new Starfield();
     private final BufferedImage streetPlayerLayer = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
 
@@ -145,6 +146,7 @@ final class WorldRenderer {
         this.catPresent = catPresent;
         this.catX = catX;
         this.catY = catY;
+        this.activePrompt = null;
     }
 
     void drawBedroom(Graphics2D g) {
@@ -156,7 +158,6 @@ final class WorldRenderer {
             EnvironmentArt.drawBedroomLampFlicker(g, ticks);
             EnvironmentArt.drawWorldVignette(g);
             drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
-            drawHud(g, "ALEX'S ROOM");
             if (boxRetrieved && !boxOpened && near(299, 132)) prompt(g, "E  OPEN THE BOX");
             else if (near(205, 126) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
             else if (near(205, 126) && workbenchInstalled) {
@@ -264,7 +265,6 @@ final class WorldRenderer {
         GamePanel.pixelText(g, "OUTSIDE", 418, 57, 1);
 
         drawPlayer(g, playerX, playerY, BEDROOM_PLAYER_HEIGHT);
-        drawHud(g, "ALEX'S ROOM");
         if (boxRetrieved && !boxOpened && near(299, 128)) prompt(g, "E  OPEN THE BOX");
         else if (near(93, 91) && boxOpened && !workbenchInstalled) prompt(g, "E  INSTALL WORKBENCH");
         else if (near(93, 91) && workbenchInstalled) {
@@ -327,7 +327,6 @@ final class WorldRenderer {
             drawCat(g, cameraX);
         }
         drawStreetPlayer(g, playerX - cameraX);
-        drawHud(g, "LANTERN STREET");
         if (Math.abs(playerX - STREET_HOME_X) < 38) {
             prompt(g, "E  ENTER HOME");
         } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
@@ -597,7 +596,6 @@ final class WorldRenderer {
             EnvironmentArt.drawWorldVignette(g);
             drawMaskedShopkeeper(g, 240, 136, 102);
             drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-            drawHud(g, "MIRA'S ELECTRONICS");
             if (near(240, 160)) prompt(g, chapter >= 2
                 ? "E TALK   F SHOP   C ORDERS" : "E  TALK     F  SHOP");
             else if (playerX < 45) prompt(g, "E  GO OUTSIDE");
@@ -677,13 +675,28 @@ final class WorldRenderer {
 
         drawShopkeeper(g, 240, 120);
         drawPlayer(g, playerX, playerY, INDOOR_PLAYER_HEIGHT);
-        drawHud(g, "MIRA'S ELECTRONICS");
         if (near(240, 155)) prompt(g, chapter >= 2
             ? "E TALK   F SHOP   C ORDERS" : "E  TALK     F  SHOP");
         if (playerX < 45) prompt(g, "E  GO OUTSIDE");
     }
 
-    private void drawHud(Graphics2D g, String location) {
+    void drawHud(Graphics2D g, GameScene scene) {
+        if (disableHud) return;
+        String location = switch (scene) {
+            case BEDROOM -> "ALEX'S ROOM";
+            case STREET -> "LANTERN STREET";
+            case SHOP -> "MIRA'S ELECTRONICS";
+            default -> "";
+        };
+        if (!location.isEmpty()) {
+            drawHud(g, location);
+        }
+        if (activePrompt != null && line == null) {
+            DialogueRenderer.drawPrompt(g, activePrompt, uiScale);
+        }
+    }
+
+    void drawHud(Graphics2D g, String location) {
         if (disableHud) return;
         g.setColor(VOID);
         g.fillRect(0, 0, W, 20);
@@ -901,7 +914,7 @@ final class WorldRenderer {
 
     private void prompt(Graphics2D g, String text) {
         if (disableHud) return;
-        DialogueRenderer.drawPrompt(g, text, uiScale);
+        this.activePrompt = text;
     }
 
     private static int clamp(int value, int min, int max) {

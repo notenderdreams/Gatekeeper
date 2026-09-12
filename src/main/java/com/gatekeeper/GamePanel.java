@@ -360,6 +360,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             DitherRenderer.applyColorDither(playableSceneLayer, ticks);
             g.drawImage(playableSceneLayer, 0, 0, null);
         }
+        if (!disableHud && (scene == GameScene.BEDROOM || scene == GameScene.STREET || scene == GameScene.SHOP)) {
+            worldRenderer.drawHud(g, scene);
+        }
         if (scene == GameScene.BOARD) {
             worldRenderer.drawPositionMarkers(g, 0);
         }
