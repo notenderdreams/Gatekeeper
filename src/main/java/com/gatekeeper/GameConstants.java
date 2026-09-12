@@ -1,6 +1,7 @@
 package com.gatekeeper;
 
 import java.awt.Color;
+import java.util.List;
 
 /** Shared logical-canvas dimensions, UI geometry, and palette. */
 final class GameConstants {
@@ -37,8 +38,39 @@ final class GameConstants {
     static final String NOTEBOOK_ITEM_CARD = "@ITEM_NOTEBOOK";
     static final String WORKBENCH_ITEM_CARD = "@ITEM_WORKBENCH";
     static final String LETTER_ITEM_CARD = "@ITEM_LETTER";
-    static final String MUSIC_LOOP = "/assets/audio/music/solitude-main.wav";
+    static final String MENU_MUSIC = "/assets/audio/music/overnight-loop.wav";
+    static final List<String> GAMEPLAY_PLAYLIST = List.of(
+        "/assets/audio/music/workbench-hours.wav",
+        "/assets/audio/music/after-hours.wav",
+        "/assets/audio/music/lantern-rain.wav",
+        "/assets/audio/music/silver-traces.wav",
+        "/assets/audio/music/bedroom-glow.wav",
+        "/assets/audio/music/truth-table-lullaby.wav",
+        "/assets/audio/music/tin-roof-reverie.wav",
+        "/assets/audio/music/solitude-main.wav"
+    );
+    static final List<String> ALL_MUSIC_TRACKS = List.of(
+        MENU_MUSIC,
+        "/assets/audio/music/workbench-hours.wav",
+        "/assets/audio/music/after-hours.wav",
+        "/assets/audio/music/lantern-rain.wav",
+        "/assets/audio/music/silver-traces.wav",
+        "/assets/audio/music/bedroom-glow.wav",
+        "/assets/audio/music/truth-table-lullaby.wav",
+        "/assets/audio/music/tin-roof-reverie.wav",
+        "/assets/audio/music/solitude-main.wav"
+    );
+    static final String MUSIC_LOOP = MENU_MUSIC;
     static final String ROAD_AMBIENCE = "/assets/audio/ambience/road-ambience.wav";
+
+    static String musicTrackName(String resourcePath) {
+        if (resourcePath == null) return "NONE";
+        if (MENU_MUSIC.equals(resourcePath)) return "OVERNIGHT LOOP (MENU)";
+        int lastSlash = resourcePath.lastIndexOf('/');
+        String fileName = (lastSlash >= 0) ? resourcePath.substring(lastSlash + 1) : resourcePath;
+        if (fileName.endsWith(".wav")) fileName = fileName.substring(0, fileName.length() - 4);
+        return fileName.replace('-', ' ').toUpperCase();
+    }
 
     static final Color INK = new Color(242, 241, 234);
     static final Color VOID = new Color(10, 10, 14);

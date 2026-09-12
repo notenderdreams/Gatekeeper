@@ -53,6 +53,7 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ContractRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/ShopRenderer.java \
   "$PROJECT_DIR"/src/main/java/com/gatekeeper/InventoryRenderer.java \
+  "$PROJECT_DIR"/src/main/java/com/gatekeeper/SoundManager.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CircuitModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/AutoTesterRendererTest.java \
@@ -65,7 +66,8 @@ javac --release 17 -d "$TEST_BUILD_DIR" \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitModelTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/CraftCircuitRendererTest.java \
   "$PROJECT_DIR"/src/test/java/com/gatekeeper/ContractRendererTest.java \
-  "$PROJECT_DIR"/src/test/java/com/gatekeeper/DitherRendererTest.java
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/DitherRendererTest.java \
+  "$PROJECT_DIR"/src/test/java/com/gatekeeper/SoundManagerTest.java
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.AutoTesterTest
 java -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.AutoTesterRendererTest
@@ -79,3 +81,4 @@ java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitModelTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.CraftCircuitRendererTest
 java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.ContractRendererTest
 java -cp "$TEST_BUILD_DIR" com.gatekeeper.DitherRendererTest
+java -Djava.awt.headless=true -cp "$TEST_BUILD_DIR:$PROJECT_DIR/src/main/resources" com.gatekeeper.SoundManagerTest

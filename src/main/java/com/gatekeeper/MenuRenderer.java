@@ -124,7 +124,7 @@ final class MenuRenderer {
         g.fillRect(150, 52, 1, 205);
 
         // --- LEFT COLUMN: SECTIONS ---
-        String[] sections = {"BREAKPOINTS", "SOUNDS", "DEBUG TOOLS", "COLOR CORRECT"};
+        String[] sections = {"BREAKPOINTS", "MUSIC", "SOUNDS", "DEBUG TOOLS", "COLOR CORRECT"};
         for (int i = 0; i < sections.length; i++) {
             int y = 58 + i * 28;
             boolean isCurrentSection = (section == i);
@@ -198,7 +198,59 @@ final class MenuRenderer {
                     GamePanel.pixelText(g, options[i], 183, y + 13, 1);
                 }
             }
-        } else if (section == 1) { // SOUNDS
+        } else if (section == 1) { // MUSIC
+            java.util.List<String> tracks = ALL_MUSIC_TRACKS;
+            for (int i = 0; i < tracks.size(); i++) {
+                int y = 54 + i * 22;
+                boolean isSelected = focusRight && (selection == i);
+                boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 18);
+                String trackPath = tracks.get(i);
+                boolean isCurrent = trackPath.equals(sound.currentMusicPath());
+                boolean isTarget = trackPath.equals(sound.targetTrackPath());
+                boolean isFadingOut = isCurrent && sound.isFadingOut();
+                boolean isFadingIn = isCurrent && sound.isFadingIn();
+
+                if (isSelected) {
+                    g.setColor(new Color(25, 48, 42, 190));
+                    g.fillRect(160, y, 285, 18);
+                    g.setColor(new Color(55, 110, 92, 200));
+                    g.drawRect(160, y, 285, 18);
+                    g.setColor(new Color(143, 190, 128));
+                    g.fillRect(160, y, 3, 18);
+                    GamePanel.pixelText(g, ">", 170, y + 13, 1);
+                    GamePanel.pixelText(g, musicTrackName(trackPath), 183, y + 13, 1);
+                } else if (hovered) {
+                    g.setColor(new Color(18, 32, 28, 160));
+                    g.fillRect(160, y, 285, 18);
+                    g.setColor(new Color(45, 75, 68, 180));
+                    g.drawRect(160, y, 285, 18);
+                    g.setColor(new Color(191, 192, 185));
+                    GamePanel.pixelText(g, ">", 170, y + 13, 1);
+                    GamePanel.pixelText(g, musicTrackName(trackPath), 183, y + 13, 1);
+                } else {
+                    g.setColor(new Color(8, 14, 18, 120));
+                    g.fillRect(160, y, 285, 18);
+                    g.setColor(new Color(20, 28, 32));
+                    g.drawRect(160, y, 285, 18);
+                    g.setColor(new Color(160, 168, 168));
+                    GamePanel.pixelText(g, musicTrackName(trackPath), 183, y + 13, 1);
+                }
+
+                if (isFadingOut) {
+                    g.setColor(new Color(240, 180, 80));
+                    GamePanel.pixelText(g, "FADING OUT", 376, y + 13, 1);
+                } else if (isFadingIn) {
+                    g.setColor(new Color(54, 211, 224));
+                    GamePanel.pixelText(g, "FADING IN", 382, y + 13, 1);
+                } else if (isTarget && sound.isFadingOut()) {
+                    g.setColor(new Color(250, 204, 21));
+                    GamePanel.pixelText(g, "QUEUED", 396, y + 13, 1);
+                } else if (isCurrent) {
+                    g.setColor(new Color(143, 190, 128));
+                    GamePanel.pixelText(g, "PLAYING", 392, y + 13, 1);
+                }
+            }
+        } else if (section == 2) { // SOUNDS
             String[] soundScenes = SoundManager.soundScenes();
             String sceneName = soundScenes[Math.max(0, Math.min(soundSceneSelection, soundScenes.length - 1))];
             String[] soundFiles = SoundManager.sceneSounds(sceneName);
@@ -225,7 +277,7 @@ final class MenuRenderer {
                 }
                 GamePanel.pixelText(g, label, 183, y + 12, 1);
             }
-        } else if (section == 2) { // DEBUG TOOLS
+        } else if (section == 3) { // DEBUG TOOLS
             String[] tools = {
                 "GLOBAL POSITION MARKER: " + (calibratorEnabled ? "ON" : "OFF"),
                 "SHOW COLLISION AREAS: " + (showCollisions ? "ON" : "OFF"),
@@ -272,7 +324,7 @@ final class MenuRenderer {
                     GamePanel.pixelText(g, tools[i], 183, y + 15, 1);
                 }
             }
-        } else if (section == 3) { // COLOR CORRECT
+        } else if (section == 4) { // COLOR CORRECT
             String[] ccOptions = {
                 "BEDROOM BACKGROUND: " + (ccBedroomBackground ? "CC" : "NORMAL"),
                 "STREET BACKGROUND: " + (ccStreetBackground ? "CC" : "NORMAL")
