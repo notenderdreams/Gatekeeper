@@ -48,7 +48,7 @@ final class ShopModel {
         quantity = 0;
     }
 
-    void reset() { restore(250, null); }
+    void reset() { restore(0, null); }
 
     void grant(String productName, int amount) {
         if (amount <= 0) return;

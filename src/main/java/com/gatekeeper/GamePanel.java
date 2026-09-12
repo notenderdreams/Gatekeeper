@@ -171,7 +171,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean autoTesterRunFromOverlay;
     private AutoTesterRenderer.Action pressedAutoTesterAction = AutoTesterRenderer.Action.NONE;
     private String autoTesterUiStatus = "UI READY // LOGIC OFFLINE";
-    private final ShopModel shopModel = new ShopModel(ShopProduct.catalog(), 250);
+    private final ShopModel shopModel = new ShopModel(ShopProduct.catalog(), 0);
     private final ShopRenderer shopRenderer = new ShopRenderer(
         shopFrameImage, shopItemFrameImage, workbenchNodeTextureImage,
         workbenchWireEndImage, PIXEL_FONT);

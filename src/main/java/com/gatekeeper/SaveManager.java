@@ -123,7 +123,7 @@ public final class SaveManager {
             data.taskbarOnRight = parseBoolean(content, "taskbarOnRight", false);
             data.disableHud = parseBoolean(content, "disableHud", false);
             data.colorDitherEnabled = parseBoolean(content, "colorDitherEnabled", true);
-            data.shopBalance = parseInt(content, "shopBalance", 250);
+            data.shopBalance = parseInt(content, "shopBalance", 0);
             data.gateInventory = parseIntArray(content, "gateInventory", 8);
             data.gateInventoryInitialized = content.contains("\"gateInventory\"");
             data.contractDeliveries = parseIntArray(content, "contractDeliveries", 5);

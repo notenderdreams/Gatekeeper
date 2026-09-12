@@ -26,7 +26,7 @@ public final class SaveData {
     public boolean taskbarOnRight = false;
     public boolean disableHud = false;
     public boolean colorDitherEnabled = true;
-    public int shopBalance = 250;
+    public int shopBalance = 0;
     public int[] gateInventory = new int[8];
     public boolean gateInventoryInitialized;
     public int[] contractDeliveries = new int[5];
