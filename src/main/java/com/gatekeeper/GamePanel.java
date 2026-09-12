@@ -77,6 +77,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final BufferedImage notebookItemImage = loadRawImage("/assets/items/notebook.png");
     private final BufferedImage workbenchItemImage = loadRawImage("/assets/items/workbench.png");
     private final BufferedImage installedWorkbenchImage = loadRawImage("/assets/items/workbench-ontable.png");
+    private final BufferedImage catOnBedImage = loadRawImage("/assets/characters/cat-on-bed.png");
     private final BufferedImage workbenchCanvasImage = loadRawImage("/assets/items/canvas/canvas.png");
     private final BufferedImage workbenchLightOffImage = loadRawImage("/assets/items/canvas/light-off.png");
     private final BufferedImage workbenchSwitchImage = loadRawImage("/assets/items/canvas/switch.png");
@@ -117,6 +118,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean catPresent;
     private int catX = STREET_CAT_X;
     private int catY = 152;
+    private boolean catPetted = false;
+    private boolean catAdopted = false;
+    private boolean catOnBed = false;
+    private boolean catDiscoveredOnBed = false;
     private GameScene scene = GameScene.TITLE;
     private GameScene returnScene = GameScene.BEDROOM;
     private GameScene notebookReturnScene = GameScene.BEDROOM;
@@ -218,7 +223,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private final WorldRenderer worldRenderer = new WorldRenderer(
         bedroomNoBoxImage != null ? bedroomNoBoxImage : (ccBedroomBackground ? bedroomBackgroundCc : bedroomBackgroundNormal),
         ccStreetBackground ? streetBackgroundCc : streetBackgroundNormal, shopBackground,
-        installedWorkbenchImage, alexSprites, miraSprites, catSprites, boxImage,
+        installedWorkbenchImage, catOnBedImage, alexSprites, miraSprites, catSprites, boxImage,
         alexFrameBounds, miraFrameBounds, catFrameBounds,
         erisIdleSprites, erisWalkSprites, erisInteractSprites, erisRunSprites,
         erisIdleBounds, erisWalkBounds, erisInteractBounds, erisRunBounds);
@@ -250,6 +255,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         worldRenderer.setBoxRetrieved(boxRetrieved);
         worldRenderer.setBoxOpened(boxOpened);
         worldRenderer.setWorkbenchInstalled(workbenchInstalled);
+        worldRenderer.setCatOnBed(catOnBed);
     }
 
     private void updateStreetBackground() {
@@ -424,6 +430,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         boxRetrieved = false;
         boxOpened = false;
         workbenchInstalled = false;
+        catPetted = false;
+        catAdopted = false;
+        catOnBed = false;
+        catDiscoveredOnBed = false;
+        worldRenderer.setCatOnBed(false);
         updateBedroomBackground();
         updateStreetBackground();
         scene = GameScene.INTRO;
@@ -585,12 +596,46 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         DialogueRenderer.drawPrompt(g, text, uiScale);
     }
 
+    private void pickCatStreetPosition() {
+        int[] zone = CAT_SPAWN_RANGES[random.nextInt(CAT_SPAWN_RANGES.length)];
+        catX = zone[0] + random.nextInt(zone[1] - zone[0] + 1);
+        catY = zone[2];
+    }
+
     private void rollCatSpawn() {
-        catPresent = catAlwaysAppears || random.nextInt(5) == 0;
+        if (catAlwaysAppears) {
+            catPresent = true;
+            catOnBed = false;
+            worldRenderer.setCatOnBed(false);
+            pickCatStreetPosition();
+            return;
+        }
+        if (catAdopted) {
+            // Once adopted, most of the time (~75%) the cat rests at home on the bed;
+            // sometimes (~25%) it goes outside for a walk.
+            // When resting at home, it will not appear outside on the street.
+            // When outside on the street, the bed at home is empty.
+            catOnBed = random.nextInt(4) != 0;
+            catPresent = !catOnBed;
+            worldRenderer.setCatOnBed(catOnBed);
+            if (catPresent) {
+                pickCatStreetPosition();
+            }
+            return;
+        }
+        if (catPetted && !catAdopted) {
+            // Petted on the street, but hasn't visited the shop yet: still out on the street.
+            catPresent = true;
+            catOnBed = false;
+            worldRenderer.setCatOnBed(false);
+            pickCatStreetPosition();
+            return;
+        }
+        catPresent = random.nextInt(5) == 0;
+        catOnBed = false;
+        worldRenderer.setCatOnBed(false);
         if (catPresent) {
-            int[] zone = CAT_SPAWN_RANGES[random.nextInt(CAT_SPAWN_RANGES.length)];
-            catX = zone[0] + random.nextInt(zone[1] - zone[0] + 1);
-            catY = zone[2];
+            pickCatStreetPosition();
         }
     }
 
@@ -625,9 +670,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 } else if (workbenchInstalled) {
                     say("ALEX|The workbench is ready. I should ask Mira at the electronics shop about these gates.");
                 }
+            } else if (catOnBed && near(100, 150)) {
+                int catSound = random.nextInt(3) + 1;
+                sound.play(AUDIO_ROOT + "cat/cat" + catSound + ".wav", scene.name(), 1.0f);
+                if (catSound == 3) {
+                    say("CAT|*prrrr... purrrrr...*", "ALEX|Fast asleep on the bed. You found the coziest spot in the room.");
+                } else {
+                    say("CAT|*purrrrrr...*", "ALEX|Sleep well, little guy.");
+                }
             } else if (near(407, 132)) {
                 scene = GameScene.STREET;
-                rollCatSpawn();
+                if (catAdopted) {
+                    catPresent = !catOnBed || catAlwaysAppears;
+                    if (catPresent) pickCatStreetPosition();
+                } else {
+                    rollCatSpawn();
+                }
                 playSound("door-open");
                 setPlayerPosition(STREET_HOME_X + 44, STREET_GROUND_Y);
                 facing = Facing.RIGHT;
@@ -639,8 +697,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 playSound("door-open");
                 setPlayerPosition(420, 160);
                 facing = Facing.LEFT;
+                if (catAdopted) {
+                    catOnBed = !catPresent;
+                    worldRenderer.setCatOnBed(catOnBed);
+                }
+                if (catOnBed && !catDiscoveredOnBed) {
+                    catDiscoveredOnBed = true;
+                    say("ALEX|Wait... the stray from Lantern Street followed me home? Look at it sleeping on my bed.");
+                }
                 saveCurrentProgress();
             } else if (Math.abs(playerX - STREET_SHOP_X) < 38) {
+                if (catPetted && !catAdopted) {
+                    catAdopted = true;
+                    catOnBed = true;
+                    catPresent = false;
+                    worldRenderer.setCatOnBed(true);
+                }
                 scene = GameScene.SHOP;
                 playSound("door-open");
                 setPlayerPosition(55, 174);
@@ -651,12 +723,22 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                     LETTER_ITEM_CARD,
                     "@ENTER_BEDROOM_WITH_BOX");
             } else if (catPresent && Math.abs(playerX - catX) < 38) {
+                catPetted = true;
+                saveCurrentProgress();
                 int catSound = random.nextInt(3) + 1;
                 sound.play(AUDIO_ROOT + "cat/cat" + catSound + ".wav", scene.name(), 1.0f);
-                if (catSound == 3) {
-                    say("CAT|Meow meow Meow Meow ");
+                if (catAdopted) {
+                    if (catSound == 3) {
+                        say("CAT|Meow meow Meow Meow ", "ALEX|Taking a little break from napping on my bed?");
+                    } else {
+                        say("CAT|Meow. *purrr*", "ALEX|Out for an evening stroll, buddy? Don't stay out too late.");
+                    }
                 } else {
-                    say("CAT|Meow.");
+                    if (catSound == 3) {
+                        say("CAT|Meow meow Meow Meow ", "ALEX|Looks like you made a friend. Maybe you'll visit my place later?");
+                    } else {
+                        say("CAT|Meow. *purrr*", "ALEX|Hey there, little guy. You're welcome to warm up in my room anytime.");
+                    }
                 }
             }
         } else if (scene == GameScene.SHOP) {
@@ -2794,6 +2876,11 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         circuit.selectRecipe(recipes.get(0));
         shopModel.reset();
         workbenchGraph.clear();
+        catPetted = preset >= 4;
+        catAdopted = preset >= 4;
+        catOnBed = preset >= 4;
+        catDiscoveredOnBed = preset >= 4;
+        catPresent = false;
 
         if (preset == 0) {
             boxRetrieved = false;
@@ -2961,6 +3048,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         data.instantStart = instantStart;
         data.taskbarOnRight = taskbarOnRight;
         data.catAlwaysAppears = catAlwaysAppears;
+        data.catPetted = catPetted;
+        data.catAdopted = catAdopted;
+        data.catOnBed = catOnBed;
+        data.catDiscoveredOnBed = catDiscoveredOnBed;
         data.ccBedroomBackground = ccBedroomBackground;
         data.ccStreetBackground = ccStreetBackground;
         data.boxRetrieved = boxRetrieved;
@@ -3016,6 +3107,10 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         this.instantStart = data.instantStart;
         this.taskbarOnRight = data.taskbarOnRight;
         this.catAlwaysAppears = data.catAlwaysAppears;
+        this.catPetted = data.catPetted;
+        this.catAdopted = data.catAdopted;
+        this.catOnBed = data.catOnBed;
+        this.catDiscoveredOnBed = data.catDiscoveredOnBed;
         this.catPresent = data.catPresent || data.catAlwaysAppears;
         this.catX = data.catX;
         this.catY = data.catY;

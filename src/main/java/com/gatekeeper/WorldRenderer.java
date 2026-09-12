@@ -24,6 +24,7 @@ final class WorldRenderer {
     private BufferedImage streetBackground;
     private final BufferedImage shopBackground;
     private final BufferedImage installedWorkbenchImage;
+    private final BufferedImage catOnBedImage;
     private final BufferedImage alexSprites;
     private final BufferedImage miraSprites;
     private final BufferedImage catSprites;
@@ -53,6 +54,7 @@ final class WorldRenderer {
     private boolean catPresent;
     private int catX = STREET_CAT_X;
     private int catY = 152;
+    private boolean catOnBed = false;
     private int starCount = 25;
     private int mothCount = 3;
     private float playerShadowStrength = 1.0f;
@@ -66,6 +68,7 @@ final class WorldRenderer {
 
     WorldRenderer(BufferedImage bedroomBackground, BufferedImage streetBackground,
                   BufferedImage shopBackground, BufferedImage installedWorkbenchImage,
+                  BufferedImage catOnBedImage,
                   BufferedImage alexSprites,
                   BufferedImage miraSprites, BufferedImage catSprites,
                   BufferedImage boxImage,
@@ -79,6 +82,7 @@ final class WorldRenderer {
         this.streetBackground = streetBackground;
         this.shopBackground = shopBackground;
         this.installedWorkbenchImage = installedWorkbenchImage;
+        this.catOnBedImage = catOnBedImage;
         this.alexSprites = alexSprites;
         this.miraSprites = miraSprites;
         this.catSprites = catSprites;
@@ -110,6 +114,10 @@ final class WorldRenderer {
 
     void setWorkbenchInstalled(boolean workbenchInstalled) {
         this.workbenchInstalled = workbenchInstalled;
+    }
+
+    void setCatOnBed(boolean catOnBed) {
+        this.catOnBed = catOnBed;
     }
 
     void setStreetBackground(BufferedImage streetBackground) {
@@ -152,6 +160,10 @@ final class WorldRenderer {
     void drawBedroom(Graphics2D g) {
         if (bedroomBackground != null) {
             g.drawImage(bedroomBackground, 0, 0, W, H, null);
+            if (catOnBed && catOnBedImage != null) {
+                g.drawImage(catOnBedImage, 0, 0, W, H, null);
+                drawCatSleepParticles(g);
+            }
             if (workbenchInstalled && installedWorkbenchImage != null) {
                 g.drawImage(installedWorkbenchImage, 0, 0, W, H, null);
             }
@@ -163,6 +175,7 @@ final class WorldRenderer {
             else if (near(205, 126) && workbenchInstalled) {
                 prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
             }
+            else if (catOnBed && near(100, 150)) prompt(g, "E  PET CAT");
             else if (near(407, 132)) prompt(g, "E  GO OUTSIDE");
 
             if (showCollisions) {
@@ -207,6 +220,10 @@ final class WorldRenderer {
         g.drawRect(19, 108, 107, 57);
         g.fillRect(19, 165, 5, 12);
         g.fillRect(121, 165, 5, 12);
+        if (catOnBed && catOnBedImage != null) {
+            g.drawImage(catOnBedImage, 0, 0, W, H, null);
+            drawCatSleepParticles(g);
+        }
 
         // Work desk, lamp, pegboard and a stool.
         g.setColor(new Color(8, 9, 14));
@@ -270,12 +287,30 @@ final class WorldRenderer {
         else if (near(93, 91) && workbenchInstalled) {
             prompt(g, chapter >= 2 ? "E  USE CRAFTING BOARD" : "E  LOOK AT WORKBENCH");
         }
+        else if (catOnBed && near(100, 150)) prompt(g, "E  PET CAT");
         else if (near(442, 130)) prompt(g, "E  GO OUTSIDE");
 
         if (showCollisions) {
             drawCollisionOverlay(g, GameScene.BEDROOM, playerX, playerY, 0);
         }
         drawPositionMarkers(g, 0);
+    }
+
+    private void drawCatSleepParticles(Graphics2D g) {
+        long cycle = (ticks / 2) % 120;
+        for (int i = 0; i < 3; i++) {
+            long pTick = (cycle + i * 40) % 120;
+            float progress = pTick / 120.0f;
+            int zX = (int) (72 + Math.sin(progress * Math.PI * 2) * 4 + progress * 8);
+            int zY = (int) (122 - progress * 22);
+            int alpha = (int) (Math.sin(progress * Math.PI) * 200);
+            if (alpha > 15) {
+                g.setColor(new Color(210, 230, 255, alpha));
+                g.drawLine(zX, zY, zX + 3, zY);
+                g.drawLine(zX + 2, zY + 1, zX + 1, zY + 2);
+                g.drawLine(zX, zY + 3, zX + 3, zY + 3);
+            }
+        }
     }
 
     void drawStreet(Graphics2D g) {

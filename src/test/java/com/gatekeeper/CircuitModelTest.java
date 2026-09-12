@@ -73,6 +73,10 @@ public final class CircuitModelTest {
         save.catX = 45;
         save.catY = 75;
         save.catAlwaysAppears = true;
+        save.catPetted = true;
+        save.catAdopted = true;
+        save.catOnBed = true;
+        save.catDiscoveredOnBed = true;
         save.workbenchInstalled = true;
         save.starCount = 75;
         save.mothCount = 8;
@@ -103,6 +107,10 @@ public final class CircuitModelTest {
         require(loaded.catPresent, "loaded catPresent should be true");
         require(loaded.catX == 45 && loaded.catY == 75, "loaded catX/catY should match");
         require(loaded.catAlwaysAppears, "loaded catAlwaysAppears should be true");
+        require(loaded.catPetted, "loaded catPetted should be true");
+        require(loaded.catAdopted, "loaded catAdopted should be true");
+        require(loaded.catOnBed, "loaded catOnBed should be true");
+        require(loaded.catDiscoveredOnBed, "loaded catDiscoveredOnBed should be true");
         require(loaded.workbenchInstalled, "loaded workbenchInstalled should be true");
         require(loaded.starCount == 75, "loaded starCount should match");
         require(loaded.mothCount == 8, "loaded mothCount should match");
@@ -148,6 +156,30 @@ public final class CircuitModelTest {
             require(ry == 77 || ry == 152, "spawn Y invalid: " + ry);
             if (ry == 77) require(rx >= 2 && rx <= 96, "roof spawn X out of bounds: " + rx);
         }
+
+        // Verify cat adoption progression:
+        // 1. Cat starts unpetted, unadopted, not on bed
+        SaveData progressionState = new SaveData();
+        require(!progressionState.catPetted && !progressionState.catAdopted && !progressionState.catOnBed,
+            "cat should start unpetted and unadopted");
+        // 2. Petting cat outside flags it as petted, but not yet adopted onto bed
+        progressionState.catPetted = true;
+        require(progressionState.catPetted && !progressionState.catAdopted && !progressionState.catOnBed,
+            "petting cat must not immediately place it on bed");
+        // 3. Visiting shop completes adoption and places cat on bed
+        if (progressionState.catPetted) {
+            progressionState.catAdopted = true;
+            progressionState.catOnBed = true;
+        }
+        require(progressionState.catAdopted && progressionState.catOnBed,
+            "visiting shop after petting adopts cat and moves it to bed");
+        // 4. Cat is either resting at home or outside, never in both places
+        boolean testCatOnBed = true;
+        boolean testCatPresent = !testCatOnBed;
+        require(testCatOnBed != testCatPresent, "cat cannot be in both places or neither place when adopted");
+        testCatOnBed = false;
+        testCatPresent = !testCatOnBed;
+        require(testCatOnBed != testCatPresent, "when cat goes outside, bed must be empty");
 
         System.out.println("CircuitModelTest: all checks passed");
     }

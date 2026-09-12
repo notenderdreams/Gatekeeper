@@ -42,6 +42,10 @@ public final class SaveManager {
             json.append("  \"catX\": ").append(data.catX).append(",\n");
             json.append("  \"catY\": ").append(data.catY).append(",\n");
             json.append("  \"catAlwaysAppears\": ").append(data.catAlwaysAppears).append(",\n");
+            json.append("  \"catPetted\": ").append(data.catPetted).append(",\n");
+            json.append("  \"catAdopted\": ").append(data.catAdopted).append(",\n");
+            json.append("  \"catOnBed\": ").append(data.catOnBed).append(",\n");
+            json.append("  \"catDiscoveredOnBed\": ").append(data.catDiscoveredOnBed).append(",\n");
             json.append("  \"instantStart\": ").append(data.instantStart).append(",\n");
             json.append("  \"ccBedroomBackground\": ").append(data.ccBedroomBackground).append(",\n");
             json.append("  \"ccStreetBackground\": ").append(data.ccStreetBackground).append(",\n");
@@ -112,6 +116,10 @@ public final class SaveManager {
             data.catX = parseInt(content, "catX", GameConstants.STREET_CAT_X);
             data.catY = parseInt(content, "catY", 152);
             data.catAlwaysAppears = parseBoolean(content, "catAlwaysAppears", false);
+            data.catPetted = parseBoolean(content, "catPetted", false);
+            data.catAdopted = parseBoolean(content, "catAdopted", data.catOnBed);
+            data.catOnBed = parseBoolean(content, "catOnBed", false);
+            data.catDiscoveredOnBed = parseBoolean(content, "catDiscoveredOnBed", data.catOnBed);
             data.instantStart = parseBoolean(content, "instantStart", false);
             data.ccBedroomBackground = parseBoolean(content, "ccBedroomBackground", true);
             data.ccStreetBackground = parseBoolean(content, "ccStreetBackground", true);

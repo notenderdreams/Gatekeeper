@@ -15,6 +15,10 @@ public final class SaveData {
     public int catX = GameConstants.STREET_CAT_X;
     public int catY = 152;
     public boolean catAlwaysAppears;
+    public boolean catPetted = false;
+    public boolean catAdopted = false;
+    public boolean catOnBed = false;
+    public boolean catDiscoveredOnBed = false;
     public boolean instantStart;
     public boolean ccBedroomBackground = true;
     public boolean ccStreetBackground = true;
