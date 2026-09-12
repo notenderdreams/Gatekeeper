@@ -21,6 +21,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -188,11 +189,23 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean productionVisible;
     private boolean certificationVisible;
     private boolean contractVisible;
+    private boolean contractCircuitPickerOpen;
+    private int contractPickerFocusIndex;
+    private final Map<Integer, CraftedCircuitInventory.CraftedCircuit> assignedContractCircuits = new HashMap<>();
     private boolean craftCircuitVisible;
     private int productionRecipe;
     private int productionQuantity = 1;
     private String productionStatus = "ENTER TO PRODUCE";
     private int contractSelection;
+
+    private CraftedCircuitInventory.CraftedCircuit assignedContractCircuit() {
+        CraftedCircuitInventory.CraftedCircuit circuit = assignedContractCircuits.get(contractSelection);
+        if (circuit != null && !craftedCircuitInventory.circuits().contains(circuit)) {
+            assignedContractCircuits.remove(contractSelection);
+            circuit = null;
+        }
+        return circuit;
+    }
     private int contractPushAmount = 1;
     private String contractStatus = "SELECT A DELIVERY";
     private ShopRenderer.Action pressedShopAction = ShopRenderer.Action.NONE;
@@ -384,7 +397,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (scene == GameScene.SHOP && contractVisible) {
             contractRenderer.draw(g, contractModel.available(chapter), contractSelection,
-                contractModel, craftedCircuitInventory, shopModel, contractPushAmount, contractStatus, mouseX, mouseY);
+                contractModel, craftedCircuitInventory, shopModel, contractPushAmount, contractStatus, mouseX, mouseY,
+                contractCircuitPickerOpen, assignedContractCircuit(), contractPickerFocusIndex);
         }
         if (inventoryVisible) inventoryRenderer.draw(g, shopModel, knownInventoryProductCount(),
             craftedCircuitInventory, recipes);
@@ -398,7 +412,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (!disableHud && dialogueVisible()) {
             DialogueRenderer.draw(g, line, lineAge, ticks, uiScale, logicLensImage,
-                notebookItemImage, workbenchItemImage, boxImage, letterImage);
+                notebookItemImage, workbenchItemImage, boxImage, letterImage,
+                canDeliverMiraOrders(), mouseX, mouseY);
         }
         if (exitPrompt) MenuRenderer.drawPause(g, mouseX, mouseY, exitPromptSelection);
         g.dispose();
@@ -426,6 +441,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
+        contractCircuitPickerOpen = false;
+        assignedContractCircuits.clear();
         craftCircuitVisible = false;
         selectedRecipe = 0;
         notebookSection = NotebookRenderer.Section.GATE_INFO;
@@ -664,7 +681,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Logic gates! AND, OR, and NOT are the alphabet of electronics.",
                 "MIRA|My order board needs a NAND, a NOR, and an XOR. Your workbench is completely freeform.",
                 "MIRA|Try every input switch setting yourself, then press B to craft the circuit.",
-                "MIRA|Give each circuit a short name. At my order board, pair it with an order and I'll verify it.",
+                "MIRA|Give each circuit a short name. When you're ready, talk to me to deliver them and I'll verify each promise.",
                 "ALEX|So a truth table is... a list of promises the circuit has to keep?",
                 "MIRA|Exactly. A circuit must keep every single one.");
             saveCurrentProgress();
@@ -677,7 +694,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 "MIRA|Now try XNOR and IMPLY. The notebook has new pages.");
             saveCurrentProgress();
         } else if (chapter == 2) {
-            say("MIRA|I still need NAND, NOR, and XOR. Open my orders with C and submit one of your crafted circuits.");
+            say("MIRA|I still need NAND, NOR, and XOR.");
         } else if (chapter == 3 && advancedComplete()) {
             completedObjective = "RETURN TO MIRA";
             chapter = 4;
@@ -688,7 +705,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             dialogue.add("@END");
             saveCurrentProgress();
         } else {
-            say("MIRA|Let the LogicLens test XNOR and IMPLY for you.");
+            say("MIRA|I still need XNOR and IMPLY. Let the LogicLens test them for you.");
         }
     }
 
@@ -1068,9 +1085,9 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         contractSelection = clamp(contractSelection, 0, contracts.size() - 1);
         ContractModel.Contract contract = contracts.get(contractSelection);
-        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
+        CraftedCircuitInventory.CraftedCircuit assigned = assignedContractCircuit();
         int produced = shopModel.purchased(contract.product());
-        int totalAvailable = matchingCrafted + produced;
+        int totalAvailable = (assigned != null ? 1 : 0) + produced;
         int remainingQuota = contractModel.remaining(contract);
         int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
         contractPushAmount = maxPush > 0 ? clamp(contractPushAmount, 1, maxPush) : (totalAvailable > 0 ? 1 : 0);
@@ -1086,26 +1103,70 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         ContractModel.Contract contract = contracts.get(contractSelection);
         CircuitRecipe target = recipes.get(contract.recipeIndex());
 
-        List<CraftedCircuitInventory.CraftedCircuit> matchingCrafted = new ArrayList<>();
-        for (CraftedCircuitInventory.CraftedCircuit circuit : craftedCircuitInventory.circuits()) {
-            WorkbenchGraph tested = new WorkbenchGraph(target);
-            tested.restore(circuit.graph());
-            if (tested.failedCases(target) == 0) {
-                matchingCrafted.add(circuit);
-            }
-        }
-        int matchingCraftedCount = matchingCrafted.size();
-        int producedCount = shopModel.purchased(contract.product());
-        int totalAvailable = matchingCraftedCount + producedCount;
-
-        if (totalAvailable <= 0) {
-            contractStatus = "NO " + contract.product() + " CIRCUITS READY IN STOCK";
+        if (contractModel.isCompleted(contract)) {
+            contractStatus = "ORDER ALREADY COMPLETE";
             playSound("ui-error");
             return;
         }
 
-        int toDeliver = Math.max(1, Math.min(amount, totalAvailable));
+        CraftedCircuitInventory.CraftedCircuit assignedCircuit = assignedContractCircuit();
+        int producedCount = shopModel.purchased(contract.product());
+
+        if (assignedCircuit == null && producedCount <= 0) {
+            if (!craftedCircuitInventory.circuits().isEmpty()) {
+                contractStatus = "CLICK THE IC SLOT TO CHOOSE A CIRCUIT TO DELIVER";
+                contractCircuitPickerOpen = true;
+                contractPickerFocusIndex = 0;
+            } else {
+                contractStatus = "NO " + contract.product() + " CIRCUITS READY IN BAG OR STOCK";
+            }
+            playSound("ui-error");
+            return;
+        }
+
+        if (assignedCircuit != null) {
+            WorkbenchGraph tested = new WorkbenchGraph(target);
+            tested.restore(assignedCircuit.graph());
+            int failed = tested.failedCases(target);
+
+            if (failed > 0) {
+                contractStatus = "REJECTED: '" + assignedCircuit.name() + "' FAILED " + failed + " TESTS!";
+                playSound("ui-error");
+                return;
+            }
+
+            int idx = craftedCircuitInventory.circuits().indexOf(assignedCircuit);
+            if (idx >= 0) {
+                craftedCircuitInventory.select(idx);
+                craftedCircuitInventory.removeSelected();
+                if (assignedCircuit.equals(heldCustomCircuit)) heldCustomCircuit = null;
+            }
+            assignedContractCircuits.remove(contractSelection);
+
+            int payout = contract.unitReward();
+            shopModel.credit(payout);
+            contractModel.deliver(contract, 1);
+            crafted[contract.recipeIndex()] = true;
+
+            if (basicComplete() && chapter == 2) {
+                completedObjective = "ALL THREE COMMISSIONS COMPLETE";
+            }
+
+            if (contractModel.isCompleted(contract)) {
+                contractStatus = "ORDER COMPLETE: " + contract.product() + " (+" + payout + "C)";
+            } else {
+                contractStatus = "DELIVERED '" + assignedCircuit.name() + "' ("
+                    + contractModel.deliveries(contract) + "/" + contract.requiredCount() + ") +" + payout + "C";
+            }
+
+            playSound("success");
+            updateContractPushAmount(contracts);
+            saveCurrentProgress();
+            return;
+        }
+
         int remainingQuota = contractModel.remaining(contract);
+        int toDeliver = Math.max(1, Math.min(amount, producedCount));
         if (remainingQuota > 0) {
             toDeliver = Math.min(toDeliver, remainingQuota);
         }
@@ -1116,23 +1177,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             return;
         }
 
-        int fromCrafted = Math.min(toDeliver, matchingCraftedCount);
-        int fromProduced = toDeliver - fromCrafted;
-
-        for (int i = 0; i < fromCrafted; i++) {
-            CraftedCircuitInventory.CraftedCircuit toRemove = matchingCrafted.get(i);
-            int idx = craftedCircuitInventory.circuits().indexOf(toRemove);
-            if (idx >= 0) {
-                craftedCircuitInventory.select(idx);
-                craftedCircuitInventory.removeSelected();
-                if (toRemove.equals(heldCustomCircuit)) heldCustomCircuit = null;
-            }
-        }
-
-        if (fromProduced > 0) {
-            shopModel.consume(contract.product(), fromProduced);
-        }
-
+        shopModel.consume(contract.product(), toDeliver);
         int payout = toDeliver * contract.unitReward();
         shopModel.credit(payout);
         contractModel.deliver(contract, toDeliver);
@@ -1267,6 +1312,26 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
     private boolean basicComplete() { return crafted[0] && crafted[1] && crafted[2]; }
     private boolean advancedComplete() { return crafted[3] && crafted[4]; }
     private boolean near(int x, int y) { return Math.abs(playerX - x) < 42 && Math.abs(playerY - y) < 40; }
+
+    private boolean canDeliverMiraOrders() {
+        return scene == GameScene.SHOP
+            && line != null
+            && line.startsWith("MIRA|")
+            && ((chapter == 2 && !basicComplete()) || (chapter == 3 && !advancedComplete()));
+    }
+
+    private void openContractOverlay() {
+        line = null;
+        dialogue.clear();
+        contractVisible = true;
+        contractCircuitPickerOpen = false;
+        contractSelection = 0;
+        contractStatus = "READY TO DELIVER";
+        updateContractPushAmount(contractModel.available(chapter));
+        keys.clear();
+        playSound("ui-open");
+        repaint();
+    }
 
     private boolean bedroomBlocked(double x, double y) {
         // Perspective-angled bed/desk footprint calibrated by user points: {97,92}, {148,131}, {58,206}, {1,142}
@@ -1454,9 +1519,58 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
         if (contractVisible) {
             List<ContractModel.Contract> contracts = contractModel.available(chapter);
+            if (contractCircuitPickerOpen) {
+                if (key == KeyEvent.VK_ESCAPE) {
+                    contractCircuitPickerOpen = false;
+                    playSound("ui-close");
+                } else if (key == KeyEvent.VK_BACK_SPACE || key == KeyEvent.VK_DELETE) {
+                    assignedContractCircuits.remove(contractSelection);
+                    contractCircuitPickerOpen = false;
+                    contractStatus = "CIRCUIT SELECTION CLEARED";
+                    updateContractPushAmount(contracts);
+                    playSound("ui-select");
+                } else if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                    if (!craftedCircuitInventory.circuits().isEmpty()) {
+                        int idx = clamp(contractPickerFocusIndex, 0, craftedCircuitInventory.circuits().size() - 1);
+                        CraftedCircuitInventory.CraftedCircuit chosen = craftedCircuitInventory.circuits().get(idx);
+                        assignedContractCircuits.put(contractSelection, chosen);
+                        contractCircuitPickerOpen = false;
+                        contractStatus = "SELECTED IC: " + chosen.name();
+                        updateContractPushAmount(contracts);
+                        playSound("ui-select");
+                    }
+                } else if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                    if (!craftedCircuitInventory.circuits().isEmpty()) {
+                        contractPickerFocusIndex = (contractPickerFocusIndex - 1 + craftedCircuitInventory.circuits().size()) % craftedCircuitInventory.circuits().size();
+                        playSound("ui-select");
+                    }
+                } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                    if (!craftedCircuitInventory.circuits().isEmpty()) {
+                        contractPickerFocusIndex = (contractPickerFocusIndex + 1) % craftedCircuitInventory.circuits().size();
+                        playSound("ui-select");
+                    }
+                } else if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) {
+                    if (!craftedCircuitInventory.circuits().isEmpty()) {
+                        contractPickerFocusIndex = (contractPickerFocusIndex - 4 + craftedCircuitInventory.circuits().size()) % craftedCircuitInventory.circuits().size();
+                        playSound("ui-select");
+                    }
+                } else if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) {
+                    if (!craftedCircuitInventory.circuits().isEmpty()) {
+                        contractPickerFocusIndex = (contractPickerFocusIndex + 4) % craftedCircuitInventory.circuits().size();
+                        playSound("ui-select");
+                    }
+                }
+                repaint();
+                return;
+            }
+
             if (key == KeyEvent.VK_ESCAPE || key == KeyEvent.VK_C) {
                 contractVisible = false;
                 playSound("ui-close");
+            } else if (key == KeyEvent.VK_I || key == KeyEvent.VK_B || key == KeyEvent.VK_O) {
+                contractCircuitPickerOpen = true;
+                contractPickerFocusIndex = 0;
+                playSound("ui-open");
             } else if (!contracts.isEmpty()
                 && (key == KeyEvent.VK_UP || key == KeyEvent.VK_W
                     || key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S)) {
@@ -1473,9 +1587,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_EQUALS || key == KeyEvent.VK_PLUS) {
                 if (!contracts.isEmpty()) {
                     ContractModel.Contract contract = contracts.get(contractSelection);
-                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
                     int produced = shopModel.purchased(contract.product());
-                    int totalAvailable = matchingCrafted + produced;
+                    int totalAvailable = (assignedContractCircuit() != null ? 1 : 0) + produced;
                     int remainingQuota = contractModel.remaining(contract);
                     int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
                     if (contractPushAmount < maxPush) {
@@ -1486,9 +1599,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             } else if (key == KeyEvent.VK_P) {
                 if (!contracts.isEmpty()) {
                     ContractModel.Contract contract = contracts.get(contractSelection);
-                    int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
                     int produced = shopModel.purchased(contract.product());
-                    int totalAvailable = matchingCrafted + produced;
+                    int totalAvailable = (assignedContractCircuit() != null ? 1 : 0) + produced;
                     int remainingQuota = contractModel.remaining(contract);
                     int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
                     contractPushAmount = Math.max(0, maxPush);
@@ -1564,10 +1676,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             playSound("ui-select");
             return;
         }
-        if (line != null && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE)) {
-            if (dialogueLineComplete()) nextLine();
-            else lineAge = Integer.MAX_VALUE / 2;
-            return;
+        if (line != null) {
+            if (canDeliverMiraOrders() && key == KeyEvent.VK_D) {
+                openContractOverlay();
+                return;
+            }
+            if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_E || key == KeyEvent.VK_SPACE) {
+                if (dialogueLineComplete()) nextLine();
+                else lineAge = Integer.MAX_VALUE / 2;
+                return;
+            }
         }
         if (key == KeyEvent.VK_I && firstPress && line == null
             && (scene == GameScene.BEDROOM || scene == GameScene.STREET
@@ -1582,17 +1700,6 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             && line == null && near(240, 160)) {
             shopOverlayVisible = true;
             pressedShopAction = ShopRenderer.Action.NONE;
-            keys.clear();
-            playSound("ui-open");
-            repaint();
-            return;
-        }
-        if (scene == GameScene.SHOP && key == KeyEvent.VK_C && firstPress
-            && line == null && near(240, 160) && chapter >= 2) {
-            contractVisible = true;
-            contractSelection = 0;
-            contractStatus = "READY TO DELIVER";
-            updateContractPushAmount(contractModel.available(chapter));
             keys.clear();
             playSound("ui-open");
             repaint();
@@ -1813,8 +1920,36 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
         if (scene == GameScene.SHOP && contractVisible) {
             List<ContractModel.Contract> contracts = contractModel.available(chapter);
-            ContractRenderer.Action action = contractRenderer.actionAt(x, y, contracts);
+            ContractRenderer.Action action = contractRenderer.actionAt(x, y, contracts,
+                contractCircuitPickerOpen, craftedCircuitInventory);
             switch (action) {
+                case OPEN_CIRCUIT_PICKER -> {
+                    contractCircuitPickerOpen = true;
+                    contractPickerFocusIndex = 0;
+                    playSound("ui-open");
+                }
+                case CLOSE_CIRCUIT_PICKER -> {
+                    contractCircuitPickerOpen = false;
+                    playSound("ui-close");
+                }
+                case CLEAR_CIRCUIT_SELECTION -> {
+                    assignedContractCircuits.remove(contractSelection);
+                    contractCircuitPickerOpen = false;
+                    contractStatus = "CIRCUIT SELECTION CLEARED";
+                    updateContractPushAmount(contracts);
+                    playSound("ui-select");
+                }
+                case SELECT_PICKER_CIRCUIT -> {
+                    int idx = contractRenderer.pickerCircuitIndexAt(x, y, craftedCircuitInventory);
+                    if (idx >= 0 && idx < craftedCircuitInventory.circuits().size()) {
+                        CraftedCircuitInventory.CraftedCircuit chosen = craftedCircuitInventory.circuits().get(idx);
+                        assignedContractCircuits.put(contractSelection, chosen);
+                        contractCircuitPickerOpen = false;
+                        contractStatus = "SELECTED IC: " + chosen.name();
+                        updateContractPushAmount(contracts);
+                        playSound("ui-select");
+                    }
+                }
                 case SELECT_ORDER -> {
                     int idx = contractRenderer.orderIndexAt(x, y, contracts);
                     if (idx >= 0 && idx < contracts.size()) {
@@ -1833,9 +1968,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 case INCREASE_AMOUNT -> {
                     if (!contracts.isEmpty()) {
                         ContractModel.Contract contract = contracts.get(contractSelection);
-                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
                         int produced = shopModel.purchased(contract.product());
-                        int totalAvailable = matchingCrafted + produced;
+                        int totalAvailable = (assignedContractCircuit() != null ? 1 : 0) + produced;
                         int remainingQuota = contractModel.remaining(contract);
                         int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
                         if (contractPushAmount < maxPush) {
@@ -1847,9 +1981,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 case MAX_AMOUNT -> {
                     if (!contracts.isEmpty()) {
                         ContractModel.Contract contract = contracts.get(contractSelection);
-                        int matchingCrafted = ContractRenderer.countMatchingCrafted(contract, craftedCircuitInventory);
                         int produced = shopModel.purchased(contract.product());
-                        int totalAvailable = matchingCrafted + produced;
+                        int totalAvailable = (assignedContractCircuit() != null ? 1 : 0) + produced;
                         int remainingQuota = contractModel.remaining(contract);
                         int maxPush = remainingQuota > 0 ? Math.min(totalAvailable, remainingQuota) : totalAvailable;
                         contractPushAmount = Math.max(0, maxPush);
@@ -1861,6 +1994,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 }
                 case CLOSE -> {
                     contractVisible = false;
+                    contractCircuitPickerOpen = false;
                     playSound("ui-close");
                 }
                 case NONE -> {}
@@ -1895,6 +2029,16 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         }
 
         if (dialogueVisible()) {
+            if (canDeliverMiraOrders()) {
+                if (DialogueRenderer.DELIVER_BUTTON.contains(x, y)) {
+                    openContractOverlay();
+                    return;
+                }
+                if (DialogueRenderer.LEAVE_BUTTON.contains(x, y)) {
+                    nextLine();
+                    return;
+                }
+            }
             if (dialogueLineComplete()) nextLine();
             else lineAge = Integer.MAX_VALUE / 2;
             return;
@@ -1988,7 +2132,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             if (devSection == 0) {
                 for (int i = 0; i < DEV_OPTION_COUNT; i++) {
-                    int oy = 54 + i * 22;
+                    int oy = 52 + i * 20;
                     if (inside(x, y, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
@@ -2235,7 +2379,7 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
 
             if (devSection == 0) {
                 for (int i = 0; i < DEV_OPTION_COUNT; i++) {
-                    int oy = 54 + i * 22;
+                    int oy = 52 + i * 20;
                     if (inside(mouseX, mouseY, 160, oy, 285, 18)) {
                         devFocusRight = true;
                         devSelection = i;
@@ -2637,6 +2781,8 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
         productionVisible = false;
         certificationVisible = false;
         contractVisible = false;
+        contractCircuitPickerOpen = false;
+        assignedContractCircuits.clear();
         craftCircuitVisible = false;
         contractModel.restore(null);
         craftedCircuitInventory.clear();
@@ -2686,13 +2832,24 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
             }
             case 5 -> {
                 chapter = 2;
+                scene = GameScene.SHOP;
+                setPlayerPosition(94, 190);
+                WorkbenchGraph nandGraph = new WorkbenchGraph(recipes.get(0));
+                WorkbenchGraph norGraph = new WorkbenchGraph(recipes.get(1));
+                WorkbenchGraph xorGraph = new WorkbenchGraph(recipes.get(2));
+                craftedCircuitInventory.add("NAND IC", nandGraph.snapshot());
+                craftedCircuitInventory.add("NOR IC", norGraph.snapshot());
+                craftedCircuitInventory.add("XOR IC", xorGraph.snapshot());
+            }
+            case 6 -> {
+                chapter = 2;
                 crafted[0] = true;
                 crafted[1] = true;
                 crafted[2] = true;
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
-            case 6 -> {
+            case 7 -> {
                 chapter = 3;
                 crafted[0] = true;
                 crafted[1] = true;
@@ -2700,13 +2857,13 @@ public final class GamePanel extends JPanel implements KeyListener, MouseListene
                 scene = GameScene.BEDROOM;
                 setPlayerPosition(205, 126);
             }
-            case 7 -> {
+            case 8 -> {
                 chapter = 3;
                 Arrays.fill(crafted, true);
                 scene = GameScene.SHOP;
                 setPlayerPosition(94, 190);
             }
-            case 8 -> {
+            case 9 -> {
                 chapter = 4;
                 Arrays.fill(crafted, true);
                 scene = GameScene.END;

@@ -53,6 +53,27 @@ public final class ContractRendererTest {
             "clicking first order row should trigger SELECT_ORDER");
         require(renderer.orderIndexAt(50, 60, contracts) == 0,
             "order index at row 0 should be 0");
+        require(renderer.actionAt(240, 120, contracts) == ContractRenderer.Action.OPEN_CIRCUIT_PICKER,
+            "clicking circuit slot should trigger OPEN_CIRCUIT_PICKER");
+
+        // Test circuit picker hit testing when picker is open
+        require(renderer.actionAt(418, 30, contracts, true, inventory) == ContractRenderer.Action.CLOSE_CIRCUIT_PICKER,
+            "clicking picker close X should trigger CLOSE_CIRCUIT_PICKER");
+        require(renderer.actionAt(140, 225, contracts, true, inventory) == ContractRenderer.Action.CLEAR_CIRCUIT_SELECTION,
+            "clicking picker clear button should trigger CLEAR_CIRCUIT_SELECTION");
+        require(renderer.actionAt(290, 225, contracts, true, inventory) == ContractRenderer.Action.CLOSE_CIRCUIT_PICKER,
+            "clicking picker cancel button should trigger CLOSE_CIRCUIT_PICKER");
+        require(renderer.actionAt(80, 80, contracts, true, inventory) == ContractRenderer.Action.SELECT_PICKER_CIRCUIT,
+            "clicking first circuit card should trigger SELECT_PICKER_CIRCUIT");
+        require(renderer.pickerCircuitIndexAt(80, 80, inventory) == 0,
+            "pickerCircuitIndexAt should return 0 for first card");
+
+        inventory.add("MYNOR", new WorkbenchGraph(CircuitRecipe.all().get(1)).snapshot());
+        require(inventory.circuits().size() == 2, "inventory should have 2 circuits");
+        require(renderer.pickerCircuitIndexAt(180, 80, inventory) == 1,
+            "pickerCircuitIndexAt should return 1 for second card");
+        require(renderer.actionAt(180, 80, contracts, true, inventory) == ContractRenderer.Action.SELECT_PICKER_CIRCUIT,
+            "clicking second circuit card should trigger SELECT_PICKER_CIRCUIT");
 
         System.out.println("ContractRendererTest: all checks passed");
     }

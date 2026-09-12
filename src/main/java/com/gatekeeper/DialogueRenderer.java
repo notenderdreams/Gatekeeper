@@ -5,18 +5,31 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 
 import static com.gatekeeper.GameConstants.*;
 
 /** Draws dialogue, interaction prompts, and item-received overlays. */
 final class DialogueRenderer {
+    static final Rectangle DELIVER_BUTTON = new Rectangle(296, 233, 114, 20);
+    static final Rectangle LEAVE_BUTTON = new Rectangle(416, 233, 52, 20);
+
     private DialogueRenderer() {}
 
     static void draw(Graphics2D g, String line, int lineAge, long ticks, float uiScale,
                      BufferedImage logicLensImage, BufferedImage notebookImage,
                      BufferedImage workbenchImage, BufferedImage boxImage,
                      BufferedImage letterImage) {
+        draw(g, line, lineAge, ticks, uiScale, logicLensImage, notebookImage,
+             workbenchImage, boxImage, letterImage, false, -1, -1);
+    }
+
+    static void draw(Graphics2D g, String line, int lineAge, long ticks, float uiScale,
+                     BufferedImage logicLensImage, BufferedImage notebookImage,
+                     BufferedImage workbenchImage, BufferedImage boxImage,
+                     BufferedImage letterImage, boolean showDeliveryOption,
+                     int mouseX, int mouseY) {
         if (LETTER_ITEM_CARD.equals(line)) {
             drawLetterPaper(g, uiScale, letterImage);
             return;
@@ -59,9 +72,27 @@ final class DialogueRenderer {
         int visible = Math.min(words.length(), lineAge / 2 + 1);
         GamePanel.drawWrapped(g, "* " + words.substring(0, visible),
             x + Math.round(12 * uiScale), y + Math.round(34 * uiScale), 72);
-        if (visible == words.length() && (ticks / 25) % 2 == 0) {
-            GamePanel.pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
-                y + Math.round(51 * uiScale), 1);
+        if (showDeliveryOption) {
+            boolean deliverHover = DELIVER_BUTTON.contains(mouseX, mouseY);
+            g.setColor(deliverHover ? new Color(42, 98, 54) : new Color(24, 62, 35));
+            g.fillRect(DELIVER_BUTTON.x, DELIVER_BUTTON.y, DELIVER_BUTTON.width, DELIVER_BUTTON.height);
+            g.setColor(deliverHover ? YELLOW : new Color(75, 155, 85));
+            g.drawRect(DELIVER_BUTTON.x, DELIVER_BUTTON.y, DELIVER_BUTTON.width - 1, DELIVER_BUTTON.height - 1);
+            g.setColor(deliverHover ? Color.WHITE : INK);
+            GamePanel.pixelText(g, "[D] DELIVER GOODS", DELIVER_BUTTON.x + 6, DELIVER_BUTTON.y + 14, 1);
+
+            boolean leaveHover = LEAVE_BUTTON.contains(mouseX, mouseY);
+            g.setColor(leaveHover ? new Color(55, 50, 45) : new Color(30, 28, 26));
+            g.fillRect(LEAVE_BUTTON.x, LEAVE_BUTTON.y, LEAVE_BUTTON.width, LEAVE_BUTTON.height);
+            g.setColor(leaveHover ? YELLOW : DIM);
+            g.drawRect(LEAVE_BUTTON.x, LEAVE_BUTTON.y, LEAVE_BUTTON.width - 1, LEAVE_BUTTON.height - 1);
+            g.setColor(leaveHover ? INK : DIM);
+            GamePanel.pixelText(g, "LEAVE", LEAVE_BUTTON.x + 11, LEAVE_BUTTON.y + 14, 1);
+        } else {
+            if (visible == words.length() && (ticks / 25) % 2 == 0) {
+                GamePanel.pixelText(g, "v", x + boxWidth - Math.round(20 * uiScale),
+                    y + Math.round(51 * uiScale), 1);
+            }
         }
     }
 

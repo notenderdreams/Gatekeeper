@@ -165,10 +165,10 @@ final class MenuRenderer {
         // --- RIGHT COLUMN: OPTIONS ---
         if (section == 0) { // BREAKPOINTS
             String[] options = {"FRESH BEDROOM", "BOARD PROGRESSION", "STREET",
-                "SHOP", "AFTER MIRA HOME", "FIRST 3 COMPLETE", "AUTO TESTER HOME", "ADVANCED CHAPTER", "ENDING"};
+                "SHOP", "AFTER MIRA HOME", "DELIVER 3 CIRCUITS", "FIRST 3 COMPLETE", "AUTO TESTER HOME", "ADVANCED CHAPTER", "ENDING"};
 
             for (int i = 0; i < options.length; i++) {
-                int y = 54 + i * 22;
+                int y = 52 + i * 20;
                 boolean isSelected = focusRight && (selection == i);
                 boolean hovered = GamePanel.inside(mouseX, mouseY, 160, y, 285, 18);
 
